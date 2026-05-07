@@ -1,4 +1,3 @@
-
 from automr.core.tester import MRTester
 
 from automr.transforms.geometric import flip
@@ -12,7 +11,6 @@ from automr.relations.brightness_relation import BrightnessRelation
 from automr.relations.translation_relation import TranslationRelation
 from automr.relations.noise_relation import NoiseRelation
 from automr.relations.crop_relation import CropRelation
-
 
 class AutoMR:
 
