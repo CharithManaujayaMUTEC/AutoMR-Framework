@@ -17,7 +17,7 @@ from automr.relations.crop_relation import CropRelation
 class AutoMR:
 
     def __init__(self, model):
-        self.model = model
+        self.model = self._wrap_if_needed(model)
         self.tester = MRTester()
 
         self.transforms = [
@@ -35,6 +35,32 @@ class AutoMR:
             NoiseRelation(),
             CropRelation()
         ]
+
+    def _wrap_if_needed(self, model):
+
+        # Case 1: already has predict()
+        if hasattr(model, "predict"):
+            return model
+
+        # Case 2: assume PyTorch model
+        try:
+            import torch
+
+            class TorchWrapper:
+                def __init__(self, model):
+                    self.model = model
+
+                def predict(self, x):
+                    x = torch.tensor(x).permute(2,0,1).float().unsqueeze(0)
+                    with torch.no_grad():
+                        return self.model(x).item()
+
+            return TorchWrapper(model)
+
+        except Exception as e:
+            pass
+
+        raise ValueError("Model must have predict() or be wrappable")
 
     def test(self, input_data):
         return self.tester.run_all(
