@@ -53,7 +53,9 @@ class AutoMR:
                 def predict(self, x):
                     x = torch.tensor(x).permute(2,0,1).float().unsqueeze(0)
                     with torch.no_grad():
-                        return self.model(x).item()
+                        output = self.model(x)
+                        # convert 1000-d output → single scalar
+                        return float(output.max().item())
 
             return TorchWrapper(model)
 
