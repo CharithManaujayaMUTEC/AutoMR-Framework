@@ -3,10 +3,14 @@ import numpy as np
 
 class RangeTester:
 
-    def run_range(self, model, image, transform_fn, relation, values):
+    def generate_range(self, start, end, num_samples):
+        return np.linspace(start, end, num_samples)
+
+    def run_range(self, model, image, transform_fn, relation, start, end, num_samples):
+
+        values = self.generate_range(start, end, num_samples)
 
         results = []
-
         original = model.predict(image)
 
         for v in values:
@@ -17,7 +21,8 @@ class RangeTester:
             pct = (diff / (abs(original) + 1e-6)) * 100
 
             results.append({
-                "param": v,
+                "mr": relation.__class__.__name__,
+                "param": float(v),
                 "original": float(original),
                 "transformed": float(output),
                 "difference": float(diff),
