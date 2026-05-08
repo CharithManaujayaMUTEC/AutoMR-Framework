@@ -1,4 +1,6 @@
 from automr.core.tester import MRTester
+from automr.core.range_tester import RangeTester
+from automr.analysis import Analyzer
 
 from automr.transforms.geometric import flip
 from automr.transforms.brightness import increase_brightness
@@ -20,6 +22,8 @@ class AutoMR:
     def __init__(self, model):
         self.model = self._wrap_if_needed(model)
         self.tester = MRTester()
+        self.range_tester = RangeTester()
+        self.analyzer = Analyzer()
 
         self.transforms = [
             flip,
@@ -65,3 +69,27 @@ class AutoMR:
             self.transforms,
             self.relations
         )
+
+    # 🔥 NEW METHOD (this is what was missing)
+    def full_analysis(self, image, transform_fn, relation, start, end, samples):
+
+        results = self.range_tester.run_range(
+            self.model,
+            image,
+            transform_fn,
+            relation,
+            start,
+            end,
+            samples
+        )
+
+        df = self.analyzer.to_dataframe(results)
+        summary = self.analyzer.summary(df)
+
+        print("=== SUMMARY ===")
+        print(summary)
+
+        self.analyzer.plot_results(results)
+        self.analyzer.highlight_failures(results)
+
+        return df
