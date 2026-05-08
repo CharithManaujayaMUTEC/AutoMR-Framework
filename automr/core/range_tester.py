@@ -9,8 +9,8 @@ class RangeTester:
     def run_range(self, model, image, transform_fn, relation, start, end, num_samples):
 
         values = self.generate_range(start, end, num_samples)
-
         results = []
+
         original = model.predict(image)
 
         for v in values:

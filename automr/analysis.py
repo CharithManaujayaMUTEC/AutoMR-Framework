@@ -1,7 +1,5 @@
 
 import pandas as pd
-import matplotlib.pyplot as plt
-
 
 class Analyzer:
 
@@ -13,35 +11,16 @@ class Analyzer:
     def summary(self, df):
         total = len(df)
         passed = df["passed"].sum()
+
         return {
-            "total_tests": total,
+            "total": total,
             "passed": int(passed),
             "failed": int(total - passed),
             "pass_rate": float(passed / total * 100)
         }
 
-    def plot_results(self, results, title="MR Analysis"):
+    def save_csv(self, df, path="results.csv"):
+        df.to_csv(path, index=False)
 
-        x = [r["param"] for r in results]
-        y = [r["transformed"] for r in results]
-        c = ["green" if r["passed"] else "red" for r in results]
-
-        plt.figure(figsize=(8,5))
-        plt.scatter(x, y, c=c)
-        plt.xlabel("Parameter")
-        plt.ylabel("Model Output")
-        plt.title(title)
-        plt.grid()
-        plt.show()
-
-    def highlight_failures(self, results):
-
-        fail_points = [r for r in results if not r["passed"]]
-
-        if not fail_points:
-            print("No failure regions detected")
-            return
-
-        print("Failure points:")
-        for f in fail_points:
-            print(f"param={f['param']:.2f}, change={f['percent_change']:.2f}%")
+    def save_json(self, df, path="results.json"):
+        df.to_json(path, orient="records", indent=2)

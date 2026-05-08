@@ -1,47 +1,51 @@
+
 from automr.core.tester import MRTester
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 
-from automr.transforms.geometric import flip
+# transforms
 from automr.transforms.brightness import increase_brightness
+from automr.transforms.rotation import rotate_small
 from automr.transforms.translation import shift_right
 from automr.transforms.noise import add_noise
-from automr.transforms.crop import crop_top
-from automr.transforms.rotation import rotate_small
 
-from automr.relations.flip_relation import FlipRelation
+# relations
 from automr.relations.brightness_relation import BrightnessRelation
+from automr.relations.rotation_relation import RotationRelation
 from automr.relations.translation_relation import TranslationRelation
 from automr.relations.noise_relation import NoiseRelation
-from automr.relations.crop_relation import CropRelation
-from automr.relations.rotation_relation import RotationRelation
 
 
 class AutoMR:
 
     def __init__(self, model):
         self.model = self._wrap_if_needed(model)
-        self.tester = MRTester()
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
-        self.transforms = [
-            flip,
-            increase_brightness,
-            shift_right,
-            add_noise,
-            crop_top,
-            rotate_small
-        ]
-
-        self.relations = [
-            FlipRelation(),
-            BrightnessRelation(),
-            TranslationRelation(),
-            NoiseRelation(),
-            CropRelation(),
-            RotationRelation()
-        ]
+        # 🔥 define MR config centrally
+        self.mr_config = {
+            "brightness": {
+                "transform": increase_brightness,
+                "relation": BrightnessRelation(),
+                "range": (0.0, 2.0)
+            },
+            "rotation": {
+                "transform": rotate_small,
+                "relation": RotationRelation(),
+                "range": (-15, 15)
+            },
+            "translation": {
+                "transform": shift_right,
+                "relation": TranslationRelation(),
+                "range": (0, 20)
+            },
+            "noise": {
+                "transform": add_noise,
+                "relation": NoiseRelation(),
+                "range": (0, 50)
+            }
+        }
 
     def _wrap_if_needed(self, model):
 
@@ -62,22 +66,18 @@ class AutoMR:
 
         return TorchWrapper(model)
 
-    def test(self, input_data):
-        return self.tester.run_all(
-            self.model,
-            input_data,
-            self.transforms,
-            self.relations
-        )
+    # 🔥 run single MR with range
+    def run_mr(self, image, mr_name, samples=50):
 
-    # 🔥 NEW METHOD (this is what was missing)
-    def full_analysis(self, image, transform_fn, relation, start, end, samples):
+        cfg = self.mr_config[mr_name]
+
+        start, end = cfg["range"]
 
         results = self.range_tester.run_range(
             self.model,
             image,
-            transform_fn,
-            relation,
+            cfg["transform"],
+            cfg["relation"],
             start,
             end,
             samples
@@ -86,10 +86,16 @@ class AutoMR:
         df = self.analyzer.to_dataframe(results)
         summary = self.analyzer.summary(df)
 
-        print("=== SUMMARY ===")
-        print(summary)
+        return df, summary
 
-        self.analyzer.plot_results(results)
-        self.analyzer.highlight_failures(results)
+    # 🔥 run ALL MRs
+    def run_all_mrs(self, image, samples=50):
 
-        return df
+        all_results = []
+
+        for name in self.mr_config:
+            df, _ = self.run_mr(image, name, samples)
+            all_results.append(df)
+
+        import pandas as pd
+        return pd.concat(all_results, ignore_index=True)
