@@ -3,17 +3,20 @@ class MRTester:
 
     def run(self, model, input_data, transform, relation):
 
-        original_output = model.predict(input_data)
-
+        original = model.predict(input_data)
         transformed_input = transform(input_data)
+        transformed = model.predict(transformed_input)
 
-        transformed_output = model.predict(transformed_input)
+        diff = transformed - original
+        pct = (diff / (abs(original) + 1e-6)) * 100
 
         return {
             "mr": relation.__class__.__name__,
-            "original": original_output,
-            "transformed": transformed_output,
-            "passed": relation.check(original_output, transformed_output)
+            "original": float(original),
+            "transformed": float(transformed),
+            "difference": float(diff),
+            "percent_change": float(pct),
+            "passed": bool(relation.check(original, transformed))
         }
 
     def run_all(self, model, input_data, transforms, relations):
@@ -21,7 +24,6 @@ class MRTester:
         results = []
 
         for transform, relation in zip(transforms, relations):
-            result = self.run(model, input_data, transform, relation)
-            results.append(result)
+            results.append(self.run(model, input_data, transform, relation))
 
         return results
