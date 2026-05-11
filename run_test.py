@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import cv2
 
 # paths
 sys.path.append("D:/FYP 78SEm/Datasets")
@@ -12,7 +13,9 @@ from automr.api import AutoMR
 from load_model import get_model
 from automr.comparator import RegressionComparator
 
+# ✅ comparator
 comparator = RegressionComparator(epsilon=0.1)
+
 
 # ✅ model wrapper (GENERIC)
 class RealModel:
@@ -23,7 +26,8 @@ class RealModel:
         if x is None:
             return 0.0
 
-        # keep preprocessing OUTSIDE AutoMR (domain-specific)
+        # 🔥 IMPORTANT: match DAVE-2 preprocessing
+        x = cv2.resize(x, (200, 66))
         x = x / 255.0
         x = np.expand_dims(x, axis=0)
 
@@ -31,15 +35,31 @@ class RealModel:
         return float(pred.flatten()[0])
 
 
-# ✅ dataset (can be anything later)
+# ✅ dataset
 dataset = load_images("D:/FYP 78SEm/Datasets/archive/trafic_data/train/images")
 
+
+# ✅ INIT MODEL
 model = RealModel()
+
+# 🔥 SANITY CHECK (VERY IMPORTANT)
+print("✅ Model loaded successfully")
+
+test_img = dataset[0]
+if test_img is not None:
+    test_pred = model.predict(test_img)
+    print("🔍 Sample prediction:", test_pred)
+else:
+    print("⚠️ First image is None")
+
+
+# ✅ AutoMR
 automr = AutoMR(model, comparator)
 
 all_results = []
 
-# ✅ clean progress bar
+
+# ✅ run with progress bar
 for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
 
     if sample is None:
@@ -47,12 +67,13 @@ for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
 
     df = automr.run_all_mrs(sample, samples=5)
 
-    # ✅ attach metadata ONLY here (not in framework)
+    # metadata
     df["sample_id"] = i
 
-    # expected behavior from relation (NEW GENERIC WAY)
+    # expected behavior
     def get_expected(row):
-        relation_obj = automr.mr_config[row["mr"].replace("Relation", "").lower()]["relation"]
+        key = row["mr"].replace("Relation", "").lower()
+        relation_obj = automr.mr_config[key]["relation"]
         return relation_obj.expected() if hasattr(relation_obj, "expected") else "N/A"
 
     df["expected_behavior"] = df.apply(get_expected, axis=1)
@@ -64,7 +85,8 @@ for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
 
     all_results.append(df)
 
-# ✅ save
+
+# ✅ save results
 final_df = pd.concat(all_results, ignore_index=True)
 final_df.to_csv("automr_results_detailed.csv", index=False)
 
