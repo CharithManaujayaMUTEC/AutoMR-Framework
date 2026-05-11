@@ -18,8 +18,9 @@ from automr.relations.noise_relation import NoiseRelation
 
 class AutoMR:
 
-    def __init__(self, model):
+    def __init__(self, model, comparator):
         self.model = self._wrap_if_needed(model)
+        self.comparator = comparator
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
@@ -67,35 +68,35 @@ class AutoMR:
         return TorchWrapper(model)
 
     # 🔥 run single MR with range
-    def run_mr(self, image, mr_name, samples=50):
+    def run_mr(self, input_data, mr_name, samples=50):
 
-        cfg = self.mr_config[mr_name]
+    cfg = self.mr_config[mr_name]
+    start, end = cfg["range"]
 
-        start, end = cfg["range"]
+    results = self.range_tester.run_range(
+        self.model,
+        input_data,
+        cfg["transform"],
+        cfg["relation"],
+        start,
+        end,
+        samples,
+        self.comparator   # 🔥 NEW
+    )
 
-        results = self.range_tester.run_range(
-            self.model,
-            image,
-            cfg["transform"],
-            cfg["relation"],
-            start,
-            end,
-            samples
-        )
+    df = self.analyzer.to_dataframe(results)
+    summary = self.analyzer.summary(df)
 
-        df = self.analyzer.to_dataframe(results)
-        summary = self.analyzer.summary(df)
-
-        return df, summary
+    return df, summary
 
     # 🔥 run ALL MRs
-    def run_all_mrs(self, image, samples=50):
+    def run_all_mrs(self, input_data, samples=50):
 
-        all_results = []
+    all_results = []
 
-        for name in self.mr_config:
-            df, _ = self.run_mr(image, name, samples)
-            all_results.append(df)
+    for name in self.mr_config:
+        df, _ = self.run_mr(input_data, name, samples)
+        all_results.append(df)
 
-        import pandas as pd
-        return pd.concat(all_results, ignore_index=True)
+    import pandas as pd
+    return pd.concat(all_results, ignore_index=True)

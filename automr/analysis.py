@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 class Analyzer:
@@ -18,9 +17,3 @@ class Analyzer:
             "failed": int(total - passed),
             "pass_rate": float(passed / total * 100)
         }
-
-    def save_csv(self, df, path="results.csv"):
-        df.to_csv(path, index=False)
-
-    def save_json(self, df, path="results.json"):
-        df.to_json(path, orient="records", indent=2)
