@@ -10,62 +10,59 @@ sys.path.append("D:/FYP 78SEm/Modals")
 from load_data import load_images
 from automr.api import AutoMR
 from load_model import get_model
+from automr.comparator import RegressionComparator
 
-# ✅ expected behavior mapping
-def get_expected(mr_name):
-    if "Brightness" in mr_name:
-        return "Output should remain approximately same under brightness change"
-    elif "Rotation" in mr_name:
-        return "Small rotation should not significantly change output"
-    elif "Translation" in mr_name:
-        return "Small translation should preserve prediction consistency"
-    elif "Noise" in mr_name:
-        return "Noise should not significantly affect prediction"
-    return "Unknown MR"
+comparator = RegressionComparator(epsilon=0.1)
 
-# ✅ interpret result
-def interpret(row):
-    if row["status"] == "PASS":
-        return "Consistent"
-    return "Violation"
-
-# ✅ model wrapper
+# ✅ model wrapper (GENERIC)
 class RealModel:
     def __init__(self):
         self.model = get_model()
 
-    def predict(self, img):
-        if img is None:
+    def predict(self, x):
+        if x is None:
             return 0.0
 
-        img = img / 255.0
-        img = np.expand_dims(img, axis=0)
+        # keep preprocessing OUTSIDE AutoMR (domain-specific)
+        x = x / 255.0
+        x = np.expand_dims(x, axis=0)
 
-        pred = self.model.predict(img, verbose=0)
+        pred = self.model.predict(x, verbose=0)
         return float(pred.flatten()[0])
 
-# ✅ load dataset
+
+# ✅ dataset (can be anything later)
 dataset = load_images("D:/FYP 78SEm/Datasets/archive/trafic_data/train/images")
 
 model = RealModel()
-automr = AutoMR(model)
+automr = AutoMR(model, comparator)
 
 all_results = []
 
 # ✅ clean progress bar
-for i, img in enumerate(tqdm(dataset, desc="Running AutoMR")):
+for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
 
-    if img is None:
+    if sample is None:
         continue
 
-    res = automr.run_all_mrs(img, samples=5)
+    df = automr.run_all_mrs(sample, samples=5)
 
-    # 🔥 add research-level details
-    res["image_id"] = i
-    res["expected_behavior"] = res["mr"].apply(get_expected)
-    res["actual_behavior"] = res.apply(interpret, axis=1)
+    # ✅ attach metadata ONLY here (not in framework)
+    df["sample_id"] = i
 
-    all_results.append(res)
+    # expected behavior from relation (NEW GENERIC WAY)
+    def get_expected(row):
+        relation_obj = automr.mr_config[row["mr"].replace("Relation", "").lower()]["relation"]
+        return relation_obj.expected() if hasattr(relation_obj, "expected") else "N/A"
+
+    df["expected_behavior"] = df.apply(get_expected, axis=1)
+
+    # actual behavior
+    df["actual_behavior"] = df["status"].apply(
+        lambda x: "Consistent" if x == "PASS" else "Violation"
+    )
+
+    all_results.append(df)
 
 # ✅ save
 final_df = pd.concat(all_results, ignore_index=True)

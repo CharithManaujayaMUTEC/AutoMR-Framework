@@ -1,4 +1,3 @@
-
 from automr.core.tester import MRTester
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
@@ -64,7 +63,7 @@ class AutoMR:
                 self.model = model
 
             def predict(self, x):
-                x = torch.tensor(x).permute(2,0,1).float().unsqueeze(0)
+                x = torch.tensor(x).permute(2, 0, 1).float().unsqueeze(0)
                 with torch.no_grad():
                     output = self.model(x)
                 return float(output.max().item())
@@ -74,33 +73,33 @@ class AutoMR:
     # 🔥 run single MR with range
     def run_mr(self, input_data, mr_name, samples=50):
 
-    cfg = self.mr_config[mr_name]
-    start, end = cfg["range"]
+        cfg = self.mr_config[mr_name]
+        start, end = cfg["range"]
 
-    results = self.range_tester.run_range(
-        self.model,
-        input_data,
-        cfg["transform"],
-        cfg["relation"],
-        start,
-        end,
-        samples,
-        self.comparator   # 🔥 NEW
-    )
+        results = self.range_tester.run_range(
+            self.model,
+            input_data,
+            cfg["transform"],
+            cfg["relation"],
+            start,
+            end,
+            samples,
+            self.comparator   # ✅ stays (agnostic design)
+        )
 
-    df = self.analyzer.to_dataframe(results)
-    summary = self.analyzer.summary(df)
+        df = self.analyzer.to_dataframe(results)
+        summary = self.analyzer.summary(df)
 
-    return df, summary
+        return df, summary
 
     # 🔥 run ALL MRs
     def run_all_mrs(self, input_data, samples=50):
 
-    all_results = []
+        all_results = []
 
-    for name in self.mr_config:
-        df, _ = self.run_mr(input_data, name, samples)
-        all_results.append(df)
+        for name in self.mr_config:
+            df, _ = self.run_mr(input_data, name, samples)
+            all_results.append(df)
 
-    import pandas as pd
-    return pd.concat(all_results, ignore_index=True)
+        import pandas as pd
+        return pd.concat(all_results, ignore_index=True)
