@@ -4,16 +4,20 @@ from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 
 # transforms
-from automr.transforms.brightness import increase_brightness
-from automr.transforms.rotation import rotate_small
-from automr.transforms.translation import shift_right
-from automr.transforms.noise import add_noise
+from automr.transforms.image_transforms import (
+    increase_brightness,
+    rotate_small,
+    shift_right,
+    add_noise
+)
 
 # relations
-from automr.relations.brightness_relation import BrightnessRelation
-from automr.relations.rotation_relation import RotationRelation
-from automr.relations.translation_relation import TranslationRelation
-from automr.relations.noise_relation import NoiseRelation
+from automr.relations.image_relations import (
+    BrightnessRelation,
+    RotationRelation,
+    TranslationRelation,
+    NoiseRelation
+)
 
 
 class AutoMR:
