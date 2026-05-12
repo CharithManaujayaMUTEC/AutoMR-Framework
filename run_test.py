@@ -99,7 +99,7 @@ for i, sample in enumerate(tqdm(dataset[:50], desc="Running AutoMR")):
 final_df = pd.concat(all_results, ignore_index=True)
 final_df.to_csv("automr_results_detailed.csv", index=False)
 
-print("DONE: automr_results_detailed.csv generated")
+print("✅ DONE: automr_results_detailed.csv generated")
 
 analyzer = FailureAnalyzer()
 

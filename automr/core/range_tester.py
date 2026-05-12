@@ -8,7 +8,7 @@ class RangeTester:
     def run_range(self, model, input_data, transform_fn, relation,
                   start, end, num_samples, comparator):
 
-        # ✅ FIX: everything below must be indented
+        #  FIX: everything below must be indented
         values = self.generate_range(start, end, num_samples)
         results = []
 
