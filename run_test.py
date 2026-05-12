@@ -80,7 +80,8 @@ for i, sample in enumerate(tqdm(dataset[:100], desc="Running AutoMR")):
     def get_expected(row):
         for k, v in automr.mr_config.items():
             if v["relation"].__class__.__name__ == row["mr"]:
-                return v["relation"].expected()
+                relation = v["relation"]
+                return relation.expected() if hasattr(relation, "expected") else "Standard invariance (output should remain consistent)"
         return "N/A"
 
     df["expected_behavior"] = df.apply(get_expected, axis=1)
