@@ -1,3 +1,4 @@
+import pandas as pd
 class Analyzer:
 
     def to_dataframe(self, results):
