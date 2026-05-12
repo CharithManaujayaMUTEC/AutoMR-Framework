@@ -53,7 +53,7 @@ class RangeTester:
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            # 🔥 MR decides
+            #  MR decides
             passed = relation.check(original, output)
 
             # comparator only logs diff
