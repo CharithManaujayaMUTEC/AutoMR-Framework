@@ -42,73 +42,73 @@ from automr.relations.behavioral_relations import (
 
 class AutoMR:
 
-    def __init__(self, model, comparator):
+    def __init__(self, model, comparator=None):  #  comparator optional
         self.model = self._wrap_if_needed(model)
         self.comparator = comparator
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
-        #  MR CONFIG
+        #  RIGOROUS MR CONFIG (UPDATED)
         self.mr_config = {
 
-            # --- Image MRs ---
+            # -------- IMAGE MRs --------
             "brightness": {
                 "transform": increase_brightness,
-                "relation": BrightnessRelation(),
-                "range": (0.0, 2.0)
+                "relation": BrightnessRelation(tolerance=0.02),   # stricter
+                "range": (0.2, 2.5)   # wider
             },
             "rotation": {
                 "transform": rotate_small,
-                "relation": RotationRelation(),
-                "range": (-15, 15)
+                "relation": RotationRelation(epsilon=0.08),
+                "range": (-25, 25)
             },
             "translation": {
                 "transform": shift_right,
-                "relation": TranslationRelation(),
-                "range": (0, 20)
+                "relation": TranslationRelation(tolerance=0.08),
+                "range": (0, 40)
             },
             "noise": {
                 "transform": add_noise,
-                "relation": NoiseRelation(),
-                "range": (0, 50)
+                "relation": NoiseRelation(tolerance=0.05),
+                "range": (0, 100)
             },
             "blur": {
                 "transform": blur,
-                "relation": BlurRelation(),
-                "range": (1, 9)
+                "relation": BlurRelation(epsilon=0.05),
+                "range": (1, 15)
             },
             "contrast": {
                 "transform": adjust_contrast,
-                "relation": ContrastRelation(),
-                "range": (0.5, 2.0)
+                "relation": ContrastRelation(epsilon=0.05),
+                "range": (0.2, 3.0)
             },
             "weather": {
                 "transform": add_fog,
-                "relation": WeatherRelation(),
-                "range": (0.0, 0.7)
+                "relation": WeatherRelation(epsilon=0.08),
+                "range": (0.0, 1.0)
             },
 
-            # --- Temporal ---
+            # -------- TEMPORAL --------
             "temporal": {
                 "transform": next_frame_pair,
-                "relation": TemporalSmoothnessRelation(),
-                "range": (0, 50)
+                "relation": TemporalSmoothnessRelation(delta=0.05),  # stricter
+                "range": (0, 100)
             },
 
-            # --- Behavioral ---
+            # -------- BEHAVIORAL --------
             "visibility": {
                 "transform": reduce_visibility,
-                "relation": LessSensitiveRelation(max_change=0.3),
-                "range": (0.1, 0.8)
+                "relation": LessSensitiveRelation(max_change=0.15),
+                "range": (0.1, 1.0)
             },
             "darkness": {
                 "transform": darken,
-                "relation": LessSensitiveRelation(max_change=0.3),
-                "range": (0.2, 0.8)
+                "relation": LessSensitiveRelation(max_change=0.15),
+                "range": (0.1, 1.0)
             }
         }
 
-    #  Model wrapper (Torch safe)
+    # -------- MODEL WRAPPER --------
     def _wrap_if_needed(self, model):
 
         if hasattr(model, "predict"):
@@ -128,25 +128,22 @@ class AutoMR:
 
         return TorchWrapper(model)
 
-    #  NEW: expected behavior resolver
+    # -------- EXPECTED BEHAVIOR --------
     def get_expected(self, relation_name):
         for cfg in self.mr_config.values():
             if cfg["relation"].__class__.__name__ == relation_name:
                 if hasattr(cfg["relation"], "expected"):
                     return cfg["relation"].expected()
-        return "N/A"
+        return "Standard invariance"
 
-    #  Run single MR
+    # -------- RUN SINGLE MR --------
     def run_mr(self, input_data, mr_name, samples=50):
 
         cfg = self.mr_config[mr_name]
         start, end = cfg["range"]
 
-        #  FIX: temporal must use full dataset
-        if mr_name == "temporal":
-            data = input_data  # dataset
-        else:
-            data = input_data  # single image
+        #  KEEP THIS SIMPLE & CORRECT
+        data = input_data
 
         results = self.range_tester.run_range(
             self.model,
@@ -159,19 +156,23 @@ class AutoMR:
             self.comparator
         )
 
+        #  ADD SEVERITY (important for research)
+        for r in results:
+            r["severity"] = abs(r["difference"])
+
         df = self.analyzer.to_dataframe(results)
         summary = self.analyzer.summary(df)
 
         return df, summary
 
-    #  Run all NON-temporal MRs
+    # -------- RUN ALL NON-TEMPORAL --------
     def run_all_mrs(self, input_data, samples=50):
 
         all_results = []
 
         for name in self.mr_config:
 
-            #  CRITICAL FIX: skip temporal here
+            #  DO NOT mix temporal here
             if name == "temporal":
                 continue
 

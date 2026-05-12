@@ -14,7 +14,7 @@ from load_model import get_model
 from automr.comparator import RegressionComparator
 
 # comparator
-comparator = RegressionComparator(epsilon=0.1)
+comparator = RegressionComparator(epsilon=0.01)
 
 
 # model wrapper (GENERIC)
