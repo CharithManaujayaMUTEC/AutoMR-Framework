@@ -53,8 +53,19 @@ class RangeTester:
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            #  MR decides
-            passed = relation.check(original, output)
+            #  dynamic strictness
+            severity_weight = 1 + (abs(v) / (end + 1e-6))
+
+            base_pass = relation.check(original, output)
+
+            if severity_weight > 1.5:
+                passed = base_pass and abs(output - original) < (0.5 * getattr(relation, "tolerance", getattr(relation, "epsilon", 0.01)))
+            else:
+                passed = base_pass
+
+            #  FIX 3: HARD FAIL (ADD THIS BLOCK HERE)
+            if abs(output - original) > 0.01:
+                passed = False
 
             # comparator only logs diff
             if comparator:

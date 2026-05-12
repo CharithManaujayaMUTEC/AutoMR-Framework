@@ -1,9 +1,7 @@
 import numpy as np
 
-
-#  Brightness MR
 class BrightnessRelation:
-    def __init__(self, tolerance=0.05):
+    def __init__(self, tolerance=0.02):
         self.tolerance = tolerance
 
     def type(self):
@@ -14,12 +12,11 @@ class BrightnessRelation:
 
     def check(self, y1, y2):
         change = abs(y1 - y2) / (abs(y1) + 1e-6)
-return change < self.tolerance
+        return change < self.tolerance
 
 
-#  Rotation MR
 class RotationRelation:
-    def __init__(self, epsilon=0.15):
+    def __init__(self, epsilon=0.05):
         self.epsilon = epsilon
 
     def type(self):
@@ -32,9 +29,8 @@ class RotationRelation:
         return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
-#  Translation MR
 class TranslationRelation:
-    def __init__(self, tolerance=0.15):
+    def __init__(self, tolerance=0.05):
         self.tolerance = tolerance
 
     def type(self):
@@ -45,12 +41,11 @@ class TranslationRelation:
 
     def check(self, y1, y2):
         change = abs(y1 - y2) / (abs(y1) + 1e-6)
-return change < self.tolerance
+        return change < self.tolerance
 
 
-#  Noise MR
 class NoiseRelation:
-    def __init__(self, tolerance=0.1):
+    def __init__(self, tolerance=0.03):
         self.tolerance = tolerance
 
     def type(self):
@@ -61,24 +56,11 @@ class NoiseRelation:
 
     def check(self, y1, y2):
         change = abs(y1 - y2) / (abs(y1) + 1e-6)
-return change < self.tolerance
+        return change < self.tolerance
 
 
-#  Mirror / Flip MR (IMPORTANT — inequality)
-class FlipRelation:
-    def type(self):
-        return "inequality"
-
-    def expected(self):
-        return "Flipped image should invert steering"
-
-    def check(self, y1, y2):
-        return abs(y2 + y1) < 0.1
-
-
-#  Blur MR
 class BlurRelation:
-    def __init__(self, epsilon=0.1):
+    def __init__(self, epsilon=0.03):
         self.epsilon = epsilon
 
     def type(self):
@@ -91,9 +73,8 @@ class BlurRelation:
         return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
-#  Contrast MR
 class ContrastRelation:
-    def __init__(self, epsilon=0.1):
+    def __init__(self, epsilon=0.03):
         self.epsilon = epsilon
 
     def type(self):
@@ -106,16 +87,12 @@ class ContrastRelation:
         return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
-#  Weather MR
-class WeatherRelation:
-    def __init__(self, epsilon=0.15):
-        self.epsilon = epsilon
-
+class FlipRelation:
     def type(self):
-        return "equality"
+        return "inequality"
 
     def expected(self):
-        return "Weather changes should not significantly affect output"
+        return "Flipped image should invert steering"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
+        return abs(y2 + y1) / (abs(y1) + 1e-6) < 0.1

@@ -1,12 +1,12 @@
 mr,total,passed,failed,failure_rate
+LessSensitiveRelation,500,458,42,0.084
+TranslationRelation,250,242,8,0.032
+RotationRelation,250,247,3,0.012
+ContrastRelation,250,248,2,0.008
 BlurRelation,250,250,0,0.0
 BrightnessRelation,250,250,0,0.0
-ContrastRelation,250,250,0,0.0
 FogRelation,250,250,0,0.0
-LessSensitiveRelation,500,500,0,0.0
 NoiseRelation,250,250,0,0.0
 RainRelation,250,250,0,0.0
-RotationRelation,250,250,0,0.0
 SnowRelation,250,250,0,0.0
 TemporalSmoothnessRelation,250,250,0,0.0
-TranslationRelation,250,250,0,0.0
