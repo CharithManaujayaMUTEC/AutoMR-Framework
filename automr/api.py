@@ -48,7 +48,7 @@ class AutoMR:
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
-        # 🔥 MR CONFIG
+        #  MR CONFIG
         self.mr_config = {
             # --- Image MRs ---
             "brightness": {
@@ -107,7 +107,7 @@ class AutoMR:
             }
         }
 
-    # 🔥 Model wrapper (for PyTorch support)
+    #  Model wrapper (for PyTorch support)
     def _wrap_if_needed(self, model):
 
         if hasattr(model, "predict"):
@@ -127,13 +127,13 @@ class AutoMR:
 
         return TorchWrapper(model)
 
-    # 🔥 Run single MR
+    #  Run single MR
     def run_mr(self, input_data, mr_name, samples=50):
 
         cfg = self.mr_config[mr_name]
         start, end = cfg["range"]
 
-        # ✅ Handle temporal vs image safely
+        # Handle temporal vs image safely
         if mr_name == "temporal":
             data = input_data
         else:
@@ -155,14 +155,14 @@ class AutoMR:
 
         return df, summary
 
-    # 🔥 Run all MRs
+    #  Run all MRs
     def run_all_mrs(self, input_data, samples=50):
 
         all_results = []
 
         for name in self.mr_config:
 
-            # 🔥 skip temporal here (handled separately)
+            #  skip temporal here (handled separately)
             if name == "temporal":
                 continue
 

@@ -5,7 +5,7 @@ def add_noise(image, level=10):
 
     level = int(level)
 
-    # 🔥 fix: avoid invalid range
+    #  fix: avoid invalid range
     if level <= 0:
         return image.copy()
 

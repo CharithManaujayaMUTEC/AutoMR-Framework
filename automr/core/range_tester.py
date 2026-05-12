@@ -10,13 +10,13 @@ class RangeTester:
         values = self.generate_range(start, end, num_samples)
         results = []
 
-        # 🔥 only compute original for NON-temporal
+        #  only compute original for NON-temporal
         if not isinstance(input_data, list):
             original = model.predict(input_data)
 
         for v in values:
 
-            # 🔥 TEMPORAL CASE
+            #  TEMPORAL CASE
             if isinstance(input_data, list):
 
                 pair = transform_fn(input_data, int(v))
@@ -46,11 +46,11 @@ class RangeTester:
 
                 continue
 
-            # ✅ IMAGE FLOW (UNCHANGED)
+            # IMAGE FLOW (UNCHANGED)
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            # 🔥 Behavioral override
+            #  Behavioral override
             if "Monotonic" in relation.__class__.__name__ or "LessSensitive" in relation.__class__.__name__:
                 diff = output - original
                 passed = relation.check(original, output)
