@@ -8,29 +8,25 @@ class RangeTester:
     def run_range(self, model, input_data, transform_fn, relation,
                   start, end, num_samples, comparator):
 
+        # ✅ FIX: everything below must be indented
         values = self.generate_range(start, end, num_samples)
         results = []
 
-        relation_type = relation.type() if hasattr(relation, "type") else "equality"
+        is_temporal = hasattr(relation, "type") and relation.type() == "temporal"
 
-        #  ONLY compute original for non-temporal
-        if relation_type != "temporal":
+        if not is_temporal:
             original = model.predict(input_data)
 
         for v in values:
 
-            # =========================
-            #  TEMPORAL CASE
-            # =========================
-            if relation_type == "temporal":
+            # ===== TEMPORAL =====
+            if is_temporal:
 
                 pair = transform_fn(input_data, int(v))
-
                 if pair is None:
                     continue
 
                 x1, x2 = pair
-
                 if x1 is None or x2 is None:
                     continue
 
@@ -39,7 +35,6 @@ class RangeTester:
 
                 diff = abs(y1 - y2)
                 pct = 0.0
-
                 passed = relation.check(y1, y2)
 
                 results.append({
@@ -52,31 +47,20 @@ class RangeTester:
                     "passed": bool(passed)
                 })
 
-                continue  # skip normal flow
+                continue
 
-            # =========================
-            #  IMAGE / BEHAVIORAL CASE
-            # =========================
+            # ===== NORMAL =====
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            #  RELATION-TYPE BASED LOGIC
-            if relation_type == "equality":
+            # 🔥 MR decides
+            passed = relation.check(original, output)
 
-                if comparator:
-                    diff, passed = comparator.compare(original, output)
-                else:
-                    diff = output - original
-                    passed = relation.check(original, output)
-
-            elif relation_type == "inequality":
-
-                diff = output - original
-                passed = relation.check(original, output)
-
+            # comparator only logs diff
+            if comparator:
+                diff, _ = comparator.compare(original, output)
             else:
                 diff = output - original
-                passed = relation.check(original, output)
 
             pct = (diff / (abs(original) + 1e-6)) * 100
 

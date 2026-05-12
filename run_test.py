@@ -63,7 +63,7 @@ all_results = []
 df_temp, _ = automr.run_mr(dataset, "temporal", samples=5)
 
 # run with progress bar
-for i, sample in enumerate(tqdm(dataset[:100], desc="Running AutoMR")):
+for i, sample in enumerate(tqdm(dataset[:50], desc="Running AutoMR")):
 
     if sample is None:
         continue

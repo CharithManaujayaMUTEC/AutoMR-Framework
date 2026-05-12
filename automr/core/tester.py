@@ -6,15 +6,14 @@ class MRTester:
         transformed_input = transform(input_data)
         transformed = model.predict(transformed_input)
 
-        #  RELATION-FIRST LOGIC
-        if hasattr(relation, "type") and relation.type() in ["behavioral", "temporal"]:
-            diff = transformed - original
-            passed = relation.check(original, transformed)
-        elif comparator:
-            diff, passed = comparator.compare(original, transformed)
+        #  MR decides
+        passed = relation.check(original, transformed)
+
+        # comparator only logs diff
+        if comparator:
+            diff, _ = comparator.compare(original, transformed)
         else:
             diff = transformed - original
-            passed = relation.check(original, transformed)
 
         return {
             "mr": relation.__class__.__name__,
