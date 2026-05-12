@@ -1,26 +1,64 @@
-def detect_failure_regions(results, threshold=0.05):
+import pandas as pd
 
-    failures = [r for r in results if not r["passed"]]
+class FailureAnalyzer:
 
-    if not failures:
-        return []
+    def failure_rate_per_mr(self, df):
+        """
+        % of failures per MR
+        """
+        summary = df.groupby("mr")["passed"].agg(
+            total="count",
+            passed="sum"
+        ).reset_index()
 
-    #  ensure ordered
-    failures = sorted(failures, key=lambda x: x["param"])
+        summary["failed"] = summary["total"] - summary["passed"]
+        summary["failure_rate"] = summary["failed"] / summary["total"]
 
-    regions = []
-    current_region = [failures[0]["param"]]
+        return summary.sort_values(by="failure_rate", ascending=False)
 
-    for i in range(1, len(failures)):
-        prev = failures[i - 1]["param"]
-        curr = failures[i]["param"]
+    def severity_per_mr(self, df):
+        """
+        Average severity per MR
+        """
+        if "severity" not in df.columns:
+            df["severity"] = df["difference"].abs()
 
-        if abs(curr - prev) <= threshold:
-            current_region.append(curr)
-        else:
-            regions.append((min(current_region), max(current_region)))
-            current_region = [curr]
+        return df.groupby("mr")["severity"].mean().sort_values(ascending=False)
 
-    regions.append((min(current_region), max(current_region)))
+    def worst_cases(self, df, top_k=10):
+        """
+        Top worst violations
+        """
+        if "severity" not in df.columns:
+            df["severity"] = df["difference"].abs()
 
-    return regions
+        return df.sort_values(by="severity", ascending=False).head(top_k)
+
+    def failure_regions(self, df):
+        """
+        Detect failure regions per MR
+        """
+        regions = {}
+
+        for mr in df["mr"].unique():
+            sub = df[(df["mr"] == mr) & (df["passed"] == False)]
+
+            if sub.empty:
+                continue
+
+            params = sorted(sub["param"].values)
+
+            grouped = []
+            current = [params[0]]
+
+            for i in range(1, len(params)):
+                if abs(params[i] - params[i-1]) < 0.05:
+                    current.append(params[i])
+                else:
+                    grouped.append((min(current), max(current)))
+                    current = [params[i]]
+
+            grouped.append((min(current), max(current)))
+            regions[mr] = grouped
+
+        return regions

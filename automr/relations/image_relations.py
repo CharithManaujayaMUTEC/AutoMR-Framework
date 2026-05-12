@@ -28,7 +28,7 @@ class RotationRelation:
         return "Small rotation should not significantly change output"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.epsilon
+        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
 #  Translation MR
@@ -85,7 +85,7 @@ class BlurRelation:
         return "Blur should not significantly change output"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.epsilon
+        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
 #  Contrast MR
@@ -100,7 +100,7 @@ class ContrastRelation:
         return "Contrast change should not significantly affect output"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.epsilon
+        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
 
 
 #  Weather MR
@@ -115,4 +115,4 @@ class WeatherRelation:
         return "Weather changes should not significantly affect output"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.epsilon
+        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon

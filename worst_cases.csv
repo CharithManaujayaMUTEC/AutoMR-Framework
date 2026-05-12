@@ -1,0 +1,11 @@
+mr,param,original,transformed,difference,percent_change,passed,severity,status,sample_id,expected_behavior,actual_behavior
+RotationRelation,-25.0,-1.6261245012283325,-1.6396517753601074,0.013527274131774902,0.8318714712706219,True,0.013527274131774902,PASS,62,Small rotation should not significantly change output,Consistent
+RotationRelation,-25.0,-1.6282047033309937,-1.6414549350738525,0.013250231742858887,0.8137934731312805,True,0.013250231742858887,PASS,18,Small rotation should not significantly change output,Consistent
+RotationRelation,-25.0,-1.6277145147323608,-1.6377493143081665,0.010034799575805664,0.6164959100642134,True,0.010034799575805664,PASS,90,Small rotation should not significantly change output,Consistent
+WeatherRelation,1.0,-1.6379363536834717,-1.6280711889266968,0.009865164756774902,0.6022919456955816,True,0.009865164756774902,PASS,57,Weather changes should not significantly affect output,Consistent
+FogRelation,1.0,-1.6379363536834717,-1.6280711889266968,0.009865164756774902,0.6022919456955816,True,0.009865164756774902,PASS,57,Fog should not significantly affect prediction,Consistent
+LessSensitiveRelation,1.0,-1.6379363536834717,-1.6280711889266968,0.009865164756774902,0.6022919456955816,True,0.009865164756774902,PASS,57,Output should not change drastically under degradation,Consistent
+RotationRelation,-25.0,-1.6293056011199951,-1.6391226053237915,0.009817004203796387,0.6025265101760541,True,0.009817004203796387,PASS,69,Small rotation should not significantly change output,Consistent
+RotationRelation,-25.0,-1.6282131671905518,-1.6380168199539185,0.0098036527633667,0.6021107641068306,True,0.0098036527633667,PASS,95,Small rotation should not significantly change output,Consistent
+FogRelation,1.0,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+WeatherRelation,1.0,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Weather changes should not significantly affect output,Consistent

@@ -12,6 +12,7 @@ from load_data import load_images
 from automr.api import AutoMR
 from load_model import get_model
 from automr.comparator import RegressionComparator
+from automr.core.failure_analysis import FailureAnalyzer
 
 # comparator
 comparator = RegressionComparator(epsilon=0.01)
@@ -99,3 +100,30 @@ final_df = pd.concat(all_results, ignore_index=True)
 final_df.to_csv("automr_results_detailed.csv", index=False)
 
 print("DONE: automr_results_detailed.csv generated")
+
+analyzer = FailureAnalyzer()
+
+#  Failure rate per MR
+failure_summary = analyzer.failure_rate_per_mr(final_df)
+print("\n=== FAILURE RATE PER MR ===")
+print(failure_summary)
+
+#  Severity ranking
+severity_summary = analyzer.severity_per_mr(final_df)
+print("\n=== SEVERITY PER MR ===")
+print(severity_summary)
+
+#  Worst cases
+worst = analyzer.worst_cases(final_df, top_k=10)
+print("\n=== TOP 10 FAILURES ===")
+print(worst)
+
+#  Failure regions
+regions = analyzer.failure_regions(final_df)
+print("\n=== FAILURE REGIONS ===")
+for k, v in regions.items():
+    print(k, ":", v)
+
+failure_summary.to_csv("failure_summary.csv", index=False)
+severity_summary.to_csv("severity_summary.csv")
+worst.to_csv("worst_cases.csv", index=False)

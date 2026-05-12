@@ -39,6 +39,18 @@ from automr.relations.behavioral_relations import (
     MonotonicDecreaseRelation
 )
 
+from automr.relations.weather_relations import (
+    RainRelation,
+    SnowRelation,
+    FogRelation
+)
+
+from automr.transforms.weather_transforms import (
+    add_rain,
+    add_snow,
+    add_fog
+)
+
 
 class AutoMR:
 
@@ -105,6 +117,22 @@ class AutoMR:
                 "transform": darken,
                 "relation": LessSensitiveRelation(max_change=0.15),
                 "range": (0.1, 1.0)
+            },
+            # --- WEATHER MRs ---
+            "rain": {
+                "transform": add_rain,
+                "relation": RainRelation(epsilon=0.05),
+                "range": (0.0, 1.0)
+            },
+            "snow": {
+                "transform": add_snow,
+                "relation": SnowRelation(epsilon=0.08),
+                "range": (0.0, 1.0)
+            },
+            "fog": {
+                "transform": add_fog,
+                "relation": FogRelation(epsilon=0.05),
+                "range": (0.0, 1.0)
             }
         }
 
