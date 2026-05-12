@@ -5,19 +5,19 @@ from tqdm import tqdm
 import cv2
 
 # paths
-sys.path.append("D:/FYP 78SEm/Datasets")
-sys.path.append("D:/FYP 78SEm/Modals")
+sys.path.append("D:/7th semester/FYP/PROGRESS/Datasets")
+sys.path.append("D:/7th semester/FYP/PROGRESS/Models")
 
 from load_data import load_images
 from automr.api import AutoMR
 from load_model import get_model
 from automr.comparator import RegressionComparator
 
-# ✅ comparator
+# comparator
 comparator = RegressionComparator(epsilon=0.1)
 
 
-# ✅ model wrapper (GENERIC)
+# model wrapper (GENERIC)
 class RealModel:
     def __init__(self):
         self.model = get_model()
@@ -26,7 +26,7 @@ class RealModel:
         if x is None:
             return 0.0
 
-        # 🔥 IMPORTANT: match DAVE-2 preprocessing
+        # IMPORTANT: match DAVE-2 preprocessing
         x = cv2.resize(x, (200, 66))
         x = x / 255.0
         x = np.expand_dims(x, axis=0)
@@ -35,31 +35,31 @@ class RealModel:
         return float(pred.flatten()[0])
 
 
-# ✅ dataset
-dataset = load_images("D:/FYP 78SEm/Datasets/archive/trafic_data/train/images")
+# dataset
+dataset = load_images("D:/7th semester/FYP/PROGRESS/Datasets/train/images")
 
 
-# ✅ INIT MODEL
+# INIT MODEL
 model = RealModel()
 
-# 🔥 SANITY CHECK (VERY IMPORTANT)
-print("✅ Model loaded successfully")
+# SANITY CHECK (VERY IMPORTANT)
+print("Model loaded successfully")
 
 test_img = dataset[0]
 if test_img is not None:
     test_pred = model.predict(test_img)
-    print("🔍 Sample prediction:", test_pred)
+    print(" Sample prediction:", test_pred)
 else:
-    print("⚠️ First image is None")
+    print("First image is None")
 
 
-# ✅ AutoMR
+# AutoMR
 automr = AutoMR(model, comparator)
 
 all_results = []
 
 
-# ✅ run with progress bar
+# run with progress bar
 for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
 
     if sample is None:
@@ -86,8 +86,8 @@ for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
     all_results.append(df)
 
 
-# ✅ save results
+# save results
 final_df = pd.concat(all_results, ignore_index=True)
 final_df.to_csv("automr_results_detailed.csv", index=False)
 
-print("✅ DONE: automr_results_detailed.csv generated")
+print("DONE: automr_results_detailed.csv generated")
