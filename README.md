@@ -39,7 +39,7 @@ f(x) == expected_output ❌
 We test:
 
 ```
-f(x) ≈ f(T(x)) ✅
+f(x) ≈ f(T(x))
 ```
 
 Where `T(x)` is a transformed input.

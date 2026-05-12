@@ -13,14 +13,14 @@ class RangeTester:
 
         relation_type = relation.type() if hasattr(relation, "type") else "equality"
 
-        # 🔥 ONLY compute original for non-temporal
+        #  ONLY compute original for non-temporal
         if relation_type != "temporal":
             original = model.predict(input_data)
 
         for v in values:
 
             # =========================
-            # 🔥 TEMPORAL CASE
+            #  TEMPORAL CASE
             # =========================
             if relation_type == "temporal":
 
@@ -55,12 +55,12 @@ class RangeTester:
                 continue  # skip normal flow
 
             # =========================
-            # 🔥 IMAGE / BEHAVIORAL CASE
+            #  IMAGE / BEHAVIORAL CASE
             # =========================
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            # 🔥 RELATION-TYPE BASED LOGIC
+            #  RELATION-TYPE BASED LOGIC
             if relation_type == "equality":
 
                 if comparator:

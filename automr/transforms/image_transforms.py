@@ -25,7 +25,7 @@ def add_noise(image, level=10):
     noise = np.random.randint(-level, level + 1, image.shape)
     return np.clip(image + noise, 0, 255).astype(image.dtype)
 
-# 🔥 RENAMED
+#  RENAMED
 def mirror_image(image, _=None):
     return cv2.flip(image, 1)
 

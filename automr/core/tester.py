@@ -6,7 +6,15 @@ class MRTester:
         transformed_input = transform(input_data)
         transformed = model.predict(transformed_input)
 
-        diff, passed = comparator.compare(original, transformed)
+        #  RELATION-FIRST LOGIC
+        if hasattr(relation, "type") and relation.type() in ["behavioral", "temporal"]:
+            diff = transformed - original
+            passed = relation.check(original, transformed)
+        elif comparator:
+            diff, passed = comparator.compare(original, transformed)
+        else:
+            diff = transformed - original
+            passed = relation.check(original, transformed)
 
         return {
             "mr": relation.__class__.__name__,
@@ -14,15 +22,6 @@ class MRTester:
             "transformed": transformed,
             "difference": diff,
             "passed": passed,
-            "expected_behavior": relation.expected(),
+            "expected_behavior": relation.expected() if hasattr(relation, "expected") else "N/A",
             "actual_behavior": "Consistent" if passed else "Violation"
         }
-
-    def run_all(self, model, input_data, transforms, relations, comparator):
-
-        results = []
-
-        for transform, relation in zip(transforms, relations):
-            results.append(self.run(model, input_data, transform, relation, comparator))
-
-        return results

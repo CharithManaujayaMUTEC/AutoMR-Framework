@@ -50,6 +50,7 @@ class AutoMR:
 
         #  MR CONFIG
         self.mr_config = {
+
             # --- Image MRs ---
             "brightness": {
                 "transform": increase_brightness,
@@ -87,14 +88,14 @@ class AutoMR:
                 "range": (0.0, 0.7)
             },
 
-            # --- Temporal MR ---
+            # --- Temporal ---
             "temporal": {
                 "transform": next_frame_pair,
                 "relation": TemporalSmoothnessRelation(),
                 "range": (0, 50)
             },
 
-            # --- Behavioral MRs ---
+            # --- Behavioral ---
             "visibility": {
                 "transform": reduce_visibility,
                 "relation": LessSensitiveRelation(max_change=0.3),
@@ -107,7 +108,7 @@ class AutoMR:
             }
         }
 
-    #  Model wrapper (for PyTorch support)
+    #  Model wrapper (Torch safe)
     def _wrap_if_needed(self, model):
 
         if hasattr(model, "predict"):
@@ -127,17 +128,25 @@ class AutoMR:
 
         return TorchWrapper(model)
 
+    #  NEW: expected behavior resolver
+    def get_expected(self, relation_name):
+        for cfg in self.mr_config.values():
+            if cfg["relation"].__class__.__name__ == relation_name:
+                if hasattr(cfg["relation"], "expected"):
+                    return cfg["relation"].expected()
+        return "N/A"
+
     #  Run single MR
     def run_mr(self, input_data, mr_name, samples=50):
 
         cfg = self.mr_config[mr_name]
         start, end = cfg["range"]
 
-        # Handle temporal vs image safely
+        #  FIX: temporal must use full dataset
         if mr_name == "temporal":
-            data = input_data
+            data = input_data  # dataset
         else:
-            data = input_data[0] if isinstance(input_data, list) else input_data
+            data = input_data  # single image
 
         results = self.range_tester.run_range(
             self.model,
@@ -155,14 +164,14 @@ class AutoMR:
 
         return df, summary
 
-    #  Run all MRs
+    #  Run all NON-temporal MRs
     def run_all_mrs(self, input_data, samples=50):
 
         all_results = []
 
         for name in self.mr_config:
 
-            #  skip temporal here (handled separately)
+            #  CRITICAL FIX: skip temporal here
             if name == "temporal":
                 continue
 

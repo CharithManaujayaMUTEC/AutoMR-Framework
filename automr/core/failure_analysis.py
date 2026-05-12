@@ -5,7 +5,7 @@ def detect_failure_regions(results, threshold=0.05):
     if not failures:
         return []
 
-    # 🔥 ensure ordered
+    #  ensure ordered
     failures = sorted(failures, key=lambda x: x["param"])
 
     regions = []

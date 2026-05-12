@@ -5,7 +5,7 @@ class TemporalSmoothnessRelation:
         self.delta = delta
 
     def type(self):
-        return "temporal"   # 🔥 REQUIRED
+        return "temporal"   #  REQUIRED
 
     def check(self, y1, y2):
         return abs(y1 - y2) < self.delta
@@ -19,7 +19,7 @@ class TemporalConsistencyRelation:
         self.delta = delta
 
     def type(self):
-        return "temporal"   # 🔥 REQUIRED
+        return "temporal"   #  REQUIRED
 
     def check(self, y1, y2):
         return abs(y1 - y2) < self.delta
