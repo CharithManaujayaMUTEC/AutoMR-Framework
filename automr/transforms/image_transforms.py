@@ -32,3 +32,22 @@ def add_noise(image, level=10):
 
 def flip(image):
     return cv2.flip(image, 1)
+
+# 🔥 BLUR
+def blur(image, k=5):
+    k = int(k)
+    if k % 2 == 0:
+        k += 1
+    return cv2.GaussianBlur(image, (k, k), 0)
+
+
+# 🔥 CONTRAST
+def adjust_contrast(image, factor=1.0):
+    img = image.astype(np.float32) * factor
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# 🔥 SIMPLE FOG (weather simulation)
+def add_fog(image, intensity=0.3):
+    fog = np.full_like(image, 255)
+    return cv2.addWeighted(image, 1 - intensity, fog, intensity, 0)

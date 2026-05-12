@@ -58,23 +58,30 @@ automr = AutoMR(model, comparator)
 
 all_results = []
 
+# ✅ Temporal MR (use full dataset once OR reuse)
+df_temp, _ = automr.run_mr(dataset, "temporal", samples=5)
 
 # ✅ run with progress bar
-for i, sample in enumerate(tqdm(dataset, desc="Running AutoMR")):
+for i, sample in enumerate(tqdm(dataset[:100], desc="Running AutoMR")):
 
     if sample is None:
         continue
 
-    df = automr.run_all_mrs(sample, samples=5)
+    # ✅ Image MRs (per sample)
+    df_img = automr.run_all_mrs(sample, samples=5)
+
+    # ✅ Combine
+    df = pd.concat([df_img, df_temp], ignore_index=True)
 
     # metadata
     df["sample_id"] = i
 
     # expected behavior
     def get_expected(row):
-        key = row["mr"].replace("Relation", "").lower()
-        relation_obj = automr.mr_config[key]["relation"]
-        return relation_obj.expected() if hasattr(relation_obj, "expected") else "N/A"
+        for k, v in automr.mr_config.items():
+            if v["relation"].__class__.__name__ == row["mr"]:
+                return v["relation"].expected()
+        return "N/A"
 
     df["expected_behavior"] = df.apply(get_expected, axis=1)
 

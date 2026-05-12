@@ -50,3 +50,26 @@ class FlipRelation:
 
     def check(self, y1, y2):
         return abs(y2 + y1) < 0.1
+
+class BlurRelation:
+    def __init__(self, epsilon=0.1):
+        self.epsilon = epsilon
+
+    def check(self, y1, y2):
+        return abs(y1 - y2) < self.epsilon
+
+
+class ContrastRelation:
+    def __init__(self, epsilon=0.1):
+        self.epsilon = epsilon
+
+    def check(self, y1, y2):
+        return abs(y1 - y2) < self.epsilon
+
+
+class WeatherRelation:
+    def __init__(self, epsilon=0.15):
+        self.epsilon = epsilon
+
+    def check(self, y1, y2):
+        return abs(y1 - y2) < self.epsilon
