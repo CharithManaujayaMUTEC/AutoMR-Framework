@@ -8,7 +8,13 @@ from automr.transforms.image_transforms import (
     shift_right,
     add_noise,
     blur,
-    adjust_contrast,
+    adjust_contrast
+)
+
+# Weather transforms
+from automr.transforms.weather_transforms import (
+    add_rain,
+    add_snow,
     add_fog
 )
 
@@ -19,8 +25,14 @@ from automr.relations.image_relations import (
     TranslationRelation,
     NoiseRelation,
     BlurRelation,
-    ContrastRelation,
-    WeatherRelation
+    ContrastRelation
+)
+
+# Weather relations
+from automr.relations.weather_relations import (
+    RainRelation,
+    SnowRelation,
+    FogRelation
 )
 
 # Temporal
@@ -39,104 +51,95 @@ from automr.relations.behavioral_relations import (
     MonotonicDecreaseRelation
 )
 
-from automr.relations.weather_relations import (
-    RainRelation,
-    SnowRelation,
-    FogRelation
-)
-
-from automr.transforms.weather_transforms import (
-    add_rain,
-    add_snow,
-    add_fog
-)
-
 
 class AutoMR:
 
-    def __init__(self, model, comparator=None):  #  comparator optional
+    def __init__(self, model, strict=True):
         self.model = self._wrap_if_needed(model)
-        self.comparator = comparator
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
-        #  RIGOROUS MR CONFIG (UPDATED)
+        #  STRICT MODE
+        if strict:
+            eps_small = 0.015
+            eps_medium = 0.025
+        else:
+            eps_small = 0.03
+            eps_medium = 0.05
+
+        #  MR CONFIG (FIXED PARAM NAMES)
         self.mr_config = {
 
-            # -------- IMAGE MRs --------
+            # ---------- IMAGE ----------
             "brightness": {
                 "transform": increase_brightness,
-                "relation": BrightnessRelation(tolerance=0.02),   # stricter
-                "range": (0.2, 2.5)   # wider
+                "relation": BrightnessRelation(tolerance=eps_small),  
+                "range": (0.1, 3.0)
             },
             "rotation": {
                 "transform": rotate_small,
-                "relation": RotationRelation(epsilon=0.08),
-                "range": (-25, 25)
+                "relation": RotationRelation(epsilon=eps_small),
+                "range": (-60, 60)
             },
             "translation": {
                 "transform": shift_right,
-                "relation": TranslationRelation(tolerance=0.08),
-                "range": (0, 40)
+                "relation": TranslationRelation(tolerance=eps_small),  
+                "range": (0, 80)
             },
             "noise": {
                 "transform": add_noise,
-                "relation": NoiseRelation(tolerance=0.05),
-                "range": (0, 100)
+                "relation": NoiseRelation(tolerance=eps_small),  
+                "range": (0, 150)
             },
             "blur": {
                 "transform": blur,
-                "relation": BlurRelation(epsilon=0.05),
-                "range": (1, 15)
+                "relation": BlurRelation(epsilon=eps_small),
+                "range": (1, 31)
             },
             "contrast": {
                 "transform": adjust_contrast,
-                "relation": ContrastRelation(epsilon=0.05),
-                "range": (0.2, 3.0)
-            },
-            "weather": {
-                "transform": add_fog,
-                "relation": WeatherRelation(epsilon=0.08),
-                "range": (0.0, 1.0)
+                "relation": ContrastRelation(epsilon=eps_small),
+                "range": (0.1, 4.0)
             },
 
-            # -------- TEMPORAL --------
-            "temporal": {
-                "transform": next_frame_pair,
-                "relation": TemporalSmoothnessRelation(delta=0.05),  # stricter
-                "range": (0, 100)
-            },
-
-            # -------- BEHAVIORAL --------
-            "visibility": {
-                "transform": reduce_visibility,
-                "relation": LessSensitiveRelation(max_change=0.15),
-                "range": (0.1, 1.0)
-            },
-            "darkness": {
-                "transform": darken,
-                "relation": LessSensitiveRelation(max_change=0.15),
-                "range": (0.1, 1.0)
-            },
-            # --- WEATHER MRs ---
+            # ---------- WEATHER ----------
             "rain": {
                 "transform": add_rain,
-                "relation": RainRelation(epsilon=0.05),
-                "range": (0.0, 1.0)
+                "relation": RainRelation(epsilon=eps_medium),
+                "range": (0.0, 1.5)
             },
             "snow": {
                 "transform": add_snow,
-                "relation": SnowRelation(epsilon=0.08),
-                "range": (0.0, 1.0)
+                "relation": SnowRelation(epsilon=eps_medium),
+                "range": (0.0, 1.5)
             },
             "fog": {
                 "transform": add_fog,
-                "relation": FogRelation(epsilon=0.05),
-                "range": (0.0, 1.0)
+                "relation": FogRelation(epsilon=eps_medium),
+                "range": (0.0, 1.5)
+            },
+
+            # ---------- TEMPORAL ----------
+            "temporal": {
+                "transform": next_frame_pair,
+                "relation": TemporalSmoothnessRelation(delta=eps_small),
+                "range": (0, 150)
+            },
+
+            # ---------- BEHAVIORAL ----------
+            "visibility": {
+                "transform": reduce_visibility,
+                "relation": LessSensitiveRelation(max_change=0.08),
+                "range": (0.05, 1.5)
+            },
+            "darkness": {
+                "transform": darken,
+                "relation": LessSensitiveRelation(max_change=0.08),
+                "range": (0.05, 1.5)
             }
         }
 
-    # -------- MODEL WRAPPER --------
+    # ---------- MODEL WRAPPER ----------
     def _wrap_if_needed(self, model):
 
         if hasattr(model, "predict"):
@@ -156,35 +159,31 @@ class AutoMR:
 
         return TorchWrapper(model)
 
-    # -------- EXPECTED BEHAVIOR --------
+    # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
         for cfg in self.mr_config.values():
             if cfg["relation"].__class__.__name__ == relation_name:
                 if hasattr(cfg["relation"], "expected"):
                     return cfg["relation"].expected()
-        return "Standard invariance"
+        return "Invariant or monotonic behavior expected"
 
-    # -------- RUN SINGLE MR --------
+    # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
         cfg = self.mr_config[mr_name]
         start, end = cfg["range"]
 
-        #  KEEP THIS SIMPLE & CORRECT
-        data = input_data
-
         results = self.range_tester.run_range(
             self.model,
-            data,
+            input_data,
             cfg["transform"],
             cfg["relation"],
             start,
             end,
             samples,
-            self.comparator
+            comparator=None
         )
 
-        #  ADD SEVERITY (important for research)
         for r in results:
             r["severity"] = abs(r["difference"])
 
@@ -193,14 +192,13 @@ class AutoMR:
 
         return df, summary
 
-    # -------- RUN ALL NON-TEMPORAL --------
+    # ---------- RUN ALL ----------
     def run_all_mrs(self, input_data, samples=50):
 
         all_results = []
 
         for name in self.mr_config:
 
-            #  DO NOT mix temporal here
             if name == "temporal":
                 continue
 

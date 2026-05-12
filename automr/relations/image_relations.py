@@ -13,7 +13,8 @@ class BrightnessRelation:
         return "Output should remain approximately same under brightness change"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.tolerance
+        change = abs(y1 - y2) / (abs(y1) + 1e-6)
+return change < self.tolerance
 
 
 #  Rotation MR
@@ -43,7 +44,8 @@ class TranslationRelation:
         return "Small translation should preserve prediction consistency"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.tolerance
+        change = abs(y1 - y2) / (abs(y1) + 1e-6)
+return change < self.tolerance
 
 
 #  Noise MR
@@ -58,7 +60,8 @@ class NoiseRelation:
         return "Noise should not significantly affect prediction"
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.tolerance
+        change = abs(y1 - y2) / (abs(y1) + 1e-6)
+return change < self.tolerance
 
 
 #  Mirror / Flip MR (IMPORTANT — inequality)

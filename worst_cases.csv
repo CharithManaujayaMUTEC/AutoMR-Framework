@@ -1,11 +1,11 @@
 mr,param,original,transformed,difference,percent_change,passed,severity,status,sample_id,expected_behavior,actual_behavior
-RotationRelation,-25.0,-1.6282047033309937,-1.6414549350738525,0.013250231742858887,0.8137934731312805,True,0.013250231742858887,PASS,18,Small rotation should not significantly change output,Consistent
-LessSensitiveRelation,1.0,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Output should not change drastically under degradation,Consistent
-WeatherRelation,1.0,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Weather changes should not significantly affect output,Consistent
-FogRelation,1.0,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
-LessSensitiveRelation,1.0,-1.6372151374816895,-1.6280711889266968,0.009143948554992676,0.5585058897023572,True,0.009143948554992676,PASS,14,Output should not change drastically under degradation,Consistent
-WeatherRelation,1.0,-1.6372151374816895,-1.6280711889266968,0.009143948554992676,0.5585058897023572,True,0.009143948554992676,PASS,14,Weather changes should not significantly affect output,Consistent
-FogRelation,1.0,-1.6372151374816895,-1.6280711889266968,0.009143948554992676,0.5585058897023572,True,0.009143948554992676,PASS,14,Fog should not significantly affect prediction,Consistent
-RotationRelation,-25.0,-1.6305183172225952,-1.6391812562942505,0.008662939071655273,0.5312993829727579,True,0.008662939071655273,PASS,24,Small rotation should not significantly change output,Consistent
-RotationRelation,-25.0,-1.6302109956741333,-1.6387124061584473,0.008501410484313965,0.5214911009655784,True,0.008501410484313965,PASS,29,Small rotation should not significantly change output,Consistent
-RotationRelation,-25.0,-1.6324652433395386,-1.6409075260162354,0.008442282676696777,0.5171489892144041,True,0.008442282676696777,PASS,34,Small rotation should not significantly change output,Consistent
+RotationRelation,-30.0,-1.6282047033309937,-1.641383409500122,-0.013178706169128418,-0.8094005654302363,True,0.013178706169128418,PASS,18,Small rotation should not significantly change output,Consistent
+TranslationRelation,80.0,-1.6363378763198853,-1.6250230073928833,0.011314868927001953,0.6914746750043008,True,0.011314868927001953,PASS,37,Small translation should preserve prediction consistency,Consistent
+TranslationRelation,60.0,-1.6363378763198853,-1.6254593133926392,0.010878562927246094,0.6648111271249576,True,0.010878562927246094,PASS,37,Small translation should preserve prediction consistency,Consistent
+TranslationRelation,80.0,-1.6377266645431519,-1.6270986795425415,0.010627985000610352,0.6489470276839376,True,0.010627985000610352,PASS,9,Small translation should preserve prediction consistency,Consistent
+LessSensitiveRelation,1.1375,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Output should not change drastically under degradation,Consistent
+FogRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+FogRelation,1.125,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+LessSensitiveRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Output should not change drastically under degradation,Consistent
+TranslationRelation,60.0,-1.6377266645431519,-1.6283093690872192,0.009417295455932617,0.5750220662334354,True,0.009417295455932617,PASS,9,Small translation should preserve prediction consistency,Consistent
+ContrastRelation,4.0,-1.6324090957641602,-1.6232000589370728,0.009209036827087402,0.5641374585334508,True,0.009209036827087402,PASS,12,Contrast change should not significantly affect output,Consistent

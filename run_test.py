@@ -15,7 +15,7 @@ from automr.comparator import RegressionComparator
 from automr.core.failure_analysis import FailureAnalyzer
 
 # comparator
-comparator = RegressionComparator(epsilon=0.01)
+comparator = RegressionComparator(epsilon=0.002)
 
 
 # model wrapper (GENERIC)
