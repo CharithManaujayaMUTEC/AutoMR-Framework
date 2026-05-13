@@ -1,11 +1,11 @@
 mr,param,original,transformed,difference,percent_change,passed,severity,status,sample_id,expected_behavior,actual_behavior
-RotationRelation,-30.0,-1.6282047033309937,-1.641383409500122,-0.013178706169128418,-0.8094005654302363,False,0.013178706169128418,FAIL,18,Small rotation should not significantly change output,Violation
-TranslationRelation,80.0,-1.6363378763198853,-1.6250230073928833,0.011314868927001953,0.6914746750043008,False,0.011314868927001953,FAIL,37,Small translation should preserve prediction consistency,Violation
-TranslationRelation,60.0,-1.6363378763198853,-1.6254593133926392,0.010878562927246094,0.6648111271249576,False,0.010878562927246094,FAIL,37,Small translation should preserve prediction consistency,Violation
-TranslationRelation,80.0,-1.6377266645431519,-1.6270986795425415,0.010627985000610352,0.6489470276839376,False,0.010627985000610352,FAIL,9,Small translation should preserve prediction consistency,Violation
-LessSensitiveRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,False,0.009655475616455078,FAIL,9,Output should not change drastically under degradation,Violation
-LessSensitiveRelation,1.1375,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,False,0.009655475616455078,FAIL,9,Output should not change drastically under degradation,Violation
-FogRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
-FogRelation,1.125,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
-FogRelation,0.75,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
-TranslationRelation,60.0,-1.6377266645431519,-1.6283093690872192,0.009417295455932617,0.5750220662334354,False,0.009417295455932617,FAIL,9,Small translation should preserve prediction consistency,Violation
+TranslationRelation,80.0,-1.6486568450927734,-1.6219806671142578,0.026676177978515625,1.6180542286513369,False,0.026676177978515625,FAIL,794,Small translation should preserve prediction consistency,Violation
+TranslationRelation,60.0,-1.6486568450927734,-1.624773383140564,0.023883461952209473,1.4486609227802207,False,0.023883461952209473,FAIL,794,Small translation should preserve prediction consistency,Violation
+TranslationRelation,80.0,-1.6433184146881104,-1.6220097541809082,0.02130866050720215,1.2966840357841432,False,0.02130866050720215,FAIL,366,Small translation should preserve prediction consistency,Violation
+TranslationRelation,80.0,-1.6414700746536255,-1.6204800605773926,0.02099001407623291,1.2787318887518084,False,0.02099001407623291,FAIL,365,Small translation should preserve prediction consistency,Violation
+LessSensitiveRelation,1.5,-1.6486568450927734,-1.6280711889266968,0.02058565616607666,1.2486311958148153,False,0.02058565616607666,FAIL,794,Output should not change drastically under degradation,Violation
+FogRelation,1.125,-1.6486568450927734,-1.6280711889266968,0.02058565616607666,1.2486311958148153,False,0.02058565616607666,FAIL,794,Fog should not significantly affect prediction,Violation
+FogRelation,0.75,-1.6486568450927734,-1.6280711889266968,0.02058565616607666,1.2486311958148153,False,0.02058565616607666,FAIL,794,Fog should not significantly affect prediction,Violation
+LessSensitiveRelation,1.1375,-1.6486568450927734,-1.6280711889266968,0.02058565616607666,1.2486311958148153,False,0.02058565616607666,FAIL,794,Output should not change drastically under degradation,Violation
+FogRelation,1.5,-1.6486568450927734,-1.6280711889266968,0.02058565616607666,1.2486311958148153,False,0.02058565616607666,FAIL,794,Fog should not significantly affect prediction,Violation
+TranslationRelation,80.0,-1.6437444686889648,-1.6235394477844238,0.020205020904541016,1.2292061812134663,False,0.020205020904541016,FAIL,1821,Small translation should preserve prediction consistency,Violation
