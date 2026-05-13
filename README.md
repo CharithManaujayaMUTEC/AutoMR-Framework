@@ -16,15 +16,15 @@ This project addresses:
 
 ---
 
-# 🔥 Key Features
+# Key Features
 
-- ✅ Model-agnostic (TensorFlow, PyTorch, sklearn, custom)
-- ✅ Input-agnostic (images, text, tabular)
-- ✅ Output-agnostic (regression, classification)
-- ✅ Comparator-based evaluation
-- ✅ Parametric testing (range-based MR sweeps)
-- ✅ CSV/JSON export
-- ✅ Progress tracking (tqdm)
+- Model-agnostic (TensorFlow, PyTorch, sklearn, custom)
+- Input-agnostic (images, text, tabular)
+- Output-agnostic (regression, classification)
+- Comparator-based evaluation
+- Parametric testing (range-based MR sweeps)
+- CSV/JSON export
+- Progress tracking (tqdm)
 
 ---
 
@@ -39,7 +39,7 @@ f(x) == expected_output ❌
 We test:
 
 ```
-f(x) ≈ f(T(x)) ✅
+f(x) ≈ f(T(x))
 ```
 
 Where `T(x)` is a transformed input.
@@ -79,18 +79,21 @@ AutoMR-Framework/
 # ⚙️ Installation
 
 ## 1. Clone repository
+
 ```bash
 git clone <your-repo-url>
 cd AutoMR-Framework
 ```
 
 ## 2. Create virtual environment
+
 ```bash
 python -m venv venv
 venv\Scripts\activate
 ```
 
 ## 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -120,15 +123,15 @@ python run_test.py
 
 # 🔄 Execution Flow
 
-1. Load dataset  
-2. Load model  
+1. Load dataset
+2. Load model
 3. For each input:
-   - Apply transformations  
-   - Predict outputs  
-   - Compare results  
-   - Evaluate MR  
-4. Store results  
-5. Export CSV  
+   - Apply transformations
+   - Predict outputs
+   - Compare results
+   - Evaluate MR
+4. Store results
+5. Export CSV
 
 ---
 
@@ -144,18 +147,18 @@ automr_results_detailed.csv
 
 ## 📋 Output Columns
 
-| Column | Description |
-|------|------------|
-| mr | Metamorphic relation |
-| param | Transformation value |
-| original | Original prediction |
-| transformed | Transformed prediction |
-| difference | Output difference |
-| percent_change | % change |
-| status | PASS / FAIL |
-| expected_behavior | Expected MR rule |
-| actual_behavior | Consistent / Violation |
-| sample_id | Input index |
+| Column            | Description            |
+| ----------------- | ---------------------- |
+| mr                | Metamorphic relation   |
+| param             | Transformation value   |
+| original          | Original prediction    |
+| transformed       | Transformed prediction |
+| difference        | Output difference      |
+| percent_change    | % change               |
+| status            | PASS / FAIL            |
+| expected_behavior | Expected MR rule       |
+| actual_behavior   | Consistent / Violation |
+| sample_id         | Input index            |
 
 ---
 
@@ -176,60 +179,62 @@ class RegressionComparator:
 
 # 🔁 Metamorphic Relations
 
-| MR | Description |
-|----|------------|
-| BrightnessRelation | Output invariant to brightness |
-| RotationRelation | Stable under rotation |
-| TranslationRelation | Stable under shift |
-| NoiseRelation | Robust to noise |
+| MR                  | Description                    |
+| ------------------- | ------------------------------ |
+| BrightnessRelation  | Output invariant to brightness |
+| RotationRelation    | Stable under rotation          |
+| TranslationRelation | Stable under shift             |
+| NoiseRelation       | Robust to noise                |
 
 ---
 
 # 🧩 Transformations
 
-| Transform | Description |
-|----------|------------|
-| Brightness | Adjust pixel intensity |
-| Rotation | Rotate image |
-| Translation | Shift image |
-| Noise | Add random noise |
+| Transform   | Description            |
+| ----------- | ---------------------- |
+| Brightness  | Adjust pixel intensity |
+| Rotation    | Rotate image           |
+| Translation | Shift image            |
+| Noise       | Add random noise       |
 
 ---
 
 # 🧠 Design Principles
 
 ### Input Agnostic
+
 Supports any input type.
 
 ### Output Agnostic
+
 Supports regression, classification, etc.
 
 ### Modular Architecture
 
-| Component | Role |
-|----------|------|
-| Model | Prediction |
-| Transform | Input modification |
-| Relation | Expected behavior |
+| Component  | Role               |
+| ---------- | ------------------ |
+| Model      | Prediction         |
+| Transform  | Input modification |
+| Relation   | Expected behavior  |
 | Comparator | Pass/fail decision |
 
 ---
 
 # ⚠️ Limitations
 
-- Current transforms are image-focused  
-- Comparator must be defined per task  
-- Performance depends on model speed  
+- Current transforms are image-focused
+- Comparator must be defined per task
+- Performance depends on model speed
 
 ---
 
 # 🔮 Future Work
 
-- NLP support  
-- Classification comparator  
-- Streamlit dashboard  
-- Cross-model analysis  
-- Failure region visualization  
+- NLP support
+- Classification comparator
+- Streamlit dashboard
+- Cross-model analysis
+- Failure region visualization
 
 ---
 
@@ -237,7 +242,7 @@ Supports regression, classification, etc.
 
 ```
 Running AutoMR: ██████████████ 100%
-✅ DONE: automr_results_detailed.csv generated
+DONE: automr_results_detailed.csv generated
 ```
 
 ---

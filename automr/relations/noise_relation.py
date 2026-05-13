@@ -4,4 +4,5 @@ class NoiseRelation:
         self.tolerance = tolerance
 
     def check(self, y1, y2):
-        return abs(y1 - y2) < self.tolerance
+        change = abs(y1 - y2) / (abs(y1) + 1e-6)
+return change < self.tolerance
