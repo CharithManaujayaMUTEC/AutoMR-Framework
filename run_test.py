@@ -5,8 +5,8 @@ from tqdm import tqdm
 import cv2
 
 # paths
-sys.path.append("D:/FYP 78SEm/Datasets")
-sys.path.append("D:/FYP 78SEm/Modals")
+sys.path.append("D:/7th semester/FYP/PROGRESS/Datasets")
+sys.path.append("D:/7th semester/FYP/PROGRESS/Models")
 
 from load_data import load_images
 from automr.api import AutoMR
@@ -18,6 +18,7 @@ from automr.core.failure_analysis import FailureAnalyzer
 comparator = RegressionComparator(epsilon=0.002)
 
 
+# model wrapper (GENERIC)
 # model wrapper (GENERIC)
 class RealModel:
     def __init__(self):
@@ -37,9 +38,10 @@ class RealModel:
 
 
 # dataset
-dataset = load_images("D:/FYP 78SEm/Datasets/archive/trafic_data/train/images")
+dataset = load_images("D:/7th semester/FYP/PROGRESS/Datasets/train/images")
 
 
+# INIT MODEL
 # INIT MODEL
 model = RealModel()
 
@@ -49,11 +51,12 @@ print("Model loaded successfully")
 test_img = dataset[0]
 if test_img is not None:
     test_pred = model.predict(test_img)
-    print("🔍 Sample prediction:", test_pred)
+    print(" Sample prediction:", test_pred)
 else:
-    print("⚠️ First image is None")
+    print("First image is None")
 
 
+# AutoMR
 # AutoMR
 automr = AutoMR(model, comparator)
 
