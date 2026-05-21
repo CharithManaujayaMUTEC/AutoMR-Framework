@@ -6,8 +6,7 @@
   <img src="https://img.shields.io/badge/Status-Active-22c55e?style=flat-square"/>
   <img src="https://img.shields.io/badge/Domain-Autonomous%20Driving-7c6fcd?style=flat-square"/>
   <br/><br/>
-  <p><strong>Model-agnostic · Input-agnostic · Output-agnostic</strong></p>
-  <p>Metamorphic testing framework for regressional autonomous driving AI/ML models — no ground-truth labels required.</p>
+  <p>Model agnostic + Input agnostic + Output agnostic Metamorphic testing framework for regressional autonomous driving AI/ML models.</p>
 </div>
 
 ---
