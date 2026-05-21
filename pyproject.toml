@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Metamorphic Testing Framework for Regression-based Autonomous Driving ML/AI Models"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 
 authors = [
   { name="Charith Manujaya" },
@@ -28,3 +28,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework"
+
+[tool.setuptools.packages.find]
+include = ["automr*"]
+exclude = ["results*", "notebooks*"]
