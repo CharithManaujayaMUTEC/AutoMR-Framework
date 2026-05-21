@@ -3,10 +3,6 @@
 </div>
 
 <p align="center">
-  <b>AutoMR - Model agnostic + Input agnostic + Output agnostic metamorphic testing framework designed for regressional based autonomous driving machine learning/AI models</b>
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
   <img src="https://img.shields.io/badge/License-MIT-green.svg">
   <img src="https://img.shields.io/badge/Status-Active-success.svg">
