@@ -1,0 +1,11 @@
+mr,param,original,transformed,difference,percent_change,passed,severity,status,sample_id,expected_behavior,actual_behavior
+TranslationRelation,80.0,-1.6377266645431519,-1.6270986795425415,0.010627985000610352,0.6489470276839376,False,0.010627985000610352,FAIL,9,Small translation should preserve prediction consistency,Violation
+FogRelation,0.75,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+LessSensitiveRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,False,0.009655475616455078,FAIL,9,Output should not change drastically under degradation,Violation
+FogRelation,1.125,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+FogRelation,1.5,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,True,0.009655475616455078,PASS,9,Fog should not significantly affect prediction,Consistent
+LessSensitiveRelation,1.1375,-1.6377266645431519,-1.6280711889266968,0.009655475616455078,0.5895653975625121,False,0.009655475616455078,FAIL,9,Output should not change drastically under degradation,Violation
+TranslationRelation,60.0,-1.6377266645431519,-1.6283093690872192,0.009417295455932617,0.5750220662334354,False,0.009417295455932617,FAIL,9,Small translation should preserve prediction consistency,Violation
+FogRelation,0.75,-1.6362496614456177,-1.6280711889266968,0.008178472518920898,0.4998300512034793,True,0.008178472518920898,PASS,5,Fog should not significantly affect prediction,Consistent
+FogRelation,1.125,-1.6362496614456177,-1.6280711889266968,0.008178472518920898,0.4998300512034793,True,0.008178472518920898,PASS,5,Fog should not significantly affect prediction,Consistent
+FogRelation,1.5,-1.6362496614456177,-1.6280711889266968,0.008178472518920898,0.4998300512034793,True,0.008178472518920898,PASS,5,Fog should not significantly affect prediction,Consistent
