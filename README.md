@@ -2,19 +2,19 @@
   <img src="automrlogo.png" width="full"/>
 </div>
 
-- <p align="center">
-    <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg">
-    <img src="https://img.shields.io/badge/Status-Active-success.svg">
-  </p>
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg">
+  <img src="https://img.shields.io/badge/Status-Active-success.svg">
+</p>
 
-  ***
+--
 
 AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate **regressional based autonomous driving machine learning/AI models** without requiring ground-truth labels.
 
 Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** expected behaviors under controlled input transformations.
 
----
+--
 
 # Objective
 
@@ -24,7 +24,7 @@ This project addresses:
 - How robust models are under **real-world perturbations**
 - When and how models **start to fail**
 
----
+--
 
 # Key Features
 
@@ -37,7 +37,7 @@ This project addresses:
 - Automatic CSV export
 - Optional progress tracking
 
----
+--
 
 # Project Structure
 
@@ -62,7 +62,7 @@ AutoMR-Framework/
 ├── automrlogo.png
 ```
 
----
+--
 
 # Installation
 
@@ -76,7 +76,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
+--
 
 # Quick Start (Recommended)
 
@@ -93,7 +93,7 @@ df, results = automr.run_full_test(
 )
 ```
 
----
+--
 
 # Execution Flow
 
@@ -109,7 +109,7 @@ df, results = automr.run_full_test(
    - Worst-case failures
 5. Saves results automatically
 
----
+--
 
 # Output
 
@@ -123,7 +123,7 @@ worst_cases.csv
 failure_regions.txt
 ```
 
----
+--
 
 ## Output Columns
 
@@ -140,7 +140,7 @@ failure_regions.txt
 | actual_behavior   | Consistent / Violation |
 | sample_id         | Input index            |
 
----
+--
 
 # Built-in Analysis
 
@@ -151,7 +151,7 @@ AutoMR automatically computes:
 - Worst-case failures
 - Failure regions
 
----
+--
 
 # Metamorphic Relations (Examples)
 
@@ -164,7 +164,7 @@ AutoMR automatically computes:
 | FogRelation         | Robust to visibility changes |
 | TemporalSmoothness  | Consistency across frames    |
 
----
+--
 
 # Transformations
 
@@ -177,7 +177,7 @@ AutoMR automatically computes:
 | Fog/Rain    | Simulate weather       |
 | Blur        | Apply smoothing        |
 
----
+--
 
 # Design Principles
 
@@ -202,7 +202,7 @@ Supports any input type (images, sequences, etc.)
 | Relation  | Expected behavior  |
 | Analyzer  | Failure analysis   |
 
----
+--
 
 # Limitations
 
@@ -210,7 +210,7 @@ Supports any input type (images, sequences, etc.)
 - Comparator tuning required per task
 - Performance depends on model speed
 
----
+--
 
 # Future Work
 
@@ -220,7 +220,7 @@ Supports any input type (images, sequences, etc.)
 - Cross-model MR testing
 - Automated visualization (plots)
 
----
+--
 
 # Example Run
 
@@ -234,7 +234,7 @@ Failure Summary:
 DONE: Results saved in /results
 ```
 
----
+--
 
 # Authors
 
@@ -244,7 +244,7 @@ RaveeshaPeiris — https://github.com/RaveeshaPeiris
 
 Final Year Project — Metamorphic Testing Framework for Regressional Based Autonomous Driving AI/ML Models
 
----
+--
 
 # License
 
