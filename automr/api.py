@@ -207,3 +207,114 @@ class AutoMR:
 
         import pandas as pd
         return pd.concat(all_results, ignore_index=True)
+
+
+    # ---------- RUN DATASET ----------
+    def run_dataset(
+        self,
+        dataset,
+        max_samples=None,
+        samples_per_mr=5,
+        include_temporal=True,
+        show_progress=False
+    ):
+        import pandas as pd
+
+        all_results = []
+
+        if max_samples:
+            dataset = dataset[:max_samples]
+
+        # Temporal MR once
+        df_temp = None
+        if include_temporal:
+            df_temp, _ = self.run_mr(dataset, "temporal", samples=samples_per_mr)
+
+        iterator = dataset
+        if show_progress:
+            from tqdm import tqdm
+            iterator = tqdm(dataset, desc="Running AutoMR")
+
+        for i, sample in enumerate(iterator):
+
+            if sample is None:
+                continue
+
+            df_img = self.run_all_mrs(sample, samples=samples_per_mr)
+
+            if df_temp is not None:
+                df = pd.concat([df_img, df_temp], ignore_index=True)
+            else:
+                df = df_img
+
+            df["sample_id"] = i
+
+            df["expected_behavior"] = df["mr"].apply(self.get_expected)
+            df["actual_behavior"] = df["status"].apply(
+                lambda x: "Consistent" if x == "PASS" else "Violation"
+            )
+
+            all_results.append(df)
+
+        return pd.concat(all_results, ignore_index=True)
+
+
+    # ---------- ANALYSIS ----------
+    def analyze(self, df):
+        from automr.core.failure_analysis import FailureAnalyzer
+
+        analyzer = FailureAnalyzer()
+
+        return {
+            "failure_summary": analyzer.failure_rate_per_mr(df),
+            "severity_summary": analyzer.severity_per_mr(df),
+            "worst_cases": analyzer.worst_cases(df, top_k=10),
+            "regions": analyzer.failure_regions(df),
+        }
+
+
+    # ---------- SAVE ----------
+    def save_results(self, df, results, output_dir="results"):
+        import os
+        os.makedirs(output_dir, exist_ok=True)
+
+        df.to_csv(f"{output_dir}/automr_results.csv", index=False)
+        results["failure_summary"].to_csv(f"{output_dir}/failure_summary.csv", index=False)
+        results["severity_summary"].to_csv(f"{output_dir}/severity_summary.csv")
+        results["worst_cases"].to_csv(f"{output_dir}/worst_cases.csv", index=False)
+
+        with open(f"{output_dir}/failure_regions.txt", "w") as f:
+            for k, v in results["regions"].items():
+                f.write(f"{k}: {v}\n")
+
+
+    # ---------- FULL PIPELINE ----------
+    def run_full_test(
+        self,
+        dataset,
+        max_samples=None,
+        samples_per_mr=5,
+        show_progress=False,
+        save=True,
+        output_dir="results",
+        verbose=True
+    ):
+        df = self.run_dataset(
+            dataset,
+            max_samples=max_samples,
+            samples_per_mr=samples_per_mr,
+            show_progress=show_progress
+        )
+
+        results = self.analyze(df)
+
+        if save:
+            self.save_results(df, results, output_dir)
+
+        if verbose:
+            print("\n=== AutoMR Results ===")
+            print(results["failure_summary"])
+            print("\n--- Severity ---")
+            print(results["severity_summary"])
+
+        return df, results
