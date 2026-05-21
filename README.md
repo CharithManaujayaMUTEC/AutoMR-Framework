@@ -5,7 +5,8 @@
 <h1 align="center">AutoMR</h1>
 
 <p align="center">
-  <b>Model-agnostic • Input-agnostic • Output-agnostic</b>
+  <b>Model agnostic + Input agnostic + Output agnostic</b>
+  <b>metamorphic testing framework designed for regressional based autonomous driving machine learning/AI models</b>
 </p>
 
 <p align="center">
