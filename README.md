@@ -1,8 +1,22 @@
-# 🚗 AutoMR
+<div align="center">
+  <img src="automrlogo.png" width="300"/>
+</div>
 
-![AutoMR Logo](automrlogo.png)
+<h1 align="center">🚗 AutoMR — Metamorphic Testing Framework</h1>
 
-AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate rgressional based autonomous driving machine learning/AI models **without requiring ground-truth labels**.
+<p align="center">
+  <b>Model-agnostic • Input-agnostic • Output-agnostic</b>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg">
+  <img src="https://img.shields.io/badge/Status-Active-success.svg">
+</p>
+
+---
+
+AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate **regressional based autonomous driving machine learning/AI models** without requiring ground-truth labels.
 
 Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** expected behaviors under controlled input transformations.
 
@@ -230,11 +244,11 @@ DONE: Results saved in /results
 
 # 👨‍💻 Authors
 
-by
-CharithManaujayaMUTEC - https://github.com/CharithManaujayaMUTEC
-RaveeshaPeiris - https://github.com/RaveeshaPeiris
+by  
+CharithManaujayaMUTEC — https://github.com/CharithManaujayaMUTEC  
+RaveeshaPeiris — https://github.com/RaveeshaPeiris
 
-for our Final Year Project — Metamorphic Testing Framework for Regressional Based Autonomous Driving AI/ML Models
+Final Year Project — Metamorphic Testing Framework for Regressional Based Autonomous Driving AI/ML Models
 
 ---
 
