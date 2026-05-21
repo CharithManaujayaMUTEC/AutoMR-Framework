@@ -1,8 +1,8 @@
-# 🚗 AutoMR — Metamorphic Testing Framework
+# 🚗 AutoMR
 
 ![AutoMR Logo](automrlogo.png)
 
-AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate machine learning models **without requiring ground-truth labels**.
+AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate rgressional based autonomous driving machine learning/AI models **without requiring ground-truth labels**.
 
 Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** expected behaviors under controlled input transformations.
 
