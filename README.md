@@ -2,13 +2,13 @@
   <img src="automrlogo.png" width="full"/>
 </div>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg">
-  <img src="https://img.shields.io/badge/Status-Active-success.svg">
-</p>
+- <p align="center">
+    <img src="https://img.shields.io/badge/Python-3.8+-blue.svg">
+    <img src="https://img.shields.io/badge/License-MIT-green.svg">
+    <img src="https://img.shields.io/badge/Status-Active-success.svg">
+  </p>
 
----
+  ***
 
 AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate **regressional based autonomous driving machine learning/AI models** without requiring ground-truth labels.
 
