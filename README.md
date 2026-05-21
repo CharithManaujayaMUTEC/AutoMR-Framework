@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="automrlogo.png" width="300"/>
+  <img src="automrlogo.png" width="full"/>
 </div>
 
 <h1 align="center">AutoMR</h1>
