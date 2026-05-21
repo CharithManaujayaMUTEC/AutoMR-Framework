@@ -4,7 +4,7 @@
 
 AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate machine learning models **without requiring ground-truth labels**.
 
-Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** — expected behaviors under controlled input transformations.
+Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** expected behaviors under controlled input transformations.
 
 ---
 
@@ -28,24 +28,6 @@ This project addresses:
 - Automated analysis (failure rate, severity, worst cases)
 - Automatic CSV export
 - Optional progress tracking
-
----
-
-# 🧠 Core Idea
-
-Instead of:
-
-```
-f(x) == expected_output ❌
-```
-
-We test:
-
-```
-f(x) ≈ f(T(x))
-```
-
-Where `T(x)` is a transformed input.
 
 ---
 
@@ -77,7 +59,7 @@ AutoMR-Framework/
 # ⚙️ Installation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/CharithManaujayaMUTEC/AutoMR-Framework.git
 cd AutoMR-Framework
 
 python -m venv venv
