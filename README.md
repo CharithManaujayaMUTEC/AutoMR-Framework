@@ -2,7 +2,7 @@
   <img src="automrlogo.png" width="300"/>
 </div>
 
-<h1 align="center">🚗 AutoMR — Metamorphic Testing Framework</h1>
+<h1 align="center">AutoMR</h1>
 
 <p align="center">
   <b>Model-agnostic • Input-agnostic • Output-agnostic</b>
@@ -22,7 +22,7 @@ Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)
 
 ---
 
-# 🎯 Objective
+# Objective
 
 This project addresses:
 
@@ -32,7 +32,7 @@ This project addresses:
 
 ---
 
-# ✨ Key Features
+# Key Features
 
 - Model-agnostic (TensorFlow, PyTorch, sklearn, custom)
 - Input-agnostic (images, text, tabular)
@@ -45,7 +45,7 @@ This project addresses:
 
 ---
 
-# 🏗️ Project Structure
+# Project Structure
 
 ```
 AutoMR-Framework/
@@ -70,7 +70,7 @@ AutoMR-Framework/
 
 ---
 
-# ⚙️ Installation
+# Installation
 
 ```bash
 git clone https://github.com/CharithManaujayaMUTEC/AutoMR-Framework.git
@@ -84,7 +84,7 @@ pip install -r requirements.txt
 
 ---
 
-# 🚀 Quick Start (Recommended)
+# Quick Start (Recommended)
 
 ```python
 from automr.api import AutoMR
@@ -101,7 +101,7 @@ df, results = automr.run_full_test(
 
 ---
 
-# 🔄 Execution Flow
+# Execution Flow
 
 1. Load dataset (user-defined)
 2. Load model (user-defined)
@@ -117,7 +117,7 @@ df, results = automr.run_full_test(
 
 ---
 
-# 📊 Output
+# Output
 
 Generated files (in `/results` folder):
 
@@ -131,7 +131,7 @@ failure_regions.txt
 
 ---
 
-## 📋 Output Columns
+## Output Columns
 
 | Column            | Description            |
 | ----------------- | ---------------------- |
@@ -148,7 +148,7 @@ failure_regions.txt
 
 ---
 
-# 🧪 Built-in Analysis
+# Built-in Analysis
 
 AutoMR automatically computes:
 
@@ -159,7 +159,7 @@ AutoMR automatically computes:
 
 ---
 
-# 🔁 Metamorphic Relations (Examples)
+# Metamorphic Relations (Examples)
 
 | MR                  | Description                  |
 | ------------------- | ---------------------------- |
@@ -172,7 +172,7 @@ AutoMR automatically computes:
 
 ---
 
-# 🧩 Transformations
+# Transformations
 
 | Transform   | Description            |
 | ----------- | ---------------------- |
@@ -185,7 +185,7 @@ AutoMR automatically computes:
 
 ---
 
-# 🧠 Design Principles
+# Design Principles
 
 ### ✔ Model Agnostic
 
@@ -210,7 +210,7 @@ Supports any input type (images, sequences, etc.)
 
 ---
 
-# ⚠️ Limitations
+# Limitations
 
 - Current transformations are image-focused
 - Comparator tuning required per task
@@ -218,7 +218,7 @@ Supports any input type (images, sequences, etc.)
 
 ---
 
-# 🔮 Future Work
+# Future Work
 
 - NLP and tabular extensions
 - Classification-specific comparators
@@ -228,7 +228,7 @@ Supports any input type (images, sequences, etc.)
 
 ---
 
-# 🧪 Example Run
+# Example Run
 
 ```
 Running AutoMR: ██████████████ 100%
@@ -242,7 +242,7 @@ DONE: Results saved in /results
 
 ---
 
-# 👨‍💻 Authors
+# Authors
 
 by  
 CharithManaujayaMUTEC — https://github.com/CharithManaujayaMUTEC  
@@ -252,6 +252,6 @@ Final Year Project — Metamorphic Testing Framework for Regressional Based Auto
 
 ---
 
-# 📜 License
+# License
 
 MIT License
