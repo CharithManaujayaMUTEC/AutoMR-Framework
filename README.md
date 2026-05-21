@@ -1,5 +1,7 @@
 # 🚗 AutoMR — Metamorphic Testing Framework
 
+![AutoMR Logo](automrlogo.png)
+
 AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate machine learning models **without requiring ground-truth labels**.
 
 Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** — expected behaviors under controlled input transformations.
@@ -16,15 +18,16 @@ This project addresses:
 
 ---
 
-# Key Features
+# ✨ Key Features
 
 - Model-agnostic (TensorFlow, PyTorch, sklearn, custom)
 - Input-agnostic (images, text, tabular)
 - Output-agnostic (regression, classification)
-- Comparator-based evaluation
+- Built-in MR execution pipeline
 - Parametric testing (range-based MR sweeps)
-- CSV/JSON export
-- Progress tracking (tqdm)
+- Automated analysis (failure rate, severity, worst cases)
+- Automatic CSV export
+- Optional progress tracking
 
 ---
 
@@ -56,91 +59,78 @@ AutoMR-Framework/
 │   ├── comparator.py
 │   │
 │   ├── core/
-│   │   ├── tester.py
 │   │   ├── range_tester.py
+│   │   ├── failure_analysis.py
 │   │
 │   ├── relations/
-│   │   └── image_relations.py
-│   │
 │   ├── transforms/
-│   │   └── image_transforms.py
-│   │
 │   ├── analysis/
-│   │   └── analyzer.py
 │
-├── run_test.py
+├── run_test_example.py
 ├── requirements.txt
-├── .env
-├── .env.example
+├── .gitignore
+├── automrlogo.png
 ```
 
 ---
 
 # ⚙️ Installation
 
-## 1. Clone repository
-
 ```bash
 git clone <your-repo-url>
 cd AutoMR-Framework
-```
 
-## 2. Create virtual environment
-
-```bash
 python -m venv venv
 venv\Scripts\activate
-```
 
-## 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-# 🔑 Environment Setup
+# 🚀 Quick Start (Recommended)
 
-Create `.env` file:
+```python
+from automr.api import AutoMR
 
-```env
-DATASET_PATH=D:/FYP 78SEm/Datasets/archive/trafic_data/train/images
-MODEL_PATH=D:/FYP 78SEm/Modals/nvidia_model.h5
-SAMPLES=5
-EPSILON=0.1
-```
+automr = AutoMR(model)
 
----
-
-# 🚀 How to Run
-
-```bash
-python run_test.py
+df, results = automr.run_full_test(
+    dataset,
+    max_samples=2000,
+    samples_per_mr=5,
+    show_progress=True
+)
 ```
 
 ---
 
 # 🔄 Execution Flow
 
-1. Load dataset
-2. Load model
-3. For each input:
-   - Apply transformations
-   - Predict outputs
-   - Compare results
-   - Evaluate MR
-4. Store results
-5. Export CSV
+1. Load dataset (user-defined)
+2. Load model (user-defined)
+3. AutoMR:
+   - Applies transformations
+   - Generates predictions
+   - Validates metamorphic relations
+4. Computes:
+   - Failure rate
+   - Severity
+   - Worst-case failures
+5. Saves results automatically
 
 ---
 
 # 📊 Output
 
-Generated file:
+Generated files (in `/results` folder):
 
 ```
-automr_results_detailed.csv
+automr_results.csv
+failure_summary.csv
+severity_summary.csv
+worst_cases.csv
+failure_regions.txt
 ```
 
 ---
@@ -152,7 +142,7 @@ automr_results_detailed.csv
 | mr                | Metamorphic relation   |
 | param             | Transformation value   |
 | original          | Original prediction    |
-| transformed       | Transformed prediction |
+| transformed       | Transformed output     |
 | difference        | Output difference      |
 | percent_change    | % change               |
 | status            | PASS / FAIL            |
@@ -162,29 +152,27 @@ automr_results_detailed.csv
 
 ---
 
-# 🧪 Comparator (Core Design)
+# 🧪 Built-in Analysis
 
-```python
-class RegressionComparator:
-    def __init__(self, epsilon=0.05):
-        self.epsilon = epsilon
+AutoMR automatically computes:
 
-    def compare(self, y1, y2):
-        diff = abs(y1 - y2)
-        passed = diff < self.epsilon
-        return diff, passed
-```
+- Failure rate per MR
+- Severity (average deviation)
+- Worst-case failures
+- Failure regions
 
 ---
 
-# 🔁 Metamorphic Relations
+# 🔁 Metamorphic Relations (Examples)
 
-| MR                  | Description                    |
-| ------------------- | ------------------------------ |
-| BrightnessRelation  | Output invariant to brightness |
-| RotationRelation    | Stable under rotation          |
-| TranslationRelation | Stable under shift             |
-| NoiseRelation       | Robust to noise                |
+| MR                  | Description                  |
+| ------------------- | ---------------------------- |
+| BrightnessRelation  | Output invariant to lighting |
+| RotationRelation    | Stable under small rotations |
+| TranslationRelation | Stable under shifts          |
+| NoiseRelation       | Robust to noise              |
+| FogRelation         | Robust to visibility changes |
+| TemporalSmoothness  | Consistency across frames    |
 
 ---
 
@@ -196,45 +184,51 @@ class RegressionComparator:
 | Rotation    | Rotate image           |
 | Translation | Shift image            |
 | Noise       | Add random noise       |
+| Fog/Rain    | Simulate weather       |
+| Blur        | Apply smoothing        |
 
 ---
 
 # 🧠 Design Principles
 
-### Input Agnostic
+### ✔ Model Agnostic
 
-Supports any input type.
+Works with any model implementing:
 
-### Output Agnostic
+```python
+predict(x)
+```
 
-Supports regression, classification, etc.
+### ✔ Input Agnostic
 
-### Modular Architecture
+Supports any input type (images, sequences, etc.)
 
-| Component  | Role               |
-| ---------- | ------------------ |
-| Model      | Prediction         |
-| Transform  | Input modification |
-| Relation   | Expected behavior  |
-| Comparator | Pass/fail decision |
+### ✔ Modular Architecture
+
+| Component | Role               |
+| --------- | ------------------ |
+| Model     | Prediction         |
+| Transform | Input modification |
+| Relation  | Expected behavior  |
+| Analyzer  | Failure analysis   |
 
 ---
 
 # ⚠️ Limitations
 
-- Current transforms are image-focused
-- Comparator must be defined per task
+- Current transformations are image-focused
+- Comparator tuning required per task
 - Performance depends on model speed
 
 ---
 
 # 🔮 Future Work
 
-- NLP support
-- Classification comparator
+- NLP and tabular extensions
+- Classification-specific comparators
 - Streamlit dashboard
-- Cross-model analysis
-- Failure region visualization
+- Cross-model MR testing
+- Automated visualization (plots)
 
 ---
 
@@ -242,14 +236,23 @@ Supports regression, classification, etc.
 
 ```
 Running AutoMR: ██████████████ 100%
-DONE: automr_results_detailed.csv generated
+
+=== AutoMR Results ===
+Failure Summary:
+...
+
+DONE: Results saved in /results
 ```
 
 ---
 
 # 👨‍💻 Authors
 
-Final Year Project — Metamorphic Testing Framework
+by
+CharithManaujayaMUTEC - https://github.com/CharithManaujayaMUTEC
+RaveeshaPeiris - https://github.com/RaveeshaPeiris
+
+for our Final Year Project — Metamorphic Testing Framework for Regressional Based Autonomous Driving AI/ML Models
 
 ---
 
