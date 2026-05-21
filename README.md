@@ -2,8 +2,6 @@
   <img src="automrlogo.png" width="full"/>
 </div>
 
-<h1 align="center">AutoMR</h1>
-
 <p align="center">
   <b>AutoMR - Model agnostic + Input agnostic + Output agnostic metamorphic testing framework designed for regressional based autonomous driving machine learning/AI models</b>
 </p>
