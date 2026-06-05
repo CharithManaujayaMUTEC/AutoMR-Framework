@@ -251,14 +251,17 @@ class AutoMR:
     # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
-        cfg = self.mr_config[mr_name]
-        start, end = cfg["range"]
+        transform = self.transform_registry.get(mr_name)
+
+        relation = self.relation_registry.get(mr_name)
+
+        start, end = self.mr_ranges[mr_name]
 
         results = self.range_tester.run_range(
             self.model,
             input_data,
-            cfg["transform"],
-            cfg["relation"],
+            transform,
+            relation,
             start,
             end,
             samples,
@@ -278,7 +281,7 @@ class AutoMR:
 
         all_results = []
 
-        for name in self.mr_config:
+        for name in self.transform_registry.list():
 
             if name == "temporal":
                 continue
