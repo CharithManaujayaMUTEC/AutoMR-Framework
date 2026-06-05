@@ -3,6 +3,10 @@ from automr.analysis import Analyzer
 from automr.models import get_wrapper
 from automr.comparators import get_comparator
 from automr.input_handlers import get_handler
+from automr.registry import (
+    TransformationRegistry,
+    RelationRegistry
+)
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -82,77 +86,132 @@ class AutoMR:
             eps_small = 0.03
             eps_medium = 0.05
 
+        self._register_default_mrs(
+            eps_small,
+            eps_medium
+        )
+
         #  MR CONFIG (FIXED PARAM NAMES)
-        self.mr_config = {
+        self.transform_registry = TransformationRegistry()
+        self.relation_registry = RelationRegistry()
+        self.mr_ranges = {}
 
-            # ---------- IMAGE ----------
-            "brightness": {
-                "transform": increase_brightness,
-                "relation": BrightnessRelation(tolerance=eps_small),  
-                "range": (0.1, 3.0)
-            },
-            "rotation": {
-                "transform": rotate_small,
-                "relation": RotationRelation(epsilon=eps_small),
-                "range": (-60, 60)
-            },
-            "translation": {
-                "transform": shift_right,
-                "relation": TranslationRelation(tolerance=eps_small),  
-                "range": (0, 80)
-            },
-            "noise": {
-                "transform": add_noise,
-                "relation": NoiseRelation(tolerance=eps_small),  
-                "range": (0, 150)
-            },
-            "blur": {
-                "transform": blur,
-                "relation": BlurRelation(epsilon=eps_small),
-                "range": (1, 31)
-            },
-            "contrast": {
-                "transform": adjust_contrast,
-                "relation": ContrastRelation(epsilon=eps_small),
-                "range": (0.1, 4.0)
-            },
+    def _register_default_mrs(self, eps_small, eps_medium):
 
-            # ---------- WEATHER ----------
-            "rain": {
-                "transform": add_rain,
-                "relation": RainRelation(epsilon=eps_medium),
-                "range": (0.0, 1.5)
-            },
-            "snow": {
-                "transform": add_snow,
-                "relation": SnowRelation(epsilon=eps_medium),
-                "range": (0.0, 1.5)
-            },
-            "fog": {
-                "transform": add_fog,
-                "relation": FogRelation(epsilon=eps_medium),
-                "range": (0.0, 1.5)
-            },
+    # IMAGE
+    self.transform_registry.register(
+        "brightness",
+        increase_brightness
+    )
+    self.relation_registry.register(
+        "brightness",
+        BrightnessRelation(tolerance=eps_small)
+    )
+    self.mr_ranges["brightness"] = (0.1, 3.0)
 
-            # ---------- TEMPORAL ----------
-            "temporal": {
-                "transform": next_frame_pair,
-                "relation": TemporalSmoothnessRelation(delta=eps_small),
-                "range": (0, 150)
-            },
+    self.transform_registry.register(
+        "rotation",
+        rotate_small
+    )
+    self.relation_registry.register(
+        "rotation",
+        RotationRelation(epsilon=eps_small)
+    )
+    self.mr_ranges["rotation"] = (-60, 60)
 
-            # ---------- BEHAVIORAL ----------
-            "visibility": {
-                "transform": reduce_visibility,
-                "relation": LessSensitiveRelation(max_change=0.08),
-                "range": (0.05, 1.5)
-            },
-            "darkness": {
-                "transform": darken,
-                "relation": LessSensitiveRelation(max_change=0.08),
-                "range": (0.05, 1.5)
-            }
-        }
+    self.transform_registry.register(
+        "translation",
+        shift_right
+    )
+    self.relation_registry.register(
+        "translation",
+        TranslationRelation(tolerance=eps_small)
+    )
+    self.mr_ranges["translation"] = (0, 80)
+
+    self.transform_registry.register(
+        "noise",
+        add_noise
+    )
+    self.relation_registry.register(
+        "noise",
+        NoiseRelation(tolerance=eps_small)
+    )
+    self.mr_ranges["noise"] = (0, 150)
+
+    self.transform_registry.register(
+        "blur",
+        blur
+    )
+    self.relation_registry.register(
+        "blur",
+        BlurRelation(epsilon=eps_small)
+    )
+    self.mr_ranges["blur"] = (1, 31)
+
+    self.transform_registry.register(
+        "contrast",
+        adjust_contrast
+    )
+    self.relation_registry.register(
+        "contrast",
+        ContrastRelation(epsilon=eps_small)
+    )
+    self.mr_ranges["contrast"] = (0.1, 4.0)
+
+    # WEATHER
+    self.transform_registry.register("rain", add_rain)
+    self.relation_registry.register(
+        "rain",
+        RainRelation(epsilon=eps_medium)
+    )
+    self.mr_ranges["rain"] = (0.0, 1.5)
+
+    self.transform_registry.register("snow", add_snow)
+    self.relation_registry.register(
+        "snow",
+        SnowRelation(epsilon=eps_medium)
+    )
+    self.mr_ranges["snow"] = (0.0, 1.5)
+
+    self.transform_registry.register("fog", add_fog)
+    self.relation_registry.register(
+        "fog",
+        FogRelation(epsilon=eps_medium)
+    )
+    self.mr_ranges["fog"] = (0.0, 1.5)
+
+    # TEMPORAL
+    self.transform_registry.register(
+        "temporal",
+        next_frame_pair
+    )
+    self.relation_registry.register(
+        "temporal",
+        TemporalSmoothnessRelation(delta=eps_small)
+    )
+    self.mr_ranges["temporal"] = (0, 150)
+
+    # BEHAVIORAL
+    self.transform_registry.register(
+        "visibility",
+        reduce_visibility
+    )
+    self.relation_registry.register(
+        "visibility",
+        LessSensitiveRelation(max_change=0.08)
+    )
+    self.mr_ranges["visibility"] = (0.05, 1.5)
+
+    self.transform_registry.register(
+        "darkness",
+        darken
+    )
+    self.relation_registry.register(
+        "darkness",
+        LessSensitiveRelation(max_change=0.08)
+    )
+    self.mr_ranges["darkness"] = (0.05, 1.5)
 
     # ---------- MODEL WRAPPER ----------
     def _wrap_if_needed(self, model):
@@ -176,7 +235,14 @@ class AutoMR:
 
     # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
-        for cfg in self.mr_config.values():
+        for name in self.relation_registry.list():
+
+        relation = self.relation_registry.get(name)
+
+        if relation.__class__.__name__ == relation_name:
+
+        if hasattr(relation, "expected"):
+            return relation.expected()
             if cfg["relation"].__class__.__name__ == relation_name:
                 if hasattr(cfg["relation"], "expected"):
                     return cfg["relation"].expected()
