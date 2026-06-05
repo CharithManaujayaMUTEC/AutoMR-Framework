@@ -1,0 +1,25 @@
+from .tensorflow_wrapper import TensorFlowWrapper
+from .pytorch_wrapper import PyTorchWrapper
+from .sklearn_wrapper import SklearnWrapper
+from .custom_wrapper import CustomWrapper
+
+
+def get_wrapper(model):
+
+    module = model.__class__.__module__.lower()
+
+    if "tensorflow" in module or "keras" in module:
+        return TensorFlowWrapper(model)
+
+    if "torch" in module:
+        return PyTorchWrapper(model)
+
+    if "sklearn" in module:
+        return SklearnWrapper(model)
+
+    if hasattr(model, "predict"):
+        return CustomWrapper(model)
+
+    raise ValueError(
+        f"Unsupported model type: {type(model)}"
+    )
