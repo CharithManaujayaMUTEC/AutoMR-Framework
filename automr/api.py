@@ -1,6 +1,7 @@
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 from automr.models import get_wrapper
+from automr.comparators import get_comparator
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -55,10 +56,20 @@ from automr.relations.behavioral_relations import (
 
 class AutoMR:
 
-    def __init__(self, model, strict=True):
+        def __init__(
+        self,
+        model,
+        task="regression",
+        epsilon=0.05,
+        strict=True
+        ):
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
+        self.comparator = get_comparator(
+            task=task,
+            epsilon=epsilon
+        )
 
         #  STRICT MODE
         if strict:
