@@ -1,5 +1,6 @@
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
+from automr.models import get_wrapper
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -55,7 +56,7 @@ from automr.relations.behavioral_relations import (
 class AutoMR:
 
     def __init__(self, model, strict=True):
-        self.model = self._wrap_if_needed(model)
+        self.model = get_wrapper(model)
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
