@@ -60,14 +60,14 @@ from automr.relations.behavioral_relations import (
 
 
 class AutoMR:
-        def __init__(
-            self,
-            model,
-            task="regression",
-            input_type="image",
-            epsilon=0.05,
-            strict=True
-        ):
+    def __init__(
+        self,
+        model,
+        task="regression",
+        input_type="image",
+        epsilon=0.05,
+        strict=True
+    ):
         self.input_handler = get_handler(input_type)
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
