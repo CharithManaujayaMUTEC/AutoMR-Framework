@@ -86,132 +86,131 @@ class AutoMR:
             eps_small = 0.03
             eps_medium = 0.05
 
+        self.transform_registry = TransformationRegistry()
+        self.relation_registry = RelationRegistry()
+        self.mr_ranges = {}
+
         self._register_default_mrs(
             eps_small,
             eps_medium
         )
 
-        #  MR CONFIG (FIXED PARAM NAMES)
-        self.transform_registry = TransformationRegistry()
-        self.relation_registry = RelationRegistry()
-        self.mr_ranges = {}
-
     def _register_default_mrs(self, eps_small, eps_medium):
 
-    # IMAGE
-    self.transform_registry.register(
-        "brightness",
-        increase_brightness
-    )
-    self.relation_registry.register(
-        "brightness",
-        BrightnessRelation(tolerance=eps_small)
-    )
-    self.mr_ranges["brightness"] = (0.1, 3.0)
+        # IMAGE
+        self.transform_registry.register(
+            "brightness",
+            increase_brightness
+        )
+        self.relation_registry.register(
+            "brightness",
+            BrightnessRelation(tolerance=eps_small)
+        )
+        self.mr_ranges["brightness"] = (0.1, 3.0)
 
-    self.transform_registry.register(
-        "rotation",
-        rotate_small
-    )
-    self.relation_registry.register(
-        "rotation",
-        RotationRelation(epsilon=eps_small)
-    )
-    self.mr_ranges["rotation"] = (-60, 60)
+        self.transform_registry.register(
+            "rotation",
+            rotate_small
+        )
+        self.relation_registry.register(
+            "rotation",
+            RotationRelation(epsilon=eps_small)
+        )
+        self.mr_ranges["rotation"] = (-60, 60)
 
-    self.transform_registry.register(
-        "translation",
-        shift_right
-    )
-    self.relation_registry.register(
-        "translation",
-        TranslationRelation(tolerance=eps_small)
-    )
-    self.mr_ranges["translation"] = (0, 80)
+        self.transform_registry.register(
+            "translation",
+            shift_right
+        )
+        self.relation_registry.register(
+            "translation",
+            TranslationRelation(tolerance=eps_small)
+        )
+        self.mr_ranges["translation"] = (0, 80)
 
-    self.transform_registry.register(
-        "noise",
-        add_noise
-    )
-    self.relation_registry.register(
-        "noise",
-        NoiseRelation(tolerance=eps_small)
-    )
-    self.mr_ranges["noise"] = (0, 150)
+        self.transform_registry.register(
+            "noise",
+            add_noise
+        )
+        self.relation_registry.register(
+            "noise",
+            NoiseRelation(tolerance=eps_small)
+        )
+        self.mr_ranges["noise"] = (0, 150)
 
-    self.transform_registry.register(
-        "blur",
-        blur
-    )
-    self.relation_registry.register(
-        "blur",
-        BlurRelation(epsilon=eps_small)
-    )
-    self.mr_ranges["blur"] = (1, 31)
+        self.transform_registry.register(
+            "blur",
+            blur
+        )
+        self.relation_registry.register(
+            "blur",
+            BlurRelation(epsilon=eps_small)
+        )
+        self.mr_ranges["blur"] = (1, 31)
 
-    self.transform_registry.register(
-        "contrast",
-        adjust_contrast
-    )
-    self.relation_registry.register(
-        "contrast",
-        ContrastRelation(epsilon=eps_small)
-    )
-    self.mr_ranges["contrast"] = (0.1, 4.0)
+        self.transform_registry.register(
+            "contrast",
+            adjust_contrast
+        )
+        self.relation_registry.register(
+            "contrast",
+            ContrastRelation(epsilon=eps_small)
+        )
+        self.mr_ranges["contrast"] = (0.1, 4.0)
 
-    # WEATHER
-    self.transform_registry.register("rain", add_rain)
-    self.relation_registry.register(
-        "rain",
-        RainRelation(epsilon=eps_medium)
-    )
-    self.mr_ranges["rain"] = (0.0, 1.5)
+        # WEATHER
+        self.transform_registry.register("rain", add_rain)
+        self.relation_registry.register(
+            "rain",
+            RainRelation(epsilon=eps_medium)
+        )
+        self.mr_ranges["rain"] = (0.0, 1.5)
 
-    self.transform_registry.register("snow", add_snow)
-    self.relation_registry.register(
-        "snow",
-        SnowRelation(epsilon=eps_medium)
-    )
-    self.mr_ranges["snow"] = (0.0, 1.5)
+        self.transform_registry.register("snow", add_snow)
+        self.relation_registry.register(
+            "snow",
+            SnowRelation(epsilon=eps_medium)
+        )
+        self.mr_ranges["snow"] = (0.0, 1.5)
 
-    self.transform_registry.register("fog", add_fog)
-    self.relation_registry.register(
-        "fog",
-        FogRelation(epsilon=eps_medium)
-    )
-    self.mr_ranges["fog"] = (0.0, 1.5)
+        self.transform_registry.register("fog", add_fog)
+        self.relation_registry.register(
+            "fog",
+            FogRelation(epsilon=eps_medium)
+        )
+        self.mr_ranges["fog"] = (0.0, 1.5)
 
-    # TEMPORAL
-    self.transform_registry.register(
-        "temporal",
-        next_frame_pair
-    )
-    self.relation_registry.register(
-        "temporal",
-        TemporalSmoothnessRelation(delta=eps_small)
-    )
-    self.mr_ranges["temporal"] = (0, 150)
+        # TEMPORAL
+        self.transform_registry.register(
+            "temporal",
+            next_frame_pair
+        )
+        self.relation_registry.register(
+            "temporal",
+            TemporalSmoothnessRelation(delta=eps_small)
+        )
+        self.mr_ranges["temporal"] = (0, 150)
 
-    # BEHAVIORAL
-    self.transform_registry.register(
-        "visibility",
-        reduce_visibility
-    )
-    self.relation_registry.register(
-        "visibility",
-        LessSensitiveRelation(max_change=0.08)
-    )
-    self.mr_ranges["visibility"] = (0.05, 1.5)
+        # BEHAVIORAL
+        self.transform_registry.register(
+            "visibility",
+            reduce_visibility
+        )
+        self.relation_registry.register(
+            "visibility",
+            LessSensitiveRelation(max_change=0.08)
+        )
+        self.mr_ranges["visibility"] = (0.05, 1.5)
 
-    self.transform_registry.register(
-        "darkness",
-        darken
-    )
-    self.relation_registry.register(
-        "darkness",
-        LessSensitiveRelation(max_change=0.08)
-    )
-    self.mr_ranges["darkness"] = (0.05, 1.5)
+        self.transform_registry.register(
+            "darkness",
+            darken
+        )
+        self.relation_registry.register(
+            "darkness",
+            LessSensitiveRelation(max_change=0.08)
+        )
+        self.mr_ranges["darkness"] = (0.05, 1.5)
 
     # ---------- MODEL WRAPPER ----------
     #def _wrap_if_needed(self, model):
@@ -229,25 +228,21 @@ class AutoMR:
     #            x = torch.tensor(x).permute(2, 0, 1).float().unsqueeze(0)
     #            with torch.no_grad():
     #                output = self.model(x)
-    #            return float(output.max().item())
-
-        return TorchWrapper(model)
+    #            return float(output.max().item())    
 
     # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
-        for name in self.relation_registry.list():
+
+    for name in self.relation_registry.list():
 
         relation = self.relation_registry.get(name)
 
         if relation.__class__.__name__ == relation_name:
 
-        if hasattr(relation, "expected"):
-            return relation.expected()
-            if cfg["relation"].__class__.__name__ == relation_name:
-                if hasattr(cfg["relation"], "expected"):
-                    return cfg["relation"].expected()
-        return "Invariant or monotonic behavior expected"
+            if hasattr(relation, "expected"):
+                return relation.expected()
 
+    return "Invariant or monotonic behavior expected"
     # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
@@ -268,6 +263,14 @@ class AutoMR:
             samples,
             comparator=self.comparator
         )
+
+        for r in results:
+            r["severity"] = abs(r["difference"])
+
+        df = self.analyzer.to_dataframe(results)
+        summary = self.analyzer.summary(df)
+
+        return df, summary
 
     # ---------- RUN ALL ----------
     def run_all_mrs(self, input_data, samples=50):
