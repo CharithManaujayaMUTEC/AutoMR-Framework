@@ -214,22 +214,22 @@ class AutoMR:
     self.mr_ranges["darkness"] = (0.05, 1.5)
 
     # ---------- MODEL WRAPPER ----------
-    def _wrap_if_needed(self, model):
+    #def _wrap_if_needed(self, model):
 
-        if hasattr(model, "predict"):
-            return model
+    #    if hasattr(model, "predict"):
+    #        return model
 
-        import torch
+    #    import torch
 
-        class TorchWrapper:
-            def __init__(self, model):
-                self.model = model
+    #    class TorchWrapper:
+    #        def __init__(self, model):
+    #            self.model = model
 
-            def predict(self, x):
-                x = torch.tensor(x).permute(2, 0, 1).float().unsqueeze(0)
-                with torch.no_grad():
-                    output = self.model(x)
-                return float(output.max().item())
+    #        def predict(self, x):
+    #            x = torch.tensor(x).permute(2, 0, 1).float().unsqueeze(0)
+    #            with torch.no_grad():
+    #                output = self.model(x)
+    #            return float(output.max().item())
 
         return TorchWrapper(model)
 
@@ -251,8 +251,9 @@ class AutoMR:
     # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
-        transform = self.transform_registry.get(mr_name)
+        input_data = self.input_handler.preprocess(input_data)
 
+        transform = self.transform_registry.get(mr_name)
         relation = self.relation_registry.get(mr_name)
 
         start, end = self.mr_ranges[mr_name]
@@ -265,16 +266,8 @@ class AutoMR:
             start,
             end,
             samples,
-            comparator=None
+            comparator=self.comparator
         )
-
-        for r in results:
-            r["severity"] = abs(r["difference"])
-
-        df = self.analyzer.to_dataframe(results)
-        summary = self.analyzer.summary(df)
-
-        return df, summary
 
     # ---------- RUN ALL ----------
     def run_all_mrs(self, input_data, samples=50):
@@ -320,6 +313,8 @@ class AutoMR:
             iterator = tqdm(dataset, desc="Running AutoMR")
 
         for i, sample in enumerate(iterator):
+
+            sample = self.input_handler.preprocess(sample)
 
             if sample is None:
                 continue
