@@ -60,7 +60,6 @@ from automr.relations.behavioral_relations import (
 
 
 class AutoMR:
-
         def __init__(
             self,
             model,
@@ -233,16 +232,16 @@ class AutoMR:
     # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
 
-    for name in self.relation_registry.list():
+        for name in self.relation_registry.list():
 
-        relation = self.relation_registry.get(name)
+            relation = self.relation_registry.get(name)
 
-        if relation.__class__.__name__ == relation_name:
+            if relation.__class__.__name__ == relation_name:
 
-            if hasattr(relation, "expected"):
-                return relation.expected()
+                if hasattr(relation, "expected"):
+                    return relation.expected()
 
-    return "Invariant or monotonic behavior expected"
+        return "Invariant or monotonic behavior expected"
     # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
