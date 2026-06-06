@@ -229,6 +229,32 @@ class AutoMR:
     #                output = self.model(x)
     #            return float(output.max().item())    
 
+    # ---------- PLUGIN API ----------
+    def register_transform(
+        self,
+        name,
+        transform,
+        relation,
+        param_range
+    ):
+        self.transform_registry.register(
+            name,
+            transform
+        )
+
+        self.relation_registry.register(
+            name,
+            relation
+        )
+
+        self.mr_ranges[name] = param_range
+
+    def list_transforms(self):
+        return self.transform_registry.list()
+
+    def list_relations(self):
+        return self.relation_registry.list()
+        
     # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
 
