@@ -1,3 +1,4 @@
+import multiprocessing
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 from automr.models import get_wrapper
@@ -57,7 +58,6 @@ from automr.relations.behavioral_relations import (
     MonotonicIncreaseRelation,
     MonotonicDecreaseRelation
 )
-
 
 class AutoMR:
     def __init__(
@@ -338,6 +338,44 @@ class AutoMR:
             results,
             ignore_index=True
         )
+    
+    def _process_single_sample(self, args):
+
+        import pandas as pd
+
+        i, sample, samples_per_mr, df_temp = args
+
+        sample = self.input_handler.preprocess(sample)
+
+        if sample is None:
+            return None
+
+        df_img = self.run_all_mrs(
+            sample,
+            samples=samples_per_mr
+        )
+
+        if df_temp is not None:
+            df = pd.concat(
+                [df_img, df_temp],
+                ignore_index=True
+            )
+        else:
+            df = df_img
+
+        df["sample_id"] = i
+
+        df["expected_behavior"] = df["mr"].apply(
+            self.get_expected
+        )
+
+        df["actual_behavior"] = df["status"].apply(
+            lambda x: "Consistent"
+            if x == "PASS"
+            else "Violation"
+        )
+
+        return df
 
     # ---------- RUN DATASET ----------
     def run_dataset(
@@ -349,47 +387,73 @@ class AutoMR:
         show_progress=False
     ):
         import pandas as pd
-
-        all_results = []
+        from tqdm import tqdm
 
         if max_samples:
             dataset = dataset[:max_samples]
 
-        # Temporal MR once
+        all_results = []
+
         df_temp = None
+
         if include_temporal:
-            df_temp, _ = self.run_mr(dataset, "temporal", samples=samples_per_mr)
+            try:
+                df_temp, _ = self.run_mr(
+                    dataset,
+                    "temporal",
+                    samples=samples_per_mr
+                )
+            except Exception:
+                df_temp = None
 
-        iterator = dataset
+        iterator = enumerate(dataset)
+
         if show_progress:
-            from tqdm import tqdm
-            iterator = tqdm(dataset, desc="Running AutoMR")
+            iterator = tqdm(
+                iterator,
+                total=len(dataset),
+                desc="Running AutoMR"
+            )
 
-        for i, sample in enumerate(iterator):
+        for i, sample in iterator:
 
             sample = self.input_handler.preprocess(sample)
 
             if sample is None:
                 continue
 
-            df_img = self.run_all_mrs(sample, samples=samples_per_mr)
+            df_img = self.run_all_mrs(
+                sample,
+                samples=samples_per_mr
+            )
 
             if df_temp is not None:
-                df = pd.concat([df_img, df_temp], ignore_index=True)
+                df = pd.concat(
+                    [df_img, df_temp],
+                    ignore_index=True
+                )
             else:
                 df = df_img
 
             df["sample_id"] = i
 
-            df["expected_behavior"] = df["mr"].apply(self.get_expected)
+            df["expected_behavior"] = df["mr"].apply(
+                self.get_expected
+            )
+
             df["actual_behavior"] = df["status"].apply(
-                lambda x: "Consistent" if x == "PASS" else "Violation"
+                lambda x:
+                "Consistent"
+                if x == "PASS"
+                else "Violation"
             )
 
             all_results.append(df)
 
-        return pd.concat(all_results, ignore_index=True)
-
+        return pd.concat(
+            all_results,
+            ignore_index=True
+        )
 
     # ---------- ANALYSIS ----------
     def analyze(self, df):
