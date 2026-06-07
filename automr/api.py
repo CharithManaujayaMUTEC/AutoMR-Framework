@@ -54,7 +54,7 @@ from automr.transforms.behavioral_transforms import (
 )
 
 from automr.relations.behavioral_relations import (
-    LessSensitiveRelation,
+    DarkVisibiltyRelation,
     MonotonicIncreaseRelation,
     MonotonicDecreaseRelation
 )
@@ -195,11 +195,19 @@ class AutoMR:
             "visibility",
             reduce_visibility
         )
+        self.relation_registry.register(
+            "visibility",
+            DarkVisibiltyRelation(max_change=0.08)
+        )
         self.mr_ranges["visibility"] = (0.05, 1.5)
 
         self.transform_registry.register(
             "darkness",
             darken
+        )
+        self.relation_registry.register(
+            "darkness",
+            DarkVisibiltyRelation(max_change=0.08)
         )
         self.mr_ranges["darkness"] = (0.05, 1.5)
 

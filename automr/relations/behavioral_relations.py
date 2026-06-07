@@ -1,4 +1,4 @@
-class LessSensitiveRelation:
+class DarkVisibiltyRelation:
     def __init__(self, max_change=0.1):
         self.max_change = max_change
 
