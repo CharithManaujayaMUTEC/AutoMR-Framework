@@ -297,22 +297,47 @@ class AutoMR:
 
         return df, summary
 
-    # ---------- RUN ALL ----------
     def run_all_mrs(self, input_data, samples=50):
 
-        all_results = []
-
-        for name in self.transform_registry.list():
-
-            if name == "temporal":
-                continue
-
-            df, _ = self.run_mr(input_data, name, samples)
-            all_results.append(df)
-
         import pandas as pd
-        return pd.concat(all_results, ignore_index=True)
+        from concurrent.futures import ThreadPoolExecutor
 
+        mr_names = [
+            name
+            for name in self.transform_registry.list()
+            if name != "temporal"
+        ]
+
+        def run_single_mr(name):
+
+            df, _ = self.run_mr(
+                input_data,
+                name,
+                samples
+            )
+
+            return df
+
+        max_workers = min(
+            len(mr_names),
+            8
+        )
+
+        with ThreadPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+
+            results = list(
+                executor.map(
+                    run_single_mr,
+                    mr_names
+                )
+            )
+
+        return pd.concat(
+            results,
+            ignore_index=True
+        )
 
     # ---------- RUN DATASET ----------
     def run_dataset(
