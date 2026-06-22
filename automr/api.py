@@ -1,3 +1,4 @@
+import numpy as np
 import multiprocessing
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
@@ -487,7 +488,8 @@ class AutoMR:
     def save_baseline(
         self,
         dataset,
-        output_dir="results"
+        output_dir="results",
+        labels=None
     ):
 
         baseline = BaselineEvaluator(
@@ -498,7 +500,10 @@ class AutoMR:
             dataset
         )
 
-        original_predictions = []
+        predictions = []
+
+        y_true = []
+        y_pred = []
 
         for idx, sample in enumerate(dataset):
 
@@ -508,24 +513,62 @@ class AutoMR:
                     sample
                 )
 
-                pred = self.model.predict(
-                    sample
+                pred = float(
+                    self.model.predict(sample)
                 )
 
-                original_predictions.append({
+                predictions.append({
                     "sample_id": idx,
-                    "prediction": float(pred)
+                    "prediction": pred
                 })
+
+                if labels is not None:
+
+                    y_true.append(
+                        float(labels[idx])
+                    )
+
+                    y_pred.append(
+                        pred
+                    )
 
             except Exception as e:
 
                 print(
-                    f"Baseline prediction failed for sample {idx}: {e}"
+                    f"Baseline failed: {idx}"
                 )
 
         baseline.save_predictions(
-            original_predictions
+            predictions
         )
+
+        if labels is not None:
+
+            mse = np.mean(
+                (
+                    np.array(y_true) -
+                    np.array(y_pred)
+                ) ** 2
+            )
+
+            mae = np.mean(
+                np.abs(
+                    np.array(y_true) -
+                    np.array(y_pred)
+                )
+            )
+
+            rmse = np.sqrt(mse)
+
+            metrics = {
+                "mae": float(mae),
+                "mse": float(mse),
+                "rmse": float(rmse)
+            }
+
+            baseline.save_metrics(
+                metrics
+            )
 
     # ---------- FULL PIPELINE ----------
     def run_full_test(

@@ -1,5 +1,7 @@
 import json
 import pandas as pd
+import numpy as np
+from pathlib import Path
 from pathlib import Path
 
 
@@ -40,3 +42,31 @@ class BaselineEvaluator:
                 f,
                 indent=4
             )
+
+    def save_metrics(self, metrics):
+
+        with open(
+            self.output_dir /
+            "baseline_metrics.json",
+            "w"
+        ) as f:
+
+            json.dump(
+                metrics,
+                f,
+                indent=4
+            )
+
+    def save_model_summary(
+        self,
+        summary_text
+    ):
+
+        with open(
+            self.output_dir /
+            "model_summary.txt",
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(summary_text)
