@@ -273,7 +273,7 @@ class AutoMR:
     # ---------- RUN SINGLE ----------
     def run_mr(self, input_data, mr_name, samples=50):
 
-        input_data = self.input_handler.preprocess(input_data)
+        #input_data = self.input_handler.preprocess(input_data)
 
         transform = self.transform_registry.get(mr_name)
         relation = self.relation_registry.get(mr_name)
@@ -347,10 +347,10 @@ class AutoMR:
 
         i, sample, samples_per_mr, df_temp = args
 
-        sample = self.input_handler.preprocess(sample)
+        #sample = self.input_handler.preprocess(sample)
 
-        if sample is None:
-            return None
+        #if sample is None:
+        #    return None
 
         df_img = self.run_all_mrs(
             sample,
@@ -419,10 +419,10 @@ class AutoMR:
 
         for i, sample in iterator:
 
-            sample = self.input_handler.preprocess(sample)
+            #sample = self.input_handler.preprocess(sample)
 
-            if sample is None:
-                continue
+            #if sample is None:
+            #    continue
 
             df_img = self.run_all_mrs(
                 sample,
@@ -509,9 +509,9 @@ class AutoMR:
 
             try:
 
-                sample = self.input_handler.preprocess(
-                    sample
-                )
+                #sample = self.input_handler.preprocess(
+                #    sample
+                #)
 
                 pred = float(
                     self.model.predict(sample)
@@ -617,7 +617,7 @@ class AutoMR:
         self.save_model_summary(
             output_dir
         )
-        
+
         self.save_baseline(
             dataset,
             output_dir
