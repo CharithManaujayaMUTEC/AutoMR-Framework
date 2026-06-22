@@ -16,6 +16,8 @@ class RangeTester:
         comparator
     ):
 
+        image_saver=None
+
         values = self.generate_range(
             start,
             end,
@@ -86,6 +88,19 @@ class RangeTester:
                 input_data,
                 v
             )
+
+            if image_saver is not None:
+
+                try:
+
+                    image_saver.save(
+                        relation.__class__.__name__,
+                        input_data,
+                        transformed
+                    )
+
+                except Exception:
+                    pass
 
             transformed_images.append(
                 transformed

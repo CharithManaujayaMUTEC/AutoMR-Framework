@@ -11,6 +11,7 @@ from automr.registry import (
 )
 from automr.evaluation import BaselineEvaluator
 from automr.logging import AutoMRLogger
+from automr.verification import TransformationSaver
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -71,6 +72,7 @@ class AutoMR:
         epsilon=0.05,
         strict=True
     ):
+        self.image_saver = TransformationSaver()
         self.logger = AutoMRLogger()
         self.input_handler = get_handler(input_type)
         self.model = get_wrapper(model)
@@ -290,7 +292,8 @@ class AutoMR:
             start,
             end,
             samples,
-            comparator=self.comparator
+            comparator=self.comparator,
+            image_saver=self.image_saver
         )
 
         for r in results:
