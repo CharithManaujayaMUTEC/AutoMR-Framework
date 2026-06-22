@@ -570,6 +570,38 @@ class AutoMR:
                 metrics
             )
 
+    def save_model_summary(
+        self,
+        output_dir="results"
+    ):
+
+        try:
+
+            model = self.model.model
+
+            lines = []
+
+            model.summary(
+                print_fn=lambda x:
+                lines.append(x)
+            )
+
+            text = "\n".join(lines)
+
+        except Exception:
+
+            text = str(
+                type(self.model)
+            )
+
+        baseline = BaselineEvaluator(
+            output_dir
+        )
+
+        baseline.save_model_summary(
+            text
+        )
+
     # ---------- FULL PIPELINE ----------
     def run_full_test(
         self,
@@ -582,9 +614,10 @@ class AutoMR:
         verbose=True
     ):
 
-        # ====================================
-        # SAVE BASELINE BEFORE MT
-        # ====================================
+        self.save_model_summary(
+            output_dir
+        )
+        
         self.save_baseline(
             dataset,
             output_dir
