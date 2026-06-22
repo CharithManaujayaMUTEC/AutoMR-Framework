@@ -8,6 +8,7 @@ from automr.registry import (
     TransformationRegistry,
     RelationRegistry
 )
+from automr.evaluation import BaselineEvaluator
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -483,6 +484,48 @@ class AutoMR:
             for k, v in results["regions"].items():
                 f.write(f"{k}: {v}\n")
 
+    def save_baseline(
+        self,
+        dataset,
+        output_dir="results"
+    ):
+
+        baseline = BaselineEvaluator(
+            output_dir
+        )
+
+        baseline.save_dataset_info(
+            dataset
+        )
+
+        original_predictions = []
+
+        for idx, sample in enumerate(dataset):
+
+            try:
+
+                sample = self.input_handler.preprocess(
+                    sample
+                )
+
+                pred = self.model.predict(
+                    sample
+                )
+
+                original_predictions.append({
+                    "sample_id": idx,
+                    "prediction": float(pred)
+                })
+
+            except Exception as e:
+
+                print(
+                    f"Baseline prediction failed for sample {idx}: {e}"
+                )
+
+        baseline.save_predictions(
+            original_predictions
+        )
 
     # ---------- FULL PIPELINE ----------
     def run_full_test(
@@ -495,6 +538,15 @@ class AutoMR:
         output_dir="results",
         verbose=True
     ):
+
+        # ====================================
+        # SAVE BASELINE BEFORE MT
+        # ====================================
+        self.save_baseline(
+            dataset,
+            output_dir
+        )
+
         df = self.run_dataset(
             dataset,
             max_samples=max_samples,
@@ -505,11 +557,17 @@ class AutoMR:
         results = self.analyze(df)
 
         if save:
-            self.save_results(df, results, output_dir)
+            self.save_results(
+                df,
+                results,
+                output_dir
+            )
 
         if verbose:
+
             print("\n=== AutoMR Results ===")
             print(results["failure_summary"])
+
             print("\n--- Severity ---")
             print(results["severity_summary"])
 
