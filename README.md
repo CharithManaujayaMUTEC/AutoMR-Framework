@@ -150,6 +150,11 @@ output = model.predict(input)
 ### Input-agnostic
 
 Accepts any input type — images, sequences, tabular data, or custom formats. Transformations are applied modularly and do not depend on input structure.
+AutoMR does not perform preprocessing.
+
+Users must provide inputs in the format expected by their model.
+
+This ensures AutoMR evaluates the original model pipeline without modification.
 
 ### Modular architecture
 
