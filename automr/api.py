@@ -10,6 +10,7 @@ from automr.registry import (
     RelationRegistry
 )
 from automr.evaluation import BaselineEvaluator
+from automr.logging import AutoMRLogger
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -70,6 +71,7 @@ class AutoMR:
         epsilon=0.05,
         strict=True
     ):
+        self.logger = AutoMRLogger()
         self.input_handler = get_handler(input_type)
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
@@ -293,6 +295,14 @@ class AutoMR:
 
         for r in results:
             r["severity"] = abs(r["difference"])
+            self.logger.log(
+                    f"MR={mr_name} "
+                    f"param={r['param']} "
+                    f"orig={r['original']} "
+                    f"trans={r['transformed']} "
+                    f"diff={r['difference']} "
+                    f"pass={r['passed']}"
+                )
 
         df = self.analyzer.to_dataframe(results)
         summary = self.analyzer.summary(df)

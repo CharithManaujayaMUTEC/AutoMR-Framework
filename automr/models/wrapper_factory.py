@@ -2,11 +2,21 @@ from .tensorflow_wrapper import TensorFlowWrapper
 from .pytorch_wrapper import PyTorchWrapper
 from .sklearn_wrapper import SklearnWrapper
 from .custom_wrapper import CustomWrapper
-
+from .onnx_wrapper import ONNXWrapper
 
 def get_wrapper(model):
 
-    module = model.__class__.__module__.lower()
+    if isinstance(model, str):
+
+        if model.lower().endswith(
+            ".onnx"
+        ):
+            return ONNXWrapper(model)
+
+    module = (
+        model.__class__.__module__
+        .lower()
+    )
 
     if "tensorflow" in module or "keras" in module:
         return TensorFlowWrapper(model)
