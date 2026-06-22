@@ -70,3 +70,29 @@ class BaselineEvaluator:
         ) as f:
 
             f.write(summary_text)
+
+    def save_basic_metrics(
+        self,
+        predictions
+    ):
+
+        preds = np.array(predictions)
+
+        metrics = {
+            "num_samples": int(len(preds)),
+            "mean_prediction": float(np.mean(preds)),
+            "std_prediction": float(np.std(preds)),
+            "min_prediction": float(np.min(preds)),
+            "max_prediction": float(np.max(preds))
+        }
+
+        with open(
+            self.output_dir / "baseline_metrics.json",
+            "w"
+        ) as f:
+
+            json.dump(
+                metrics,
+                f,
+                indent=4
+            )

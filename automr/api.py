@@ -555,6 +555,15 @@ class AutoMR:
             predictions
         )
 
+        prediction_values = [
+            p["prediction"]
+            for p in original_predictions
+        ]
+
+        baseline.save_basic_metrics(
+            prediction_values
+        )
+
         if labels is not None:
 
             mse = np.mean(
