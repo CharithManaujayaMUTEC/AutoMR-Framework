@@ -23,6 +23,7 @@ class TransformationSaver:
     def save(
         self,
         mr_name,
+        param,
         original,
         transformed
     ):
@@ -48,7 +49,7 @@ class TransformationSaver:
         cv2.imwrite(
             os.path.join(
                 mr_dir,
-                f"{current}_original.jpg"
+                f"{mr_name}_{param:.2f}_original.jpg"
             ),
             original
         )
@@ -56,7 +57,7 @@ class TransformationSaver:
         cv2.imwrite(
             os.path.join(
                 mr_dir,
-                f"{current}_transformed.jpg"
+                f"{mr_name}_{param:.2f}_transformed.jpg"
             ),
             transformed
         )
