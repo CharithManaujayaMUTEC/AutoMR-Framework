@@ -486,6 +486,7 @@ class AutoMR:
             "regions": analyzer.failure_regions(df),
             "range_summary": analyzer.range_summary(df),
             "range_analysis": analyzer.range_analysis(df),
+            "prediction_trace": self.analyzer.prediction_trace(df)
         }
 
 
@@ -500,6 +501,7 @@ class AutoMR:
         results["worst_cases"].to_csv(f"{output_dir}/worst_cases.csv", index=False)
         results["range_summary"].to_csv(f"{output_dir}/range_summary.csv",index=False)
         results["range_analysis"].to_csv(f"{output_dir}/range_analysis.csv",index=False)
+        results["prediction_trace"].to_csv(f"{output_dir}/prediction_trace.csv",index=False)
 
         with open(f"{output_dir}/failure_regions.txt", "w") as f:
             for k, v in results["regions"].items():

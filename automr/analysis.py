@@ -29,3 +29,18 @@ class Analyzer:
             "failed": int(failed),
             "pass_rate": float(passed / total * 100)
         }
+    
+    def prediction_trace(self, df):
+
+        cols = [
+            "sample_id",
+            "mr",
+            "param",
+            "original",
+            "transformed",
+            "difference",
+            "percent_change",
+            "passed"
+        ]
+
+        return df[cols].copy()
