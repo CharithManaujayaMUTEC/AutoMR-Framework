@@ -241,14 +241,14 @@ class RangeTester:
 
         return results
     
-    def generate_range(self, start, end, num_samples):
-        return np.linspace(start, end, num_samples)
+#    def generate_range(self, start, end, num_samples):
+#        return np.linspace(start, end, num_samples)
 
-    def run_range(self, model, input_data, transform_fn, relation,
-                  start, end, num_samples, comparator):
+#    def run_range(self, model, input_data, transform_fn, relation,
+#                  start, end, num_samples, comparator):
 
         #  FIX: everything below must be indented
-        values = self.generate_range(start, end, num_samples)
+"""         values = self.generate_range(start, end, num_samples)
         results = []
 
         is_temporal = hasattr(relation, "type") and relation.type() == "temporal"
@@ -324,4 +324,4 @@ class RangeTester:
                 "passed": bool(passed)
             })
 
-        return results
+        return results """
