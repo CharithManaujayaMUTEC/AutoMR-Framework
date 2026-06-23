@@ -103,6 +103,7 @@ class TransformationSaver:
         )
 
         self.counts[mr_name] = current + 1
+        self.export_summary()
 
     def get_metadata(self):
 
@@ -120,3 +121,32 @@ class TransformationSaver:
             os.remove(
                 self.metadata_file
             )
+
+    def export_summary(self):
+
+        if not self.metadata:
+            return
+
+        df = pd.DataFrame(self.metadata)
+
+        summary = (
+            df.groupby("mr")
+            .agg({
+                "parameter": ["min", "max", "count"],
+                "difference": ["mean", "max"]
+            })
+            .round(6)
+        )
+
+        summary.columns = [
+            "_".join(col)
+            for col in summary.columns
+        ]
+
+        summary.reset_index().to_csv(
+            os.path.join(
+                self.output_dir,
+                "transformation_summary.csv"
+            ),
+            index=False
+        )
