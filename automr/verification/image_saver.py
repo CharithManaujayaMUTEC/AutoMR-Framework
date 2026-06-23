@@ -1,5 +1,6 @@
 import os
 import cv2
+import pandas as pd
 
 
 class TransformationSaver:
@@ -15,6 +16,13 @@ class TransformationSaver:
 
         self.counts = {}
 
+        self.metadata = []
+
+        self.metadata_file = os.path.join(
+            self.output_dir,
+            "metadata.csv"
+        )
+
         os.makedirs(
             output_dir,
             exist_ok=True
@@ -25,7 +33,10 @@ class TransformationSaver:
         mr_name,
         param,
         original,
-        transformed
+        transformed,
+        prediction_original=None,
+        prediction_transformed=None,
+        difference=None
     ):
 
         current = self.counts.get(
@@ -46,20 +57,66 @@ class TransformationSaver:
             exist_ok=True
         )
 
+        original_filename = (
+            f"{mr_name}_{param:.2f}_original.jpg"
+        )
+
+        transformed_filename = (
+            f"{mr_name}_{param:.2f}_transformed.jpg"
+        )
+
+        original_file = os.path.join(
+            mr_dir,
+            original_filename
+        )
+
+        transformed_file = os.path.join(
+            mr_dir,
+            transformed_filename
+        )
+
         cv2.imwrite(
-            os.path.join(
-                mr_dir,
-                f"{mr_name}_{param:.2f}_original.jpg"
-            ),
+            original_file,
             original
         )
 
         cv2.imwrite(
-            os.path.join(
-                mr_dir,
-                f"{mr_name}_{param:.2f}_transformed.jpg"
-            ),
+            transformed_file,
             transformed
         )
 
+        self.metadata.append({
+            "mr": mr_name,
+            "parameter": float(param),
+            "original_file": original_file,
+            "transformed_file": transformed_file,
+            "prediction_original": prediction_original,
+            "prediction_transformed": prediction_transformed,
+            "difference": difference
+        })
+
+        pd.DataFrame(
+            self.metadata
+        ).to_csv(
+            self.metadata_file,
+            index=False
+        )
+
         self.counts[mr_name] = current + 1
+
+    def get_metadata(self):
+
+        return pd.DataFrame(
+            self.metadata
+        )
+
+    def clear_metadata(self):
+
+        self.metadata = []
+
+        if os.path.exists(
+            self.metadata_file
+        ):
+            os.remove(
+                self.metadata_file
+            )

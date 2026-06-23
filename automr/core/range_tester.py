@@ -96,9 +96,13 @@ class RangeTester:
                 try:
 
                     image_saver.save(
-                        relation.__class__.__name__,
-                        input_data,
-                        transformed
+                        mr_name=relation.__class__.__name__,
+                        param=v,
+                        original=input_data,
+                        transformed=transformed,
+                        prediction_original=original,
+                        prediction_transformed=output,
+                        difference=diff
                     )
 
                 except Exception:
