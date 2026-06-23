@@ -3,12 +3,16 @@ import time
 import numpy as np
 import cv2
 import multiprocessing
+import pickle
+import os
+
 
 # --------------------------------------------------
 # USER PATHS (update these)
 # --------------------------------------------------
 sys.path.append("Path/to/your/dataset")
 sys.path.append("Path/to/your/model")
+
 
 from load_data import load_images
 from load_model import get_model
@@ -104,6 +108,7 @@ if __name__ == "__main__":
         )
     else:
         print("⚠ Dataset is empty")
+        sys.exit()
 
     # --------------------------------------------------
     # AUTOMR
@@ -113,7 +118,8 @@ if __name__ == "__main__":
         task="regression",
         input_type="image",
         epsilon=0.05,
-        strict=True
+        strict=True,
+        range_threshold=5.0
     )
 
     print("\nRegistered Transformations:")
@@ -123,14 +129,21 @@ if __name__ == "__main__":
     print(automr.list_relations())
 
     # --------------------------------------------------
-    # RUN TEST
+    # VALIDATION RUN
     # --------------------------------------------------
+    print("\n===================================")
+    print("Running AutoMR Validation Suite")
+    print("===================================")
+    print("Original Samples: 10")
+    print("Samples per MR : 5")
+    print("Range Threshold: 5%\n")
+
     start_time = time.time()
 
     df, results = automr.run_full_test(
         dataset=dataset,
-        max_samples=2047,      # user can change
-        samples_per_mr=5,      # user can change
+        max_samples=10,          # Validation run
+        samples_per_mr=5,
         show_progress=True,
         save=True,
         output_dir="results",
@@ -144,12 +157,78 @@ if __name__ == "__main__":
     # --------------------------------------------------
     runtime = end_time - start_time
 
-    print("\n✅ DONE")
+    print("\n✅ VALIDATION COMPLETE")
     print(f"Runtime: {runtime:.2f} seconds")
 
-    print("\nResults saved to:")
-    print("results/automr_results.csv")
-    print("results/failure_summary.csv")
-    print("results/severity_summary.csv")
-    print("results/worst_cases.csv")
-    print("results/failure_regions.txt")
+    print("\nGenerated Reports")
+    print("--------------------------------")
+
+    reports = [
+        "baseline_metrics.json",
+        "model_summary.txt",
+        "dataset_info.json",
+        "original_predictions.csv",
+        "automr_results.csv",
+        "prediction_trace.csv",
+        "range_summary.csv",
+        "range_analysis.csv",
+        "failure_summary.csv",
+        "severity_summary.csv",
+        "worst_cases.csv",
+        "failure_regions.txt"
+    ]
+
+    for report in reports:
+
+        path = f"results/{report}"
+
+        if os.path.exists(path):
+            print(f"✅ {path}")
+        else:
+            print(f"❌ {path}")
+
+    print("\nGenerated Verification Artifacts")
+    print("--------------------------------")
+
+    verification_files = [
+        "results/transformation_samples/metadata.csv",
+        "results/transformation_samples/transformation_summary.csv"
+    ]
+
+    for file in verification_files:
+
+        if os.path.exists(file):
+            print(f"✅ {file}")
+        else:
+            print(f"❌ {file}")
+
+    # --------------------------------------------------
+    # QUICK RESULTS OVERVIEW
+    # --------------------------------------------------
+    print("\nResults Overview")
+    print("--------------------------------")
+
+    try:
+        print(f"Total MT Results: {len(df)}")
+        print(f"Unique MRs Tested: {df['mr'].nunique()}")
+        print(f"Pass Rate: {(df['passed'].mean()*100):.2f}%")
+    except Exception:
+        pass
+
+    # --------------------------------------------------
+    # PICKLE CHECK
+    # --------------------------------------------------
+    try:
+
+        pickle.dumps(automr)
+
+        print("\n✅ PICKLE OK")
+
+    except Exception as e:
+
+        print("\n❌ PICKLE FAILED")
+        print(e)
+
+    print("\n===================================")
+    print("AutoMR Validation Finished")
+    print("===================================")
