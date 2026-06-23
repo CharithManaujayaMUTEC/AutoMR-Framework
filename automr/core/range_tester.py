@@ -13,12 +13,10 @@ class RangeTester:
         start,
         end,
         num_samples,
-        comparator,
+        comparator=None,
         image_saver=None,
         range_threshold=5.0
     ):
-
-        image_saver=None
 
         values = self.generate_range(
             start,
@@ -53,8 +51,8 @@ class RangeTester:
                 if x1 is None or x2 is None:
                     continue
 
-                y1 = model.predict(x1)
-                y2 = model.predict(x2)
+                y1 = float(model.predict(x1))
+                y2 = float(model.predict(x2))
 
                 diff = abs(y1 - y2)
 
@@ -91,55 +89,73 @@ class RangeTester:
                 v
             )
 
+            transformed_images.append(
+                transformed
+            )
+
+            # Save verification image
             if image_saver is not None:
 
                 try:
 
                     image_saver.save(
                         mr_name=relation.__class__.__name__,
-                        param=v,
+                        param=float(v),
                         original=input_data,
-                        transformed=transformed,
-                        prediction_original=original,
-                        prediction_transformed=output,
-                        difference=diff
+                        transformed=transformed
                     )
 
                 except Exception:
                     pass
 
-            transformed_images.append(
-                transformed
-            )
-
+        # ==================================================
         # BATCH PREDICTION
+        # ==================================================
         outputs = model.predict_batch(
             transformed_images
         )
 
-        outputs = [float(o) for o in outputs]
+        outputs = [
+            float(o)
+            for o in outputs
+        ]
+
+        if len(outputs) == 0:
+            return results
 
         min_output = min(outputs)
         max_output = max(outputs)
 
-        range_change = max_output - min_output
+        range_change = (
+            max_output - min_output
+        )
 
         range_percent_change = (
             abs(range_change)
-            / (abs(original) + 1e-6)
+            /
+            (abs(original) + 1e-6)
         ) * 100
 
         range_passed = (
-            range_percent_change <= range_threshold
+            range_percent_change
+            <= range_threshold
         )
 
+        # ==================================================
+        # ANALYZE RESULTS
+        # ==================================================
         for v, output in zip(values, outputs):
 
             output = float(output)
 
             severity_weight = (
-                1 +
-                (abs(v) / (abs(end) + 1e-6))
+                1
+                +
+                (
+                    abs(v)
+                    /
+                    (abs(end) + 1e-6)
+                )
             )
 
             base_pass = relation.check(
@@ -158,32 +174,50 @@ class RangeTester:
             )
 
             if severity_weight > 1.5:
+
                 passed = (
                     base_pass
-                    and abs(output - original)
+                    and
+                    abs(output - original)
                     < (0.5 * tolerance)
                 )
+
             else:
+
                 passed = base_pass
 
-            # hard fail
-            if abs(output - original) > 0.01:
+            # Hard fail
+            if abs(
+                output - original
+            ) > 0.01:
+
                 passed = False
 
             if comparator:
+
                 diff, _ = comparator.compare(
                     original,
                     output
                 )
+
             else:
-                diff = output - original
+
+                diff = (
+                    output - original
+                )
 
             pct = (
-                diff /
+                diff
+                /
                 (abs(original) + 1e-6)
             ) * 100
 
+            # Range threshold fail
+            if abs(pct) > range_threshold:
+                passed = False
+
             results.append({
+
                 "mr": relation.__class__.__name__,
                 "param": float(v),
                 "original": float(original),
@@ -191,13 +225,22 @@ class RangeTester:
                 "difference": float(diff),
                 "percent_change": float(pct),
                 "passed": bool(passed),
-                "range_change": float(range_change),
-                "range_percent_change": float(range_percent_change),
-                "range_passed": bool(range_passed)
+
+                "range_change": float(
+                    range_change
+                ),
+
+                "range_percent_change": float(
+                    range_percent_change
+                ),
+
+                "range_passed": bool(
+                    range_passed
+                )
             })
 
         return results
-
+    
     def generate_range(self, start, end, num_samples):
         return np.linspace(start, end, num_samples)
 
