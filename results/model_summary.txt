@@ -1,0 +1,1 @@
+<class 'automr.models.custom_wrapper.CustomWrapper'>
