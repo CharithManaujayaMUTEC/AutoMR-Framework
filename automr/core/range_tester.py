@@ -111,6 +111,22 @@ class RangeTester:
             transformed_images
         )
 
+        outputs = [float(o) for o in outputs]
+
+        min_output = min(outputs)
+        max_output = max(outputs)
+
+        range_change = max_output - min_output
+
+        range_percent_change = (
+            abs(range_change)
+            / (abs(original) + 1e-6)
+        ) * 100
+
+        range_passed = (
+            range_percent_change <= 5.0
+        )
+
         for v, output in zip(values, outputs):
 
             output = float(output)
@@ -168,7 +184,10 @@ class RangeTester:
                 "transformed": float(output),
                 "difference": float(diff),
                 "percent_change": float(pct),
-                "passed": bool(passed)
+                "passed": bool(passed),
+                "range_change": float(range_change),
+                "range_percent_change": float(range_percent_change),
+                "range_passed": bool(range_passed)
             })
 
         return results
