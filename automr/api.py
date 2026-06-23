@@ -70,7 +70,8 @@ class AutoMR:
         task="regression",
         input_type="image",
         epsilon=0.05,
-        strict=True
+        strict=True,
+        range_threshold=5.0
     ):
         self.image_saver = TransformationSaver()
         self.logger = AutoMRLogger()
@@ -82,6 +83,7 @@ class AutoMR:
             task=task,
             epsilon=epsilon
         )
+        self.range_threshold = range_threshold
 
         #  STRICT MODE
         if strict:
@@ -293,7 +295,8 @@ class AutoMR:
             end,
             samples,
             comparator=self.comparator,
-            image_saver=self.image_saver
+            image_saver=self.image_saver,
+            range_threshold=self.range_threshold
         )
 
         for r in results:

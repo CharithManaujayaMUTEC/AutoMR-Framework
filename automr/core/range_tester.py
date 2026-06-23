@@ -13,7 +13,9 @@ class RangeTester:
         start,
         end,
         num_samples,
-        comparator
+        comparator,
+        image_saver=None,
+        range_threshold=5.0
     ):
 
         image_saver=None
@@ -124,7 +126,7 @@ class RangeTester:
         ) * 100
 
         range_passed = (
-            range_percent_change <= 5.0
+            range_percent_change <= range_threshold
         )
 
         for v, output in zip(values, outputs):
