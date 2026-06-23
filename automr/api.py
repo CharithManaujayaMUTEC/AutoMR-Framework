@@ -485,6 +485,7 @@ class AutoMR:
             "worst_cases": analyzer.worst_cases(df, top_k=10),
             "regions": analyzer.failure_regions(df),
             "range_summary": analyzer.range_summary(df),
+            "range_analysis": analyzer.range_analysis(df),
         }
 
 
@@ -498,6 +499,7 @@ class AutoMR:
         results["severity_summary"].to_csv(f"{output_dir}/severity_summary.csv")
         results["worst_cases"].to_csv(f"{output_dir}/worst_cases.csv", index=False)
         results["range_summary"].to_csv(f"{output_dir}/range_summary.csv",index=False)
+        results["range_analysis"].to_csv(f"{output_dir}/range_analysis.csv",index=False)
 
         with open(f"{output_dir}/failure_regions.txt", "w") as f:
             for k, v in results["regions"].items():

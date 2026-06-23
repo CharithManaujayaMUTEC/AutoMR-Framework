@@ -77,3 +77,16 @@ class FailureAnalyzer:
             .drop_duplicates()
             .reset_index(drop=True)
         )
+    
+    def range_analysis(self, df):
+
+        return (
+            df.groupby("mr")
+            .agg({
+                "range_change": "max",
+                "range_percent_change": "max",
+                "range_passed": "first",
+                "difference": ["mean", "max"]
+            })
+            .reset_index()
+        )
