@@ -13,6 +13,8 @@ from .dashboard_utils import (
     update_summary
 )
 
+from .control_panel import DashboardConfig
+from .graph_panel import draw_summary_panel
 
 class LiveDashboard:
 
@@ -20,8 +22,6 @@ class LiveDashboard:
         self,
         automr,
         model,
-        selected_mrs=None,
-        custom_ranges=None,
         frame_skip=30,
         save_results=True,
         save_violations=True,
@@ -31,20 +31,8 @@ class LiveDashboard:
         self.automr = automr
         self.model = model
 
-        self.selected_mrs = (
-            selected_mrs
-            if selected_mrs is not None
-            else [
-                mr
-                for mr in automr.list_transforms()
-                if mr != "temporal"
-            ]
-        )
-
-        self.custom_ranges = (
-            custom_ranges
-            if custom_ranges is not None
-            else {}
+        self.config = DashboardConfig(
+            automr
         )
 
         self.frame_skip = frame_skip
@@ -69,25 +57,131 @@ class LiveDashboard:
         mr_name
     ):
 
-        if mr_name in self.custom_ranges:
+        settings = (
+            self.config
+            .mr_ranges[mr_name]
+        )
 
-            start, end, num_tests = (
-                self.custom_ranges[mr_name]
-            )
+        return np.linspace(
+            settings["start"],
+            settings["end"],
+            settings["tests"]
+        )
+    
+    def update_controls(self):
+
+        tests = cv2.getTrackbarPos(
+            "Tests",
+            "AutoMR Live Dashboard"
+        )
+
+        frame_skip = cv2.getTrackbarPos(
+            "FrameSkip",
+            "AutoMR Live Dashboard"
+        )
+
+        range_scale = cv2.getTrackbarPos(
+            "Range %",
+            "AutoMR Live Dashboard"
+        )
+
+        mr_index = cv2.getTrackbarPos(
+            "MR Index",
+            "AutoMR Live Dashboard"
+        )
+
+        enabled = cv2.getTrackbarPos(
+            "Enable",
+            "AutoMR Live Dashboard"
+        )
+
+        mrs = [
+            mr
+            for mr in self.automr.list_transforms()
+            if mr != "temporal"
+        ]
+
+        self.config.current_mr = mrs[mr_index]
+
+        current = self.config.current_mr
+
+        if enabled == 1:
+
+            if current not in self.config.selected_mrs:
+                self.config.selected_mrs.append(current)
 
         else:
 
-            start, end = (
-                self.automr.mr_ranges[mr_name]
-            )
+            if current in self.config.selected_mrs:
+                self.config.selected_mrs.remove(current)
 
-            num_tests = 5
-
-        return np.linspace(
-            start,
-            end,
-            num_tests
+        self.frame_skip = max(
+            frame_skip,
+            1
         )
+
+        current = (
+            self.config.current_mr
+        )
+
+        start, end = (
+            self.automr.mr_ranges[current]
+        )
+
+        scaled_end = (
+            start +
+            ((end - start) *
+            range_scale / 100.0)
+        )
+
+        self.config.mr_ranges[
+            current
+        ]["start"] = start
+
+        self.config.mr_ranges[
+            current
+        ]["end"] = scaled_end
+
+        self.config.mr_ranges[
+            current
+        ]["tests"] = max(
+            tests,
+            1
+        )
+
+    def handle_keys(self, key):
+
+        mapping = {
+            ord("1"): "brightness",
+            ord("2"): "rotation",
+            ord("3"): "translation",
+            ord("4"): "noise",
+            ord("5"): "blur",
+            ord("6"): "contrast",
+            ord("7"): "rain",
+            ord("8"): "snow",
+            ord("9"): "fog",
+            ord("v"): "visibility",
+            ord("d"): "darkness"
+        }
+
+        if key in mapping:
+
+            mr = mapping[key]
+
+            self.config.current_mr = mr
+
+            if mr in self.config.selected_mrs:
+
+                self.config.selected_mrs.remove(
+                    mr
+                )
+
+            else:
+
+                self.config.selected_mrs.append(
+                    mr
+                )
 
     def process_frame(
         self,
@@ -117,7 +211,10 @@ class LiveDashboard:
             original_tile
         )
 
-        for mr_name in self.selected_mrs:
+        if frame_id % self.frame_skip != 0:
+            return tiles
+
+        for mr_name in self.config.selected_mrs:
 
             try:
 
@@ -214,7 +311,11 @@ class LiveDashboard:
                             severity
                     })
 
-                    best_tile = transformed
+                    worst_diff = -1
+
+                    if diff > worst_diff:
+                        worst_diff = diff
+                        best_tile = transformed
 
                 if best_tile is not None:
 
@@ -286,6 +387,17 @@ class LiveDashboard:
                 np.hstack(row)
             )
 
+        if len(rows) == 0:
+
+            return np.zeros(
+                (
+                    self.CELL_H,
+                    self.CELL_W,
+                    3
+                ),
+                dtype=np.uint8
+            )
+
         return np.vstack(rows)
 
     def run(
@@ -297,7 +409,61 @@ class LiveDashboard:
             video_source
         )
 
+        if not cap.isOpened():
+
+            raise RuntimeError(
+                f"Cannot open video source: {video_source}"
+            )
+
         frame_id = 0
+
+        cv2.namedWindow(
+            "AutoMR Live Dashboard"
+        )
+
+        cv2.createTrackbar(
+            "MR Index",
+            "AutoMR Live Dashboard",
+            0,
+            len([
+                mr
+                for mr in self.automr.list_transforms()
+                if mr != "temporal"
+            ]) - 1,
+            lambda x: None
+        )
+
+        cv2.createTrackbar(
+            "Enable",
+            "AutoMR Live Dashboard",
+            1,
+            1,
+            lambda x: None
+        )
+
+        cv2.createTrackbar(
+            "Tests",
+            "AutoMR Live Dashboard",
+            5,
+            100,
+            lambda x: None
+        )
+
+        cv2.createTrackbar(
+            "FrameSkip",
+            "AutoMR Live Dashboard",
+            30,
+            100,
+            lambda x: None
+        )
+
+        cv2.createTrackbar(
+            "Range %",
+            "AutoMR Live Dashboard",
+            50,
+            100,
+            lambda x: None
+        )
 
         while True:
 
@@ -305,6 +471,8 @@ class LiveDashboard:
 
             if not ret:
                 break
+
+            self.update_controls()
 
             frame_id += 1
 
@@ -319,13 +487,55 @@ class LiveDashboard:
                 )
             )
 
+            failure_rate = 0
+
+            if self.total_tests > 0:
+
+                failure_rate = (
+                    self.total_failures /
+                    self.total_tests
+                ) * 100
+
+            summary_panel = draw_summary_panel(
+                400,
+                dashboard.shape[0],
+                self.total_tests,
+                self.total_failures,
+                failure_rate
+            )
+
+            dashboard = np.hstack([
+                dashboard,
+                summary_panel
+            ])
+
             cv2.putText(
                 dashboard,
-                f"Tests:{self.total_tests}  Fails:{self.total_failures}",
-                (20, 30),
+                "1-9/V/D Toggle MRs",
+                (20, 100),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
+                0.6,
+                (255,255,255),
+                1
+            )
+
+            cv2.putText(
+                dashboard,
+                f"Active: {len(self.config.selected_mrs)}",
+                (20, 130),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0,255,0),
+                2
+            )
+
+            cv2.putText(
+                dashboard,
+                f"Current MR: {self.config.current_mr}",
+                (20, 70),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255,255,0),
                 2
             )
 
@@ -350,6 +560,8 @@ class LiveDashboard:
                 )
 
             key = cv2.waitKey(1)
+
+            #self.handle_keys(key)
 
             if key == 27:
                 break

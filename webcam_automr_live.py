@@ -97,49 +97,22 @@ automr = AutoMR(
 
 print("Model loaded")
 
+print("\nDashboard Controls")
+print("-----------------------------")
+print("MR Index    -> Select MR")
+print("Enable      -> Enable/Disable MR")
+print("Tests       -> Number of test cases")
+print("Range %     -> Range scaling")
+print("FrameSkip   -> Processing frequency")
+print("ESC         -> Exit")
+print("-----------------------------")
+
 run_live_dashboard(
-
     automr=automr,
-
     model=model,
-
     video_source=0,
-
-    selected_mrs=[
-
-        "brightness",
-        "rotation",
-        "translation",
-        "noise",
-        "blur",
-        "contrast",
-        "rain",
-        "snow",
-        "fog",
-        "visibility",
-        "darkness"
-    ],
-
-    custom_ranges={
-
-        "brightness": 1.5,
-        "rotation": 15,
-        "translation": 20,
-        "noise": 25,
-        "blur": 5,
-        "contrast": 1.8,
-        "rain": 0.8,
-        "snow": 0.8,
-        "fog": 0.8,
-        "visibility": 0.5,
-        "darkness": 0.5
-    },
-
     frame_skip=30,
-
     save_results=True,
-
     save_violations=True,
-
     output_dir="results/live_dashboard"
 )
