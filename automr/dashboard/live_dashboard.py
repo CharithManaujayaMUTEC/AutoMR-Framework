@@ -1,8 +1,6 @@
-# automr/dashboard/live_dashboard.py
-
 import cv2
 import numpy as np
-import pandas as pd
+
 from datetime import datetime
 
 from .dashboard_utils import (
@@ -66,78 +64,59 @@ class LiveDashboard:
             self.output_dir
         )
 
-    def get_parameter(
+    def get_test_parameters(
         self,
         mr_name
     ):
 
         if mr_name in self.custom_ranges:
-            return self.custom_ranges[mr_name]
 
-        start, end = (
-            self.automr
-            .mr_ranges[mr_name]
+            start, end, num_tests = (
+                self.custom_ranges[mr_name]
+            )
+
+        else:
+
+            start, end = (
+                self.automr.mr_ranges[mr_name]
+            )
+
+            num_tests = 5
+
+        return np.linspace(
+            start,
+            end,
+            num_tests
         )
-
-        return (
-            start + end
-        ) / 2
-
-    def get_failure_rate(self):
-
-        if self.total_tests == 0:
-            return 0.0
-
-        return (
-            self.total_failures
-            /
-            self.total_tests
-        ) * 100
 
     def process_frame(
         self,
         frame,
-        frame_count
+        frame_id
     ):
 
-        current_tiles = []
+        tiles = []
 
         original_pred = float(
             self.model.predict(frame)
         )
 
-        # ---------------------------
-        # ORIGINAL TILE
-        # ---------------------------
         original_tile = frame.copy()
 
         cv2.putText(
             original_tile,
-            "ORIGINAL",
+            f"ORIGINAL {original_pred:.4f}",
             (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
+            0.7,
             (0, 255, 0),
             2
         )
 
-        cv2.putText(
-            original_tile,
-            f"{original_pred:.4f}",
-            (10, 65),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 255, 255),
-            2
-        )
-
-        current_tiles.append(
+        tiles.append(
             original_tile
         )
 
-        # ---------------------------
-        # TRANSFORMATIONS
-        # ---------------------------
         for mr_name in self.selected_mrs:
 
             try:
@@ -148,130 +127,118 @@ class LiveDashboard:
                     .get(mr_name)
                 )
 
-                param = self.get_parameter(
-                    mr_name
-                )
-
-                transformed = transform(
-                    frame.copy(),
-                    param
-                )
-
-                transformed_pred = float(
-                    self.model.predict(
-                        transformed
+                parameters = (
+                    self.get_test_parameters(
+                        mr_name
                     )
                 )
 
-                diff, pct = (
-                    calculate_percent_change(
+                best_tile = None
+
+                for param in parameters:
+
+                    transformed = transform(
+                        frame.copy(),
+                        float(param)
+                    )
+
+                    transformed_pred = float(
+                        self.model.predict(
+                            transformed
+                        )
+                    )
+
+                    diff, pct = (
+                        calculate_percent_change(
+                            original_pred,
+                            transformed_pred
+                        )
+                    )
+
+                    status = evaluate_mr(
+                        self.automr,
+                        mr_name,
                         original_pred,
                         transformed_pred
                     )
-                )
 
-                status = evaluate_mr(
-                    self.automr,
-                    mr_name,
-                    original_pred,
-                    transformed_pred
-                )
+                    severity = get_severity(
+                        diff
+                    )
 
-                severity = get_severity(
-                    diff
-                )
+                    self.total_tests += 1
 
-                self.total_tests += 1
+                    if status == "FAIL":
 
-                if status == "FAIL":
-                    self.total_failures += 1
+                        self.total_failures += 1
 
-                    if self.save_violations:
+                        if self.save_violations:
 
-                        save_violation_image(
-                            self.output_dir,
+                            save_violation_image(
+                                self.output_dir,
+                                mr_name,
+                                frame_id,
+                                transformed
+                            )
+
+                    self.results.append({
+
+                        "timestamp":
+                            datetime.now(),
+
+                        "frame_id":
+                            frame_id,
+
+                        "mr":
                             mr_name,
-                            frame_count,
-                            transformed
-                        )
 
-                self.results.append({
+                        "parameter":
+                            float(param),
 
-                    "timestamp":
-                        datetime.now(),
+                        "original_prediction":
+                            original_pred,
 
-                    "frame_id":
-                        frame_count,
+                        "transformed_prediction":
+                            transformed_pred,
 
-                    "mr":
+                        "difference":
+                            diff,
+
+                        "percent_change":
+                            pct,
+
+                        "status":
+                            status,
+
+                        "severity":
+                            severity
+                    })
+
+                    best_tile = transformed
+
+                if best_tile is not None:
+
+                    cv2.putText(
+                        best_tile,
                         mr_name,
+                        (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 255),
+                        2
+                    )
 
-                    "parameter":
-                        float(param),
-
-                    "original_prediction":
-                        float(original_pred),
-
-                    "transformed_prediction":
-                        float(transformed_pred),
-
-                    "difference":
-                        float(diff),
-
-                    "percent_change":
-                        float(pct),
-
-                    "status":
-                        status,
-
-                    "severity":
-                        severity
-                })
-
-                cv2.putText(
-                    transformed,
-                    mr_name,
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (0, 255, 255),
-                    2
-                )
-
-                cv2.putText(
-                    transformed,
-                    f"{transformed_pred:.4f}",
-                    (10, 65),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 255),
-                    2
-                )
-
-                cv2.putText(
-                    transformed,
-                    status,
-                    (10, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (
-                        (0, 255, 0)
-                        if status == "PASS"
-                        else (0, 0, 255)
-                    ),
-                    2
-                )
-
-                current_tiles.append(
-                    transformed
-                )
+                    tiles.append(
+                        best_tile
+                    )
 
             except Exception as e:
+
                 print(
-                    f"{mr_name} failed: {e}"
+                    f"{mr_name}: {e}"
                 )
 
-        return current_tiles
+        return tiles
 
     def build_dashboard(
         self,
@@ -280,11 +247,11 @@ class LiveDashboard:
 
         resized = []
 
-        for img in tiles:
+        for tile in tiles:
 
             resized.append(
                 cv2.resize(
-                    img,
+                    tile,
                     (
                         self.CELL_W,
                         self.CELL_H
@@ -330,17 +297,7 @@ class LiveDashboard:
             video_source
         )
 
-        if not cap.isOpened():
-
-            raise RuntimeError(
-                f"Cannot open source: "
-                f"{video_source}"
-            )
-
-        frame_count = 0
-
-        print("Dashboard started")
-        print("ESC = Exit")
+        frame_id = 0
 
         while True:
 
@@ -349,11 +306,11 @@ class LiveDashboard:
             if not ret:
                 break
 
-            frame_count += 1
+            frame_id += 1
 
             tiles = self.process_frame(
                 frame,
-                frame_count
+                frame_id
             )
 
             dashboard = (
@@ -362,20 +319,9 @@ class LiveDashboard:
                 )
             )
 
-            failure_rate = (
-                self.get_failure_rate()
-            )
-
             cv2.putText(
                 dashboard,
-                (
-                    f"Tests:"
-                    f"{self.total_tests} "
-                    f"Fails:"
-                    f"{self.total_failures} "
-                    f"Rate:"
-                    f"{failure_rate:.2f}%"
-                ),
+                f"Tests:{self.total_tests}  Fails:{self.total_failures}",
                 (20, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
@@ -389,23 +335,19 @@ class LiveDashboard:
             )
 
             if (
-                frame_count
-                %
-                self.frame_skip
-                == 0
+                frame_id %
+                self.frame_skip == 0
             ):
 
-                if self.save_results:
+                save_results_csv(
+                    self.results,
+                    self.output_dir
+                )
 
-                    save_results_csv(
-                        self.results,
-                        self.output_dir
-                    )
-
-                    update_summary(
-                        self.results,
-                        self.output_dir
-                    )
+                update_summary(
+                    self.results,
+                    self.output_dir
+                )
 
             key = cv2.waitKey(1)
 
@@ -415,16 +357,12 @@ class LiveDashboard:
         cap.release()
         cv2.destroyAllWindows()
 
-        if self.save_results:
+        save_results_csv(
+            self.results,
+            self.output_dir
+        )
 
-            save_results_csv(
-                self.results,
-                self.output_dir
-            )
-
-            update_summary(
-                self.results,
-                self.output_dir
-            )
-
-        print("Dashboard stopped")
+        update_summary(
+            self.results,
+            self.output_dir
+        )

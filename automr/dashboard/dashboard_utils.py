@@ -1,5 +1,3 @@
-# automr/dashboard/dashboard_utils.py
-
 import os
 import cv2
 import pandas as pd
@@ -10,22 +8,14 @@ def create_output_dirs(output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     os.makedirs(
-        os.path.join(
-            output_dir,
-            "violations"
-        ),
+        os.path.join(output_dir, "violations"),
         exist_ok=True
     )
 
 
-def calculate_percent_change(
-    original,
-    transformed
-):
+def calculate_percent_change(original, transformed):
 
-    diff = abs(
-        transformed - original
-    )
+    diff = abs(transformed - original)
 
     pct = (
         diff /
@@ -43,8 +33,7 @@ def get_severity(diff):
     elif diff < 0.01:
         return "MEDIUM"
 
-    else:
-        return "HIGH"
+    return "HIGH"
 
 
 def evaluate_mr(
@@ -54,10 +43,8 @@ def evaluate_mr(
     transformed_pred
 ):
 
-    relation = (
-        automr.relation_registry.get(
-            mr_name
-        )
+    relation = automr.relation_registry.get(
+        mr_name
     )
 
     try:
@@ -71,11 +58,7 @@ def evaluate_mr(
 
         passed = False
 
-    return (
-        "PASS"
-        if passed
-        else "FAIL"
-    )
+    return "PASS" if passed else "FAIL"
 
 
 def save_violation_image(
@@ -102,18 +85,14 @@ def save_results_csv(
     output_dir
 ):
 
-    if len(results) == 0:
+    if not results:
         return
 
-    csv_path = os.path.join(
-        output_dir,
-        "webcam_results.csv"
-    )
-
-    pd.DataFrame(
-        results
-    ).to_csv(
-        csv_path,
+    pd.DataFrame(results).to_csv(
+        os.path.join(
+            output_dir,
+            "webcam_results.csv"
+        ),
         index=False
     )
 
@@ -123,7 +102,7 @@ def update_summary(
     output_dir
 ):
 
-    if len(results) == 0:
+    if not results:
         return
 
     df = pd.DataFrame(results)
@@ -132,10 +111,30 @@ def update_summary(
         df.groupby("mr")
         .agg(
             tests=("mr", "count"),
+
             failures=(
                 "status",
-                lambda x:
-                (x == "FAIL").sum()
+                lambda x: (x == "FAIL").sum()
+            ),
+
+            avg_diff=(
+                "difference",
+                "mean"
+            ),
+
+            max_diff=(
+                "difference",
+                "max"
+            ),
+
+            avg_percent_change=(
+                "percent_change",
+                "mean"
+            ),
+
+            max_percent_change=(
+                "percent_change",
+                "max"
             )
         )
         .reset_index()
