@@ -2,7 +2,7 @@ mr,parameter_min,parameter_max,parameter_count,difference_mean,difference_max
 BlurRelation,1.0,31.0,10,,
 BrightnessRelation,0.1,3.0,10,,
 ContrastRelation,0.1,4.0,10,,
-DarkVisibiltyRelation,0.05,1.5,18,,
+DarkVisibiltyRelation,0.05,1.5,15,,
 FogRelation,0.0,1.5,10,,
 NoiseRelation,0.0,150.0,11,,
 RainRelation,0.0,1.5,10,,
