@@ -13,16 +13,22 @@ class DashboardConfig:
             if mr != "temporal"
         ]
 
+        self.current_mr = (
+            self.selected_mrs[0]
+        )
+
         self.mr_ranges = {}
 
         for mr in self.selected_mrs:
 
-            start, end = automr.mr_ranges[mr]
+            start, end = (
+                automr.mr_ranges[mr]
+            )
 
             self.mr_ranges[mr] = {
                 "start": start,
                 "end": end,
-                "tests": 20
+                "tests": 5
             }
 
         self.current_mr = self.selected_mrs[0]
@@ -32,3 +38,5 @@ class DashboardConfig:
         self.save_results = True
 
         self.save_violations = True
+
+    

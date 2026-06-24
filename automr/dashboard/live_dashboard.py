@@ -27,6 +27,10 @@ class LiveDashboard:
         save_violations=True,
         output_dir="results/live_dashboard"
     ):
+        self.pending_test = False
+        self.testing = False
+        self.progress = 0
+        self.total_progress = 0
 
         self.automr = automr
         self.model = model
@@ -340,6 +344,34 @@ class LiveDashboard:
                 )
 
         return tiles
+    
+    def run_selected_benchmark(
+            self,
+            frame,
+            frame_id
+        ):
+
+            self.testing = True
+
+            for mr_name in self.config.selected_mrs:
+
+                parameters = self.get_test_parameters(
+                    mr_name
+                )
+
+                self.total_progress += len(parameters)
+
+                for param in parameters:
+
+                    # existing testing code
+                    # prediction
+                    # diff
+                    # save result
+
+                    self.progress += 1
+
+            self.testing = False
+            self.pending_test = False
 
     def build_dashboard(
         self,
@@ -474,6 +506,12 @@ class LiveDashboard:
 
             self.update_controls()
 
+            if self.pending_test and not self.testing:
+                self.run_selected_benchmark(
+                    frame,
+                    frame_id
+                )
+
             frame_id += 1
 
             tiles = self.process_frame(
@@ -560,6 +598,9 @@ class LiveDashboard:
                 )
 
             key = cv2.waitKey(1)
+
+            if key == ord("r"):
+                self.pending_test = True
 
             #self.handle_keys(key)
 
