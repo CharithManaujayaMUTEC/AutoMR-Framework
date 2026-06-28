@@ -38,5 +38,3 @@ class DashboardConfig:
         self.save_results = True
 
         self.save_violations = True
-
-    
