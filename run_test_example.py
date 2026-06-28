@@ -117,8 +117,6 @@ if __name__ == "__main__":
         model=model,
         task="regression",
         input_type="image",
-        epsilon=0.05,
-        strict=True,
         range_threshold=5.0
     )
 
@@ -134,9 +132,11 @@ if __name__ == "__main__":
     print("\n===================================")
     print("Running AutoMR Validation Suite")
     print("===================================")
-    print("Original Samples: 10")
-    print("Samples per MR : 5")
-    print("Range Threshold: 5%\n")
+    print("Original Samples : 10")
+    print("Samples per MR   : 5")
+    print("Epsilon Range    : 0.01 - 0.20")
+    print("Epsilon Steps    : 20")
+    print("Range Threshold  : 5%\n")
 
     start_time = time.time()
 
@@ -147,7 +147,10 @@ if __name__ == "__main__":
         show_progress=True,
         save=True,
         output_dir="results",
-        verbose=True
+        verbose=True,
+        epsilon_min=0.01,
+        epsilon_max=0.20,
+        epsilon_count=20,
     )
 
     end_time = time.time()
@@ -175,7 +178,9 @@ if __name__ == "__main__":
         "failure_summary.csv",
         "severity_summary.csv",
         "worst_cases.csv",
-        "failure_regions.txt"
+        "failure_regions.txt",
+        "epsilon_summary.csv",
+        "epsilon_report.txt"
     ]
 
     for report in reports:
@@ -207,6 +212,14 @@ if __name__ == "__main__":
     # --------------------------------------------------
     print("\nResults Overview")
     print("--------------------------------")
+
+    print("\nGenerated Epsilon Results")
+    print("--------------------------------")
+
+    for item in os.listdir("results"):
+
+        if item.startswith("epsilon_"):
+            print(f"✅ results/{item}")
 
     try:
         print(f"Total MT Results: {len(df)}")

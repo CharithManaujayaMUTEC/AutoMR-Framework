@@ -91,8 +91,7 @@ automr = AutoMR(
     model=model,
     task="regression",
     input_type="image",
-    epsilon=0.05,
-    strict=True
+    range_threshold=5.0
 )
 
 print("Model loaded")

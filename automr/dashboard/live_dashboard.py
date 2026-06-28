@@ -51,6 +51,7 @@ class LiveDashboard:
 
         self.CELL_W = 320
         self.CELL_H = 240
+        self.current_epsilon = 0.05
 
         create_output_dirs(
             self.output_dir
@@ -79,6 +80,13 @@ class LiveDashboard:
             "AutoMR Live Dashboard"
         )
 
+        epsilon = cv2.getTrackbarPos(
+            "Epsilon x1000",
+            "AutoMR Live Dashboard"
+        )
+
+        epsilon = max(epsilon, 1) / 1000.0
+
         frame_skip = cv2.getTrackbarPos(
             "FrameSkip",
             "AutoMR Live Dashboard"
@@ -98,6 +106,12 @@ class LiveDashboard:
             "Enable",
             "AutoMR Live Dashboard"
         )
+
+        if abs(epsilon - self.current_epsilon) > 1e-6:
+
+            self.current_epsilon = epsilon
+
+            self.automr.set_epsilon(epsilon)
 
         mrs = [
             mr
@@ -312,7 +326,9 @@ class LiveDashboard:
                             status,
 
                         "severity":
-                            severity
+                            severity,
+
+                        "epsilon": self.current_epsilon,
                     })
 
                     worst_diff = -1
@@ -497,6 +513,14 @@ class LiveDashboard:
             lambda x: None
         )
 
+        cv2.createTrackbar(
+            "Epsilon x1000",
+            "AutoMR Live Dashboard",
+            int(self.current_epsilon * 1000),
+            500,
+            lambda x: None
+        )
+
         while True:
 
             ret, frame = cap.read()
@@ -574,6 +598,16 @@ class LiveDashboard:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (255,255,0),
+                2
+            )
+
+            cv2.putText(
+                dashboard,
+                f"Epsilon: {self.current_epsilon:.3f}",
+                (20, 160),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0,255,255),
                 2
             )
 
