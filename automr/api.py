@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import os
 import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 from automr.models import get_wrapper
@@ -311,10 +313,13 @@ class AutoMR:
 
         return df, summary
 
-    def run_all_mrs(self, input_data, samples=50):
+    def run_all_mrs(self, input_data, samples=50, epsilon=None):
 
-        import pandas as pd
-        from concurrent.futures import ThreadPoolExecutor
+        if epsilon is not None:
+            apply_epsilon_to_relations(
+                self.relation_registry,
+                epsilon
+            )
 
         mr_names = [
             name
@@ -355,8 +360,6 @@ class AutoMR:
     
     def _process_single_sample(self, args):
 
-        import pandas as pd
-
         i, sample, samples_per_mr, df_temp = args
 
         #sample = self.input_handler.preprocess(sample)
@@ -366,7 +369,8 @@ class AutoMR:
 
         df_img = self.run_all_mrs(
             sample,
-            samples=samples_per_mr
+            samples=samples_per_mr,
+            epsilon=epsilon
         )
 
         if df_temp is not None:
@@ -492,7 +496,7 @@ class AutoMR:
 
     # ---------- SAVE ----------
     def save_results(self, df, results, output_dir="results"):
-        import os
+        
         os.makedirs(output_dir, exist_ok=True)
 
         df.to_csv(f"{output_dir}/automr_results.csv", index=False)
@@ -502,6 +506,15 @@ class AutoMR:
         results["range_summary"].to_csv(f"{output_dir}/range_summary.csv",index=False)
         results["range_analysis"].to_csv(f"{output_dir}/range_analysis.csv",index=False)
         results["prediction_trace"].to_csv(f"{output_dir}/prediction_trace.csv",index=False)
+        if "epsilon_summary" in results:
+            results["epsilon_summary"].to_csv(
+                f"{output_dir}/epsilon_summary.csv",
+                index=False
+            )
+        if "epsilon_report" in results:
+            with open(f"{output_dir}/epsilon_report.txt", "w") as f:
+                for k, v in results["epsilon_report"].items():
+                    f.write(f"{k}: {v}\n")
 
         with open(f"{output_dir}/failure_regions.txt", "w") as f:
             for k, v in results["regions"].items():
@@ -689,11 +702,6 @@ class AutoMR:
 
             if epsilon_count < 2:
                 raise ValueError("epsilon_count must be at least 2.")
-
-            from automr.epsilon.utils import generate_epsilon_values
-            from automr.epsilon.sensitivity import EpsilonSensitivity
-            from automr.epsilon.summary import EpsilonSummary
-            import pandas as pd
 
             epsilon_values = generate_epsilon_values(
                 epsilon_min,
