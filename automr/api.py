@@ -313,13 +313,13 @@ class AutoMR:
 
         return df, summary
 
-    def run_all_mrs(self, input_data, samples=50, epsilon=None):
+    def run_all_mrs(self, input_data, samples=50):
 
-        if epsilon is not None:
-            apply_epsilon_to_relations(
-                self.relation_registry,
-                epsilon
-            )
+       # if epsilon is not None:
+       #     apply_epsilon_to_relations(
+       #         self.relation_registry,
+       #         epsilon
+       #     )
 
         mr_names = [
             name
@@ -370,7 +370,6 @@ class AutoMR:
         df_img = self.run_all_mrs(
             sample,
             samples=samples_per_mr,
-            epsilon=epsilon
         )
 
         if df_temp is not None:
