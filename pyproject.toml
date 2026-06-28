@@ -4,12 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automr"
-version = "0.2.0"
+version = "0.3.0"
 
-description = "Model-Agnostic Metamorphic Testing Framework for Regression-Based Autonomous Driving Models"
+description = "A Model-Agnostic Metamorphic Testing Framework for Regression-Based Autonomous Driving AI/ML Models"
 
 readme = "README.md"
-
 requires-python = ">=3.8"
 
 license = { text = "MIT" }
@@ -23,35 +22,40 @@ authors = [
 
 keywords = [
   "metamorphic testing",
-  "machine learning",
   "autonomous driving",
-  "model testing",
-  "robustness",
-  "validation",
-  "ai testing",
+  "machine learning",
+  "deep learning",
+  "software testing",
+  "model validation",
+  "robustness testing",
+  "epsilon sensitivity",
+  "computer vision",
   "regression"
 ]
 
 classifiers = [
   "Development Status :: 4 - Beta",
-  "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
-  "Operating System :: OS Independent",
+
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "Topic :: Software Development :: Testing"
+  "Topic :: Software Development :: Testing",
+  "Topic :: Scientific/Engineering :: Image Processing"
 ]
 
 dependencies = [
   "numpy>=1.21",
   "pandas>=1.3",
-  "tqdm>=4.60",
   "opencv-python>=4.5",
+  "tqdm>=4.60",
   "tensorflow>=2.10",
   "python-dotenv>=1.0"
 ]
@@ -65,8 +69,8 @@ Issues = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/issues"
 include = ["automr*"]
 exclude = [
   "results*",
-  "notebooks*",
-  "tests*",
   "examples*",
+  "tests*",
+  "notebooks*",
   "logs*"
 ]
