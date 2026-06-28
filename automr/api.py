@@ -16,7 +16,6 @@ from automr.registry import (
 from automr.evaluation import BaselineEvaluator
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
-#from automr.epsilon import EpsilonManager
 from automr.epsilon.utils import apply_epsilon_to_relations
 from automr.epsilon.utils import generate_epsilon_values
 from automr.epsilon.sensitivity import EpsilonSensitivity
@@ -96,8 +95,6 @@ class AutoMR:
             task=task,
             epsilon=epsilon
         )
-
-        #self.epsilon_manager = EpsilonManager()
 
         self._register_default_mrs(epsilon)
 
