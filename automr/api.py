@@ -12,6 +12,7 @@ from automr.registry import (
 from automr.evaluation import BaselineEvaluator
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
+from automr.epsilon import EpsilonManager
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -84,6 +85,7 @@ class AutoMR:
             epsilon=epsilon
         )
         self.range_threshold = range_threshold
+        self.epsilon_manager = EpsilonManager(self)
 
         #  STRICT MODE
         if strict:
@@ -643,7 +645,10 @@ class AutoMR:
         show_progress=False,
         save=True,
         output_dir="results",
-        verbose=True
+        verbose=True,
+        epsilon_min=None,
+        epsilon_max=None,
+        epsilon_count=None,
     ):
 
         self.save_model_summary(
@@ -655,14 +660,37 @@ class AutoMR:
             output_dir
         )
 
-        df = self.run_dataset(
-            dataset,
-            max_samples=max_samples,
-            samples_per_mr=samples_per_mr,
-            show_progress=show_progress
-        )
+        # --------------------------------------------
+        # Standard AutoMR
+        # --------------------------------------------
 
-        results = self.analyze(df)
+        if epsilon_min is None:
+
+            df = self.run_dataset(
+                dataset,
+                max_samples=max_samples,
+                samples_per_mr=samples_per_mr,
+                show_progress=show_progress
+            )
+
+            results = self.analyze(df)
+
+        # --------------------------------------------
+        # Epsilon Sensitivity Analysis
+        # --------------------------------------------
+
+        else:
+
+            df, results = self.epsilon_manager.run(
+                dataset=dataset,
+                epsilon_min=epsilon_min,
+                epsilon_max=epsilon_max,
+                epsilon_count=epsilon_count,
+                max_samples=max_samples,
+                samples_per_mr=samples_per_mr,
+                show_progress=show_progress,
+                output_dir=output_dir,
+            )
 
         if save:
             self.save_results(
