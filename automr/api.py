@@ -681,6 +681,18 @@ class AutoMR:
 
         else:
 
+            if epsilon_max is None:
+                raise ValueError("epsilon_max must be provided.")
+
+            if epsilon_count is None:
+                raise ValueError("epsilon_count must be provided.")
+
+            if epsilon_min >= epsilon_max:
+                raise ValueError("epsilon_min must be smaller than epsilon_max.")
+
+            if epsilon_count < 2:
+                raise ValueError("epsilon_count must be at least 2.")
+
             df, results = self.epsilon_manager.run(
                 dataset=dataset,
                 epsilon_min=epsilon_min,
@@ -690,6 +702,7 @@ class AutoMR:
                 samples_per_mr=samples_per_mr,
                 show_progress=show_progress,
                 output_dir=output_dir,
+                save=save,
             )
 
         if save:
