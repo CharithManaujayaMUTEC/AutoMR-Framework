@@ -87,14 +87,15 @@ class AutoMR:
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
-        self.comparator = get_comparator(
-            task=task,
-            epsilon=epsilon
-        )
         self.range_threshold = range_threshold
         self.transform_registry = TransformationRegistry()
         self.relation_registry = RelationRegistry()
         self.mr_ranges = {}
+        self.task = task
+        self.comparator = get_comparator(
+            task=task,
+            epsilon=epsilon
+        )
 
         #self.epsilon_manager = EpsilonManager()
 
@@ -315,12 +316,6 @@ class AutoMR:
 
     def run_all_mrs(self, input_data, samples=50):
 
-       # if epsilon is not None:
-       #     apply_epsilon_to_relations(
-       #         self.relation_registry,
-       #         epsilon
-       #     )
-
         mr_names = [
             name
             for name in self.transform_registry.list()
@@ -408,6 +403,11 @@ class AutoMR:
             apply_epsilon_to_relations(
                 self.relation_registry,
                 epsilon
+            )
+
+            self.comparator = get_comparator(
+                task=self.task,
+                epsilon=epsilon
             )
 
         if max_samples:
@@ -716,6 +716,7 @@ class AutoMR:
                 max_samples=max_samples,
                 samples_per_mr=samples_per_mr,
                 show_progress=show_progress,
+                output_dir=output_dir,
             )
 
             summary = EpsilonSummary()
@@ -724,12 +725,9 @@ class AutoMR:
 
             summary.print_report(report)
 
-            if len(dfs):
-                df = pd.concat(dfs, ignore_index=True)
-                results = self.analyze(df)
-            else:
-                df = pd.DataFrame()
-                results = {}
+            df = pd.concat(dfs, ignore_index=True)
+
+            results = self.analyze(df)
 
             results["epsilon_summary"] = summary_df
             results["epsilon_report"] = report
