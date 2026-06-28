@@ -1,0 +1,2 @@
+TranslationRelation: [(np.float64(80.0), np.float64(80.0))]
+DarkVisibiltyRelation: [(np.float64(0.775), np.float64(0.775)), (np.float64(1.1375), np.float64(1.1375)), (np.float64(1.5), np.float64(1.5))]
