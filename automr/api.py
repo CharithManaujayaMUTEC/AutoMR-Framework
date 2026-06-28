@@ -385,6 +385,22 @@ class AutoMR:
         )
 
         return df
+    
+    #for dashboard
+    def set_epsilon(self, epsilon):
+        """
+        Update the comparator and every registered MR with a new epsilon.
+        """
+
+        apply_epsilon_to_relations(
+            self.relation_registry,
+            epsilon
+        )
+
+        self.comparator = get_comparator(
+            task=self.task,
+            epsilon=epsilon
+        )
 
     # ---------- RUN DATASET ----------
     def run_dataset(
