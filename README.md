@@ -39,17 +39,20 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Model-Agnostic Testing** — works with TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, or any custom model
 - **Input-Agnostic Architecture** — supports images, time-series, sequential, and tabular data
 - **Output-Agnostic Validation** — handles regression, continuous, and numerical outputs
-- **Built-in Metamorphic Relations** — 11 ready-to-use relations covering weather, geometric, and temporal properties
+- **Built-in Metamorphic Relations** — 11 ready-to-use relations covering weather, geometric, behavioral, and temporal properties
 - **Automated Transformation Pipeline** — end-to-end execution with configurable parameters
 - **Parameter Range Testing** — sweep transformation parameters across configurable ranges
+- **Epsilon Sensitivity Analysis** — automatically evaluates model robustness across multiple epsilon thresholds
+- **Automatic Epsilon Recommendation** — identifies first failure, stabilization, and recommended epsilon values
+- **Interactive Live Dashboard** — real-time webcam/video testing with configurable metamorphic relations and epsilon
 - **Failure Detection and Localization** — pinpoints the exact conditions where models break
 - **Severity Analysis** — ranks failures by output deviation magnitude
 - **Failure Region Identification** — isolates parameter ranges with highest instability
 - **Worst-Case Sample Discovery** — surfaces samples with the largest prediction deviations
-- **CSV and JSON Report Generation** — full results persisted automatically
-- **Verification Artifact Generation** — transformation samples saved per relation
-- **Progress Tracking** — optional live progress bars for long-running tests
-- **Extensible Transformation Framework** — add custom transforms and relations with minimal code
+- **CSV, JSON, and Text Report Generation** — comprehensive reporting with reproducible outputs
+- **Verification Artifact Generation** — transformed samples saved automatically
+- **Progress Tracking** — optional live progress bars for long-running evaluations
+- **Extensible Plugin Architecture** — easily add custom transformations and relations
 
 ---
 
@@ -85,14 +88,16 @@ automr = AutoMR(
     task="regression",
     input_type="image",
     epsilon=0.05,
-    strict=True
+    range_threshold=5.0
 )
 
 df, results = automr.run_full_test(
     dataset=dataset,
-    max_samples=2000,
+    max_samples=500,
     samples_per_mr=5,
-    show_progress=True
+    epsilon_min=0.01,
+    epsilon_max=0.20,
+    epsilon_count=4
 )
 ```
 
@@ -113,7 +118,11 @@ Validate Metamorphic Relations
       ↓
 Analyze Failures
       ↓
+Run Epsilon Sensitivity Analysis
+      ↓
 Generate Reports
+      ↓
+Interactive Live Dashboard
       ↓
 Export Results
 ```
@@ -173,6 +182,38 @@ BlurRelation                  50      50       0        0.00
 FogRelation                   50      50       0        0.00
 RainRelation                  50      50       0        0.00
 SnowRelation                  50      50       0        0.00
+```
+
+---
+
+## Epsilon Sensitivity Analysis
+
+```
+
+AutoMR can automatically evaluate a model across multiple comparator thresholds.
+
+Instead of manually selecting an epsilon value, the framework performs repeated metamorphic testing over a configurable epsilon range and reports:
+
+- First Failure Epsilon
+- Recommended Epsilon
+- Stabilization Epsilon
+- Maximum Failure Rate
+
+Example console output
+========== EPSILON ANALYSIS ==========
+
+First Failure Epsilon : 0.01
+Recommended Epsilon : 0.1367
+Stabilization Epsilon : 0.1367
+Maximum Failure Rate : 6.25%
+
+======================================
+
+
+Generated files
+results/
+├── epsilon_summary.csv
+└── epsilon_report.txt
 ```
 
 ---
@@ -256,6 +297,84 @@ AutoMR automatically computes the following after each test run:
 - **Parameter Sensitivity** — how model behavior shifts with transformation intensity
 - **Range Stability Analysis** — identifies safe vs. unstable transformation ranges
 - **Prediction Trace Analysis** — tracks prediction drift across all transformations
+- Epsilon Sensitivity Analysis
+- Automatic Epsilon Recommendation
+
+---
+
+## Live Dashboard
+
+````
+AutoMR includes a real-time dashboard for evaluating metamorphic relations on webcam or video streams.
+
+Features
+
+- Live webcam/video inference
+- Adjustable epsilon threshold
+- Configurable metamorphic relations
+- Interactive parameter range selection
+- Real-time failure detection
+- Automatic violation image capture
+- Continuous CSV logging
+- Summary statistics during execution
+
+Launch
+
+```python
+from automr.dashboard import run_live_dashboard
+
+run_live_dashboard(
+    automr,
+    model,
+    video_source=0
+)
+
+Dashboard Controls
+
+Control	Purpose
+MR Index	Select relation
+Enable	Enable/Disable relation
+Tests	Number of parameter samples
+Range %	Scale transformation range
+Epsilon	Comparator threshold
+Frame Skip	Processing frequency
+R	Run benchmark
+ESC	Exit
+
+---
+
+## 5. Update Generated Reports
+
+Add the new files.
+
+### Core Reports
+automr_results.csv
+prediction_trace.csv
+failure_summary.csv
+severity_summary.csv
+worst_cases.csv
+failure_regions.txt
+range_summary.csv
+range_analysis.csv
+epsilon_summary.csv
+epsilon_report.txt
+
+
+### Dashboard Reports
+
+Add a new subsection.
+
+```markdown
+### Live Dashboard Reports
+results/live_dashboard/
+├── dashboard_results.csv
+├── dashboard_summary.csv
+└── violations/
+
+
+Each dashboard record stores the epsilon value used during evaluation, allowing experiments to be reproduced even when the threshold changes interactively.
+
+````
 
 ---
 
@@ -299,27 +418,90 @@ AutoMR supports regression outputs, continuous predictions, numerical outputs, a
 AutoMR-Framework/
 │
 ├── automr/
+│   ├── __init__.py
 │   ├── api.py
-│   ├── comparator.py
+│   │
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   └── analyzer.py
+│   │
+│   ├── comparators/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   └── regression.py
 │   │
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── range_tester.py
 │   │   ├── failure_analysis.py
 │   │   └── validation_runner.py
 │   │
-│   ├── transforms/
+│   ├── dashboard/
+│   │   ├── __init__.py
+│   │   ├── live_dashboard.py
+│   │   ├── video_runner.py
+│   │   ├── control_panel.py
+│   │   ├── dashboard_utils.py
+│   │   └── graph_panel.py
+│   │
+│   ├── epsilon/
+│   │   ├── __init__.py
+│   │   ├── sensitivity.py
+│   │   ├── summary.py
+│   │   └── utils.py
+│   │
+│   ├── evaluation/
+│   │   ├── __init__.py
+│   │   └── baseline.py
+│   │
+│   ├── input_handlers/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── image.py
+│   │   ├── tabular.py
+│   │   └── sequence.py
+│   │
+│   ├── logging/
+│   │   ├── __init__.py
+│   │   └── logger.py
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── wrapper.py
+│   │
+│   ├── registry/
+│   │   ├── __init__.py
+│   │   ├── transformation_registry.py
+│   │   └── relation_registry.py
+│   │
 │   ├── relations/
-│   ├── analysis/
-│   ├── reports/
-│   └── dashboard/
+│   │   ├── image_relations.py
+│   │   ├── weather_relations.py
+│   │   ├── behavioral_relations.py
+│   │   └── temporal_relations.py
+│   │
+│   ├── transforms/
+│   │   ├── image_transforms.py
+│   │   ├── weather_transforms.py
+│   │   ├── behavioral_transforms.py
+│   │   └── temporal_transforms.py
+│   │
+│   └── verification/
+│       ├── __init__.py
+│       └── transformation_saver.py
 │
 ├── examples/
+│   ├── run_test.py
+│   ├── webcam_automr_live.py
+│   └── custom_relation_example.py
+│
 ├── results/
 │
 ├── README.md
-├── requirements.txt
+├── LICENSE
 ├── pyproject.toml
-└── LICENSE
+├── requirements.txt
+└── .gitignore
 ```
 
 ---
@@ -328,7 +510,7 @@ AutoMR-Framework/
 
 - Transformation suite is primarily focused on image-based inputs
 - Classification-specific metamorphic relations are still under development
-- Comparator thresholds (`epsilon`) require manual tuning per task
+- Automatic (`epsilon`) recommendation is heuristic-based and should be validated for domain-specific safety requirements.
 - Runtime depends on model inference speed
 - Large datasets may require longer execution times
 
@@ -339,7 +521,12 @@ AutoMR-Framework/
 - NLP and text transformation extensions
 - Tabular data transformation support
 - Classification-specific metamorphic relations
-- Interactive Streamlit dashboard
+- Native web dashboard
+- Automatic epsilon optimization strategies
+- Multi-camera live testing
+- GPU-accelerated batch validation
+- NLP and tabular metamorphic relations
+- Distributed testing across multiple machines
 - Cross-model MR comparison
 - Automated result visualizations (plots and charts)
 - Distributed and parallel testing support
