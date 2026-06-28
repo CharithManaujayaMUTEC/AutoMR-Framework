@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 import multiprocessing
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
@@ -12,7 +14,11 @@ from automr.registry import (
 from automr.evaluation import BaselineEvaluator
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
-from automr.epsilon import EpsilonManager
+#from automr.epsilon import EpsilonManager
+from automr.epsilon.utils import apply_epsilon_to_relations
+from automr.epsilon.utils import generate_epsilon_values
+from automr.epsilon.sensitivity import EpsilonSensitivity
+from automr.epsilon.summary import EpsilonSummary
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -71,7 +77,6 @@ class AutoMR:
         task="regression",
         input_type="image",
         epsilon=0.05,
-        strict=True,
         range_threshold=5.0
     ):
         self.image_saver = TransformationSaver()
@@ -85,26 +90,15 @@ class AutoMR:
             epsilon=epsilon
         )
         self.range_threshold = range_threshold
-        self.epsilon_manager = EpsilonManager(self)
-
-        #  STRICT MODE
-        if strict:
-            eps_small = 0.015
-            eps_medium = 0.025
-        else:
-            eps_small = 0.03
-            eps_medium = 0.05
-
         self.transform_registry = TransformationRegistry()
         self.relation_registry = RelationRegistry()
         self.mr_ranges = {}
 
-        self._register_default_mrs(
-            eps_small,
-            eps_medium
-        )
+        #self.epsilon_manager = EpsilonManager()
 
-    def _register_default_mrs(self, eps_small, eps_medium):
+        self._register_default_mrs(epsilon)
+
+    def _register_default_mrs(self, epsilon):
 
         # IMAGE
         self.transform_registry.register(
@@ -113,7 +107,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "brightness",
-            BrightnessRelation(tolerance=eps_small)
+            BrightnessRelation(tolerance=epsilon)
         )
         self.mr_ranges["brightness"] = (0.1, 3.0)
 
@@ -123,7 +117,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "rotation",
-            RotationRelation(epsilon=eps_small)
+            RotationRelation(epsilon=epsilon)
         )
         self.mr_ranges["rotation"] = (-60, 60)
 
@@ -133,7 +127,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "translation",
-            TranslationRelation(tolerance=eps_small)
+            TranslationRelation(tolerance=epsilon)
         )
         self.mr_ranges["translation"] = (0, 80)
 
@@ -143,7 +137,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "noise",
-            NoiseRelation(tolerance=eps_small)
+            NoiseRelation(tolerance=epsilon)
         )
         self.mr_ranges["noise"] = (0, 150)
 
@@ -153,7 +147,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "blur",
-            BlurRelation(epsilon=eps_small)
+            BlurRelation(epsilon=epsilon)
         )
         self.mr_ranges["blur"] = (1, 31)
 
@@ -163,7 +157,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "contrast",
-            ContrastRelation(epsilon=eps_small)
+            ContrastRelation(epsilon=epsilon)
         )
         self.mr_ranges["contrast"] = (0.1, 4.0)
 
@@ -171,21 +165,21 @@ class AutoMR:
         self.transform_registry.register("rain", add_rain)
         self.relation_registry.register(
             "rain",
-            RainRelation(epsilon=eps_medium)
+            RainRelation(epsilon=epsilon)
         )
         self.mr_ranges["rain"] = (0.0, 1.5)
 
         self.transform_registry.register("snow", add_snow)
         self.relation_registry.register(
             "snow",
-            SnowRelation(epsilon=eps_medium)
+            SnowRelation(epsilon=epsilon)
         )
         self.mr_ranges["snow"] = (0.0, 1.5)
 
         self.transform_registry.register("fog", add_fog)
         self.relation_registry.register(
             "fog",
-            FogRelation(epsilon=eps_medium)
+            FogRelation(epsilon=epsilon)
         )
         self.mr_ranges["fog"] = (0.0, 1.5)
 
@@ -196,7 +190,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "temporal",
-            TemporalSmoothnessRelation(delta=eps_small)
+            TemporalSmoothnessRelation(delta=epsilon)
         )
         self.mr_ranges["temporal"] = (0, 150)
 
@@ -207,7 +201,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "visibility",
-            DarkVisibiltyRelation(max_change=0.08)
+            DarkVisibiltyRelation(max_change=epsilon)
         )
         self.mr_ranges["visibility"] = (0.05, 1.5)
 
@@ -217,7 +211,7 @@ class AutoMR:
         )
         self.relation_registry.register(
             "darkness",
-            DarkVisibiltyRelation(max_change=0.08)
+            DarkVisibiltyRelation(max_change=epsilon)
         )
         self.mr_ranges["darkness"] = (0.05, 1.5)
 
@@ -404,10 +398,14 @@ class AutoMR:
         max_samples=None,
         samples_per_mr=5,
         include_temporal=True,
-        show_progress=False
+        show_progress=False,
+        epsilon=None,
     ):
-        import pandas as pd
-        from tqdm import tqdm
+        if epsilon is not None:
+            apply_epsilon_to_relations(
+                self.relation_registry,
+                epsilon
+            )
 
         if max_samples:
             dataset = dataset[:max_samples]
@@ -678,7 +676,6 @@ class AutoMR:
         # --------------------------------------------
         # Epsilon Sensitivity Analysis
         # --------------------------------------------
-
         else:
 
             if epsilon_max is None:
@@ -693,19 +690,44 @@ class AutoMR:
             if epsilon_count < 2:
                 raise ValueError("epsilon_count must be at least 2.")
 
-            df, results = self.epsilon_manager.run(
-                dataset=dataset,
-                epsilon_min=epsilon_min,
-                epsilon_max=epsilon_max,
-                epsilon_count=epsilon_count,
+            from automr.epsilon.utils import generate_epsilon_values
+            from automr.epsilon.sensitivity import EpsilonSensitivity
+            from automr.epsilon.summary import EpsilonSummary
+            import pandas as pd
+
+            epsilon_values = generate_epsilon_values(
+                epsilon_min,
+                epsilon_max,
+                epsilon_count,
+            )
+
+            sensitivity = EpsilonSensitivity(self)
+
+            dfs = sensitivity.run(
+                dataset,
+                epsilon_values,
                 max_samples=max_samples,
                 samples_per_mr=samples_per_mr,
                 show_progress=show_progress,
-                output_dir=output_dir,
-                save=save,
             )
 
-        if save:
+            summary = EpsilonSummary()
+
+            summary_df, report = summary.summarize(dfs)
+
+            summary.print_report(report)
+
+            if len(dfs):
+                df = pd.concat(dfs, ignore_index=True)
+                results = self.analyze(df)
+            else:
+                df = pd.DataFrame()
+                results = {}
+
+            results["epsilon_summary"] = summary_df
+            results["epsilon_report"] = report
+
+        if save and results:
             self.save_results(
                 df,
                 results,
@@ -715,9 +737,11 @@ class AutoMR:
         if verbose:
 
             print("\n=== AutoMR Results ===")
-            print(results["failure_summary"])
+            if "failure_summary" in results:
+                print(results["failure_summary"])
 
             print("\n--- Severity ---")
-            print(results["severity_summary"])
+            if "severity_summary" in results:
+                print(results["severity_summary"])
 
         return df, results
