@@ -4,3 +4,4 @@ tqdm
 opencv-python
 tensorflow
 python-dotenv
+onnxruntime

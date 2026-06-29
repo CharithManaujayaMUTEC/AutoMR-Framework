@@ -1,4 +1,5 @@
 class ModelWrapper:
+
     def __init__(self, model, predict_fn=None):
         self.model = model
         self.predict_fn = predict_fn
@@ -13,7 +14,6 @@ class ModelWrapper:
         else:
             y = self.model.predict(x)
 
-        #  normalize output
         if isinstance(y, (list, tuple)):
             return float(y[0])
 
@@ -21,3 +21,10 @@ class ModelWrapper:
             return float(y.flatten()[0])
 
         return float(y)
+
+    def predict_batch(self, xs):
+
+        if hasattr(self.model, "predict_batch"):
+            return self.model.predict_batch(xs)
+
+        return [self.predict(x) for x in xs]

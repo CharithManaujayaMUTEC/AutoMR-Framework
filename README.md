@@ -1,258 +1,573 @@
-# 🚗 AutoMR — Metamorphic Testing Framework
+<div align="center">
+  <img src="automrlogo.png" width="400"/>
 
-AutoMR is a **model-agnostic, input-agnostic, and output-agnostic metamorphic testing framework** designed to evaluate machine learning models **without requiring ground-truth labels**.
+<br/><br/>
 
-Instead of checking exact outputs, AutoMR verifies **metamorphic relations (MRs)** — expected behaviors under controlled input transformations.
+![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Active-22c55e?style=flat-square)
+![Domain](https://img.shields.io/badge/Domain-Autonomous%20Driving-7c6fcd?style=flat-square)
 
----
+<br/><br/>
 
-# 🎯 Objective
-
-This project addresses:
-
-- How to test ML models **without labeled data**
-- How robust models are under **real-world perturbations**
-- When and how models **start to fail**
-
----
-
-# Key Features
-
-- Model-agnostic (TensorFlow, PyTorch, sklearn, custom)
-- Input-agnostic (images, text, tabular)
-- Output-agnostic (regression, classification)
-- Comparator-based evaluation
-- Parametric testing (range-based MR sweeps)
-- CSV/JSON export
-- Progress tracking (tqdm)
+  <p>
+    A Model-Agnostic, Input-Agnostic, and Output-Agnostic Metamorphic Testing Framework<br/>
+    for Regression-Based Autonomous Driving AI/ML Models.
+  </p>
+</div>
 
 ---
 
-# 🧠 Core Idea
+## Overview
 
-Instead of:
+AutoMR is a metamorphic testing framework designed to evaluate the robustness and reliability of AI/ML models **without requiring ground-truth labels**.
 
-```
-f(x) == expected_output ❌
-```
+Instead of checking whether predictions exactly match expected outputs, AutoMR verifies whether a model behaves **consistently under controlled transformations** that should preserve expected behavior.
 
-We test:
+The framework automatically applies transformations, validates metamorphic relations, analyzes failures, and generates comprehensive reports — all with zero boilerplate.
 
-```
-f(x) ≈ f(T(x))
-```
-
-Where `T(x)` is a transformed input.
+| Problem                  | What AutoMR Does                                         |
+| ------------------------ | -------------------------------------------------------- |
+| No labeled data          | Tests models without any ground-truth labels             |
+| Real-world perturbations | Measures robustness under realistic noise and conditions |
+| Silent failures          | Pinpoints when and how models begin to fail              |
 
 ---
 
-# 🏗️ Project Structure
+## Key Features
 
-```
-AutoMR-Framework/
-│
-├── automr/
-│   ├── api.py
-│   ├── comparator.py
-│   │
-│   ├── core/
-│   │   ├── tester.py
-│   │   ├── range_tester.py
-│   │
-│   ├── relations/
-│   │   └── image_relations.py
-│   │
-│   ├── transforms/
-│   │   └── image_transforms.py
-│   │
-│   ├── analysis/
-│   │   └── analyzer.py
-│
-├── run_test.py
-├── requirements.txt
-├── .env
-├── .env.example
-```
+- **Model-Agnostic Testing** — works with TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, or any custom model
+- **Input-Agnostic Architecture** — supports images, time-series, sequential, and tabular data
+- **Output-Agnostic Validation** — handles regression, continuous, and numerical outputs
+- **Built-in Metamorphic Relations** — 11 ready-to-use relations covering weather, geometric, behavioral, and temporal properties
+- **Automated Transformation Pipeline** — end-to-end execution with configurable parameters
+- **Parameter Range Testing** — sweep transformation parameters across configurable ranges
+- **Epsilon Sensitivity Analysis** — automatically evaluates model robustness across multiple epsilon thresholds
+- **Automatic Epsilon Recommendation** — identifies first failure, stabilization, and recommended epsilon values
+- **Interactive Live Dashboard** — real-time webcam/video testing with configurable metamorphic relations and epsilon
+- **Failure Detection and Localization** — pinpoints the exact conditions where models break
+- **Severity Analysis** — ranks failures by output deviation magnitude
+- **Failure Region Identification** — isolates parameter ranges with highest instability
+- **Worst-Case Sample Discovery** — surfaces samples with the largest prediction deviations
+- **CSV, JSON, and Text Report Generation** — comprehensive reporting with reproducible outputs
+- **Verification Artifact Generation** — transformed samples saved automatically
+- **Progress Tracking** — optional live progress bars for long-running evaluations
+- **Extensible Plugin Architecture** — easily add custom transformations and relations
 
 ---
 
-# ⚙️ Installation
+## Installation
 
-## 1. Clone repository
+### PyPI
 
 ```bash
-git clone <your-repo-url>
+pip install automr
+```
+
+### Source Installation
+
+```bash
+git clone https://github.com/CharithManaujayaMUTEC/AutoMR-Framework.git
 cd AutoMR-Framework
-```
 
-## 2. Create virtual environment
-
-```bash
 python -m venv venv
 venv\Scripts\activate
-```
 
-## 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-# 🔑 Environment Setup
-
-Create `.env` file:
-
-```env
-DATASET_PATH=D:/FYP 78SEm/Datasets/archive/trafic_data/train/images
-MODEL_PATH=D:/FYP 78SEm/Modals/nvidia_model.h5
-SAMPLES=5
-EPSILON=0.1
-```
-
----
-
-# 🚀 How to Run
-
-```bash
-python run_test.py
-```
-
----
-
-# 🔄 Execution Flow
-
-1. Load dataset
-2. Load model
-3. For each input:
-   - Apply transformations
-   - Predict outputs
-   - Compare results
-   - Evaluate MR
-4. Store results
-5. Export CSV
-
----
-
-# 📊 Output
-
-Generated file:
-
-```
-automr_results_detailed.csv
-```
-
----
-
-## 📋 Output Columns
-
-| Column            | Description            |
-| ----------------- | ---------------------- |
-| mr                | Metamorphic relation   |
-| param             | Transformation value   |
-| original          | Original prediction    |
-| transformed       | Transformed prediction |
-| difference        | Output difference      |
-| percent_change    | % change               |
-| status            | PASS / FAIL            |
-| expected_behavior | Expected MR rule       |
-| actual_behavior   | Consistent / Violation |
-| sample_id         | Input index            |
-
----
-
-# 🧪 Comparator (Core Design)
+## Quick Start
 
 ```python
-class RegressionComparator:
-    def __init__(self, epsilon=0.05):
-        self.epsilon = epsilon
+from automr.api import AutoMR
 
-    def compare(self, y1, y2):
-        diff = abs(y1 - y2)
-        passed = diff < self.epsilon
-        return diff, passed
+automr = AutoMR(
+    model=model,
+    task="regression",
+    input_type="image",
+    epsilon=0.05,
+    range_threshold=5.0
+)
+
+df, results = automr.run_full_test(
+    dataset=dataset,
+    max_samples=500,
+    samples_per_mr=5,
+    epsilon_min=0.01,
+    epsilon_max=0.20,
+    epsilon_count=4
+)
 ```
 
 ---
 
-# 🔁 Metamorphic Relations
+## Framework Workflow
 
-| MR                  | Description                    |
-| ------------------- | ------------------------------ |
-| BrightnessRelation  | Output invariant to brightness |
-| RotationRelation    | Stable under rotation          |
-| TranslationRelation | Stable under shift             |
-| NoiseRelation       | Robust to noise                |
+```
+Load Dataset
+      ↓
+Load Model
+      ↓
+Apply Transformations
+      ↓
+Generate Predictions
+      ↓
+Validate Metamorphic Relations
+      ↓
+Analyze Failures
+      ↓
+Run Epsilon Sensitivity Analysis
+      ↓
+Generate Reports
+      ↓
+Interactive Live Dashboard
+      ↓
+Export Results
+```
 
 ---
 
-# 🧩 Transformations
+## Supported Metamorphic Relations
 
-| Transform   | Description            |
-| ----------- | ---------------------- |
-| Brightness  | Adjust pixel intensity |
-| Rotation    | Rotate image           |
-| Translation | Shift image            |
-| Noise       | Add random noise       |
+| Relation                     | Purpose                                 |
+| ---------------------------- | --------------------------------------- |
+| `BrightnessRelation`         | Robustness to brightness variation      |
+| `ContrastRelation`           | Robustness to contrast variation        |
+| `BlurRelation`               | Robustness to blur                      |
+| `RotationRelation`           | Stability under rotation                |
+| `TranslationRelation`        | Stability under translation             |
+| `NoiseRelation`              | Robustness to Gaussian noise            |
+| `RainRelation`               | Robustness under rain simulation        |
+| `SnowRelation`               | Robustness under snow simulation        |
+| `FogRelation`                | Robustness under fog simulation         |
+| `DarkVisibilityRelation`     | Robustness under visibility degradation |
+| `TemporalSmoothnessRelation` | Temporal consistency across frames      |
 
 ---
 
-# 🧠 Design Principles
+## Supported Transformations
 
-### Input Agnostic
+| Transformation | Description                  |
+| -------------- | ---------------------------- |
+| Brightness     | Pixel intensity modification |
+| Contrast       | Contrast adjustment          |
+| Blur           | Gaussian blur                |
+| Rotation       | Image rotation               |
+| Translation    | Spatial translation          |
+| Noise          | Gaussian noise injection     |
+| Rain           | Rain simulation              |
+| Snow           | Snow simulation              |
+| Fog            | Fog simulation               |
+| Visibility     | Visibility degradation       |
+| Darkness       | Low-light simulation         |
+| Temporal       | Sequential frame analysis    |
 
-Supports any input type.
+---
 
-### Output Agnostic
+## Example Results
 
-Supports regression, classification, etc.
+```
+=== AutoMR Results ===
+
+                            total  passed  failed  failure_rate
+
+DarkVisibilityRelation       100      89      11        0.11
+TranslationRelation           50      47       3        0.06
+RotationRelation              50      49       1        0.02
+BrightnessRelation            50      50       0        0.00
+ContrastRelation              50      50       0        0.00
+BlurRelation                  50      50       0        0.00
+FogRelation                   50      50       0        0.00
+RainRelation                  50      50       0        0.00
+SnowRelation                  50      50       0        0.00
+```
+
+---
+
+## Epsilon Sensitivity Analysis
+
+```
+
+AutoMR can automatically evaluate a model across multiple comparator thresholds.
+
+Instead of manually selecting an epsilon value, the framework performs repeated metamorphic testing over a configurable epsilon range and reports:
+
+- First Failure Epsilon
+- Recommended Epsilon
+- Stabilization Epsilon
+- Maximum Failure Rate
+
+Example console output
+========== EPSILON ANALYSIS ==========
+
+First Failure Epsilon : 0.01
+Recommended Epsilon : 0.1367
+Stabilization Epsilon : 0.1367
+Maximum Failure Rate : 6.25%
+
+======================================
+
+
+Generated files
+results/
+├── epsilon_summary.csv
+└── epsilon_report.txt
+```
+
+---
+
+## Generated Reports
+
+All reports are automatically saved to the `results/` directory.
+
+### Core Reports
+
+| File                   | Description                                             |
+| ---------------------- | ------------------------------------------------------- |
+| `automr_results.csv`   | Full per-sample test log                                |
+| `failure_summary.csv`  | Failure rate per metamorphic relation                   |
+| `severity_summary.csv` | Average output deviation per MR                         |
+| `worst_cases.csv`      | Samples with the highest deviations                     |
+| `failure_regions.txt`  | Parameter ranges where failures cluster                 |
+| `range_summary.csv`    | Summary of parametric range sweep results               |
+| `range_analysis.csv`   | Detailed per-range analysis                             |
+| `prediction_trace.csv` | Full prediction trace across all samples and transforms |
+
+### Metadata Reports
+
+| File                       | Description                        |
+| -------------------------- | ---------------------------------- |
+| `baseline_metrics.json`    | Model baseline performance metrics |
+| `dataset_info.json`        | Dataset structure and statistics   |
+| `model_summary.txt`        | Model architecture summary         |
+| `original_predictions.csv` | Unmodified model predictions       |
+
+### Verification Artifacts
+
+Transformation samples are saved per relation under `results/transformation_samples/`:
+
+```
+transformation_samples/
+├── metadata.csv
+├── transformation_summary.csv
+├── brightness/
+├── contrast/
+├── blur/
+├── rotation/
+├── translation/
+├── noise/
+├── rain/
+├── snow/
+├── fog/
+├── visibility/
+└── darkness/
+```
+
+---
+
+## Output Columns
+
+| Column              | Description                                    |
+| ------------------- | ---------------------------------------------- |
+| `mr`                | Metamorphic relation identifier                |
+| `param`             | Transformation parameter value                 |
+| `original`          | Original model prediction                      |
+| `transformed`       | Prediction after transformation                |
+| `difference`        | Absolute prediction difference                 |
+| `percent_change`    | Relative prediction change (%)                 |
+| `passed`            | Boolean pass/fail result                       |
+| `status`            | `PASS` or `FAIL`                               |
+| `severity`          | Failure severity score                         |
+| `sample_id`         | Dataset sample index                           |
+| `expected_behavior` | Expected MR behavioral rule                    |
+| `actual_behavior`   | Observed behavior (`Consistent` / `Violation`) |
+
+---
+
+## Built-in Analysis
+
+AutoMR automatically computes the following after each test run:
+
+- **Failure Rate** — per metamorphic relation, across all samples
+- **Severity Analysis** — average and maximum output deviation
+- **Worst-Case Failures** — samples with the largest prediction deviations
+- **Failure Regions** — parameter ranges where the model is most unstable
+- **Parameter Sensitivity** — how model behavior shifts with transformation intensity
+- **Range Stability Analysis** — identifies safe vs. unstable transformation ranges
+- **Prediction Trace Analysis** — tracks prediction drift across all transformations
+- Epsilon Sensitivity Analysis
+- Automatic Epsilon Recommendation
+
+---
+
+## Live Dashboard
+
+````
+AutoMR includes a real-time dashboard for evaluating metamorphic relations on webcam or video streams.
+
+Features
+
+- Live webcam/video inference
+- Adjustable epsilon threshold
+- Configurable metamorphic relations
+- Interactive parameter range selection
+- Real-time failure detection
+- Automatic violation image capture
+- Continuous CSV logging
+- Summary statistics during execution
+
+Launch
+
+```python
+from automr.dashboard import run_live_dashboard
+
+run_live_dashboard(
+    automr,
+    model,
+    video_source=0
+)
+
+Dashboard Controls
+
+Control	Purpose
+MR Index	Select relation
+Enable	Enable/Disable relation
+Tests	Number of parameter samples
+Range %	Scale transformation range
+Epsilon	Comparator threshold
+Frame Skip	Processing frequency
+R	Run benchmark
+ESC	Exit
+
+---
+
+## 5. Update Generated Reports
+
+Add the new files.
+
+### Core Reports
+automr_results.csv
+prediction_trace.csv
+failure_summary.csv
+severity_summary.csv
+worst_cases.csv
+failure_regions.txt
+range_summary.csv
+range_analysis.csv
+epsilon_summary.csv
+epsilon_report.txt
+
+
+### Dashboard Reports
+
+Add a new subsection.
+
+```markdown
+### Live Dashboard Reports
+results/live_dashboard/
+├── dashboard_results.csv
+├── dashboard_summary.csv
+└── violations/
+
+
+Each dashboard record stores the epsilon value used during evaluation, allowing experiments to be reproduced even when the threshold changes interactively.
+
+````
+
+---
+
+## Design Principles
+
+### Model-Agnostic
+
+Any model implementing a `predict(x)` interface is compatible:
+
+```python
+output = model.predict(input)
+```
+
+Supported frameworks include TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, and fully custom models.
+
+### Input-Agnostic
+
+AutoMR accepts any input type — images, time-series, sequential data, tabular data, or custom formats. Transformations are applied modularly and do not depend on input structure.
+
+> AutoMR does not perform preprocessing. Users must provide inputs in the format expected by their model. This ensures the original model pipeline is evaluated without modification.
+
+### Output-Agnostic
+
+AutoMR supports regression outputs, continuous predictions, numerical outputs, and custom scalar outputs. No assumptions are made about output scale or range — the comparator is configurable via the `epsilon` parameter.
 
 ### Modular Architecture
 
-| Component  | Role               |
-| ---------- | ------------------ |
-| Model      | Prediction         |
-| Transform  | Input modification |
-| Relation   | Expected behavior  |
-| Comparator | Pass/fail decision |
+| Component   | Role                                   |
+| ----------- | -------------------------------------- |
+| `Model`     | Generates predictions                  |
+| `Transform` | Modifies input samples                 |
+| `Relation`  | Defines expected behavioral properties |
+| `Analyzer`  | Computes failure metrics and summaries |
+| `Reporter`  | Exports CSV, JSON, and artifact files  |
 
 ---
 
-# ⚠️ Limitations
-
-- Current transforms are image-focused
-- Comparator must be defined per task
-- Performance depends on model speed
-
----
-
-# 🔮 Future Work
-
-- NLP support
-- Classification comparator
-- Streamlit dashboard
-- Cross-model analysis
-- Failure region visualization
-
----
-
-# 🧪 Example Run
+## Project Structure
 
 ```
-Running AutoMR: ██████████████ 100%
-DONE: automr_results_detailed.csv generated
+AutoMR-Framework/
+│
+├── automr/
+│   ├── __init__.py
+│   ├── api.py
+│   │
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   └── analyzer.py
+│   │
+│   ├── comparators/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   └── regression.py
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── range_tester.py
+│   │   ├── failure_analysis.py
+│   │   └── validation_runner.py
+│   │
+│   ├── dashboard/
+│   │   ├── __init__.py
+│   │   ├── live_dashboard.py
+│   │   ├── video_runner.py
+│   │   ├── control_panel.py
+│   │   ├── dashboard_utils.py
+│   │   └── graph_panel.py
+│   │
+│   ├── epsilon/
+│   │   ├── __init__.py
+│   │   ├── sensitivity.py
+│   │   ├── summary.py
+│   │   └── utils.py
+│   │
+│   ├── evaluation/
+│   │   ├── __init__.py
+│   │   └── baseline.py
+│   │
+│   ├── input_handlers/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── image.py
+│   │   ├── tabular.py
+│   │   └── sequence.py
+│   │
+│   ├── logging/
+│   │   ├── __init__.py
+│   │   └── logger.py
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── wrapper.py
+│   │
+│   ├── registry/
+│   │   ├── __init__.py
+│   │   ├── transformation_registry.py
+│   │   └── relation_registry.py
+│   │
+│   ├── relations/
+│   │   ├── image_relations.py
+│   │   ├── weather_relations.py
+│   │   ├── behavioral_relations.py
+│   │   └── temporal_relations.py
+│   │
+│   ├── transforms/
+│   │   ├── image_transforms.py
+│   │   ├── weather_transforms.py
+│   │   ├── behavioral_transforms.py
+│   │   └── temporal_transforms.py
+│   │
+│   └── verification/
+│       ├── __init__.py
+│       └── transformation_saver.py
+│
+├── examples/
+│   ├── run_test.py
+│   ├── webcam_automr_live.py
+│   └── custom_relation_example.py
+│
+├── results/
+│
+├── README.md
+├── LICENSE
+├── pyproject.toml
+├── requirements.txt
+└── .gitignore
 ```
 
 ---
 
-# 👨‍💻 Authors
+## Current Limitations
 
-Final Year Project — Metamorphic Testing Framework
+- Transformation suite is primarily focused on image-based inputs
+- Classification-specific metamorphic relations are still under development
+- Automatic (`epsilon`) recommendation is heuristic-based and should be validated for domain-specific safety requirements.
+- Runtime depends on model inference speed
+- Large datasets may require longer execution times
 
 ---
 
-# 📜 License
+## Future Work
 
-MIT License
+- NLP and text transformation extensions
+- Tabular data transformation support
+- Classification-specific metamorphic relations
+- Native web dashboard
+- Automatic epsilon optimization strategies
+- Multi-camera live testing
+- GPU-accelerated batch validation
+- NLP and tabular metamorphic relations
+- Distributed testing across multiple machines
+- Cross-model MR comparison
+- Automated result visualizations (plots and charts)
+- Distributed and parallel testing support
+- Web-based reporting interface
+
+---
+
+## Research Contributions
+
+AutoMR provides the following contributions for regression-based autonomous driving systems:
+
+- Automated metamorphic testing without ground-truth labels
+- Label-free robustness validation under realistic conditions
+- Parameterized MR evaluation with range sweep support
+- Failure region detection and severity-based ranking
+- Reusable and extensible testing infrastructure
+
+---
+
+## Authors
+
+**Charith Manujaya** — [github.com/CharithManaujayaMUTEC](https://github.com/CharithManaujayaMUTEC)
+
+**Raveesha Peiris** — [github.com/RaveeshaPeiris](https://github.com/RaveeshaPeiris)
+
+> Final Year Project — Metamorphic Testing Framework for Regression-Based Autonomous Driving AI/ML Models
+
+---
+
+## Citation
+
+```bibtex
+@software{automr2025,
+  title={AutoMR: A Metamorphic Testing Framework for Regression-Based Autonomous Driving Models},
+  author={Charith Manujaya and Raveesha Peiris},
+  year={2025}
+}
+```
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE).

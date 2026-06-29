@@ -62,3 +62,31 @@ class FailureAnalyzer:
             regions[mr] = grouped
 
         return regions
+    
+    def range_summary(self, df):
+
+        cols = [
+            "mr",
+            "range_change",
+            "range_percent_change",
+            "range_passed"
+        ]
+
+        return (
+            df[cols]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+    
+    def range_analysis(self, df):
+
+        return (
+            df.groupby("mr")
+            .agg({
+                "range_change": "max",
+                "range_percent_change": "max",
+                "range_passed": "first",
+                "difference": ["mean", "max"]
+            })
+            .reset_index()
+        )

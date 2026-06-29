@@ -1,0 +1,12 @@
+mr,total,passed,failed,failure_rate
+DarkVisibiltyRelation,400,356,44,0.11
+TranslationRelation,200,189,11,0.055
+FogRelation,200,192,8,0.04
+ContrastRelation,200,197,3,0.015
+RotationRelation,200,197,3,0.015
+BrightnessRelation,200,198,2,0.01
+BlurRelation,200,200,0,0.0
+RainRelation,200,200,0,0.0
+NoiseRelation,200,200,0,0.0
+SnowRelation,200,200,0,0.0
+TemporalSmoothnessRelation,40,40,0,0.0
