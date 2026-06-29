@@ -5,28 +5,20 @@ from .custom_wrapper import CustomWrapper
 from .onnx_wrapper import ONNXWrapper
 from .remote_wrapper import RemoteWrapper
 
+
 def get_wrapper(model):
 
     if isinstance(model, str):
 
-        if model.lower().endswith(
-            ".onnx"
-        ):
+        if model.lower().endswith(".onnx"):
             return ONNXWrapper(model)
-        
-    if isinstance(model, str):
 
-        if model.startswith(
-            "http://"
-        ) or model.startswith(
-            "https://"
-        ):
+        if model.startswith(("http://", "https://")):
             return RemoteWrapper(model)
 
-    module = (
-        model.__class__.__module__
-        .lower()
-    )
+        raise ValueError(f"Unknown model path: {model}")
+
+    module = model.__class__.__module__.lower()
 
     if "tensorflow" in module or "keras" in module:
         return TensorFlowWrapper(model)

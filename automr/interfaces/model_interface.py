@@ -9,16 +9,33 @@ class BaseModel(ABC):
     @abstractmethod
     def predict(self, x):
         """
-        Generate prediction for input x.
+        Generate a prediction for a single input.
 
         Parameters
         ----------
         x : Any
-            Input data.
+            Input sample.
 
         Returns
         -------
-        Any
+        float
             Model prediction.
+        """
+        pass
+
+    @abstractmethod
+    def predict_batch(self, xs):
+        """
+        Generate predictions for multiple inputs.
+
+        Parameters
+        ----------
+        xs : Sequence[Any]
+            Batch of input samples.
+
+        Returns
+        -------
+        list[float]
+            Predictions for each sample.
         """
         pass

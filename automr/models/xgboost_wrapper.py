@@ -3,7 +3,7 @@ import numpy as np
 from automr.interfaces import BaseModel
 
 
-class SklearnWrapper(BaseModel):
+class XGBoostWrapper(BaseModel):
 
     def __init__(self, model):
         self.model = model
