@@ -1,4 +1,6 @@
+import numpy as np
 import requests
+
 from automr.interfaces import BaseModel
 
 
@@ -12,7 +14,7 @@ class RemoteWrapper(BaseModel):
         response = requests.post(
             self.endpoint,
             json={
-                "input": x.tolist()
+                "input": np.asarray(x).tolist()
             },
             timeout=30
         )
@@ -25,11 +27,16 @@ class RemoteWrapper(BaseModel):
 
     def predict_batch(self, xs):
 
-        preds = []
+        response = requests.post(
+            self.endpoint,
+            json={
+                "inputs": np.asarray(xs).tolist()
+            },
+            timeout=60
+        )
 
-        for x in xs:
-            preds.append(
-                self.predict(x)
-            )
+        if response.ok:
+            return response.json()["predictions"]
 
-        return preds
+        # fallback if server only supports single inference
+        return [self.predict(x) for x in xs]
