@@ -1,98 +1,140 @@
 import numpy as np
 
-class BrightnessRelation:
-    def __init__(self, tolerance=0.02):
-        self.tolerance = tolerance
+
+# ==========================================================
+# Base Relation
+# ==========================================================
+
+class InvarianceRelation:
+    """
+    Generic metamorphic relation for transformations that
+    should approximately preserve the model prediction.
+    """
+
+    def __init__(self, epsilon=0.05, expected=None):
+        self.epsilon = epsilon
+        self._expected = (
+            expected
+            if expected is not None
+            else "Prediction should remain approximately invariant."
+        )
 
     def type(self):
         return "equality"
 
     def expected(self):
-        return "Output should remain approximately same under brightness change"
+        return self._expected
 
     def check(self, y1, y2):
         change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.tolerance
+        return change < self.epsilon
 
 
-class RotationRelation:
+# ==========================================================
+# Brightness
+# ==========================================================
+
+class BrightnessRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.02):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately same under localized brightness change."
+        )
+
+
+# ==========================================================
+# Contrast
+# ==========================================================
+
+class ContrastRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.03):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Contrast change should not significantly affect output."
+        )
+
+
+# ==========================================================
+# Blur
+# ==========================================================
+
+class BlurRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.03):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Blur should not significantly change output."
+        )
+
+
+# ==========================================================
+# Noise
+# ==========================================================
+
+class NoiseRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.03):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Noise should not significantly affect prediction."
+        )
+
+
+# ==========================================================
+# Rotation
+# ==========================================================
+
+class RotationRelation(InvarianceRelation):
+
     def __init__(self, epsilon=0.05):
-        self.epsilon = epsilon
-
-    def type(self):
-        return "equality"
-
-    def expected(self):
-        return "Small rotation should not significantly change output"
-
-    def check(self, y1, y2):
-        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
+        super().__init__(
+            epsilon=epsilon,
+            expected="Small rotation should not significantly change output."
+        )
 
 
-class TranslationRelation:
-    def __init__(self, tolerance=0.05):
-        self.tolerance = tolerance
+# ==========================================================
+# Translation
+# ==========================================================
 
-    def type(self):
-        return "equality"
+class TranslationRelation(InvarianceRelation):
 
-    def expected(self):
-        return "Small translation should preserve prediction consistency"
-
-    def check(self, y1, y2):
-        change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.tolerance
+    def __init__(self, epsilon=0.05):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Small translation should preserve prediction consistency."
+        )
 
 
-class NoiseRelation:
-    def __init__(self, tolerance=0.03):
-        self.tolerance = tolerance
+# ==========================================================
+# Composite
+# ==========================================================
 
-    def type(self):
-        return "equality"
+class CompositeRelation(InvarianceRelation):
 
-    def expected(self):
-        return "Noise should not significantly affect prediction"
-
-    def check(self, y1, y2):
-        change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.tolerance
+    def __init__(self, epsilon=0.05):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Prediction should remain approximately consistent under composite transformations."
+        )
 
 
-class BlurRelation:
-    def __init__(self, epsilon=0.03):
-        self.epsilon = epsilon
-
-    def type(self):
-        return "equality"
-
-    def expected(self):
-        return "Blur should not significantly change output"
-
-    def check(self, y1, y2):
-        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
-
-
-class ContrastRelation:
-    def __init__(self, epsilon=0.03):
-        self.epsilon = epsilon
-
-    def type(self):
-        return "equality"
-
-    def expected(self):
-        return "Contrast change should not significantly affect output"
-
-    def check(self, y1, y2):
-        return abs(y1 - y2) / (abs(y1) + 1e-6) < self.epsilon
-
+# ==========================================================
+# Flip
+# ==========================================================
 
 class FlipRelation:
+
+    def __init__(self, epsilon=0.10):
+        self.epsilon = epsilon
+
     def type(self):
         return "inequality"
 
     def expected(self):
-        return "Flipped image should invert steering"
+        return "Flipped image should invert steering."
 
     def check(self, y1, y2):
-        return abs(y2 + y1) / (abs(y1) + 1e-6) < 0.1
+        return abs(y2 + y1) / (abs(y1) + 1e-6) < self.epsilon
