@@ -273,11 +273,11 @@ class AutoMR:
         results = self.range_tester.run_range(
             model=self.model,
             input_data=input_data,
-            transform=transform,
+            transform_fn=transform,
             relation=relation,
             start=start,
             end=end,
-            samples=samples,
+            num_samples=samples,
             comparator=self.comparator,
             image_saver=self.image_saver,
             range_threshold=self.range_threshold,
