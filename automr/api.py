@@ -11,64 +11,32 @@ from automr.comparators import get_comparator
 from automr.input_handlers import get_handler
 from automr.registry import (
     TransformationRegistry,
-    RelationRegistry
+    RelationRegistry,
 )
+
+from automr.registry.default_transforms import (
+    register_default_transforms,
+)
+
+from automr.registry.default_relations import (
+    register_default_relations,
+)
+
 from automr.evaluation import BaselineEvaluator
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
-from automr.epsilon.utils import apply_epsilon_to_relations
-from automr.epsilon.utils import generate_epsilon_values
-from automr.epsilon.sensitivity import EpsilonSensitivity
-from automr.epsilon.summary import EpsilonSummary
 
-# Image transforms
-from automr.transforms.image_transforms import (
-    increase_brightness,
-    rotate_small,
-    shift_right,
-    add_noise,
-    blur,
-    adjust_contrast
+from automr.epsilon.utils import (
+    apply_epsilon_to_relations,
+    generate_epsilon_values,
 )
 
-# Weather transforms
-from automr.transforms.weather_transforms import (
-    add_rain,
-    add_snow,
-    add_fog
+from automr.epsilon.sensitivity import (
+    EpsilonSensitivity,
 )
 
-# Image relations
-from automr.relations.image_relations import (
-    BrightnessRelation,
-    RotationRelation,
-    TranslationRelation,
-    NoiseRelation,
-    BlurRelation,
-    ContrastRelation
-)
-
-# Weather relations
-from automr.relations.weather_relations import (
-    RainRelation,
-    SnowRelation,
-    FogRelation
-)
-
-# Temporal
-from automr.transforms.temporal_transforms import next_frame_pair
-from automr.relations.temporal_relations import TemporalSmoothnessRelation
-
-# Behavioral
-from automr.transforms.behavioral_transforms import (
-    reduce_visibility,
-    darken
-)
-
-from automr.relations.behavioral_relations import (
-    DarkVisibiltyRelation,
-    MonotonicIncreaseRelation,
-    MonotonicDecreaseRelation
+from automr.epsilon.summary import (
+    EpsilonSummary,
 )
 
 class AutoMR:
@@ -78,142 +46,95 @@ class AutoMR:
         task="regression",
         input_type="image",
         epsilon=0.05,
-        range_threshold=5.0
+        range_threshold=5.0,
     ):
+
+        # --------------------------------------------------
+        # Core Components
+        # --------------------------------------------------
+
         self.image_saver = TransformationSaver()
         self.logger = AutoMRLogger()
         self.input_handler = get_handler(input_type)
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
+
+        self.task = task
         self.range_threshold = range_threshold
+
+        # --------------------------------------------------
+        # Registries
+        # --------------------------------------------------
+
         self.transform_registry = TransformationRegistry()
         self.relation_registry = RelationRegistry()
+
+        # MR parameter ranges
         self.mr_ranges = {}
-        self.task = task
+
+        # Comparator
         self.comparator = get_comparator(
             task=task,
-            epsilon=epsilon
+            epsilon=epsilon,
         )
 
+        # Register built-in transformations and relations
         self._register_default_mrs(epsilon)
 
     def _register_default_mrs(self, epsilon):
+            """
+            Register all built-in transformations,
+            relations and their parameter ranges.
+            """
 
-        # IMAGE
-        self.transform_registry.register(
-            "brightness",
-            increase_brightness
-        )
-        self.relation_registry.register(
-            "brightness",
-            BrightnessRelation(tolerance=epsilon)
-        )
-        self.mr_ranges["brightness"] = (0.1, 3.0)
+            # Register built-in transformations
+            register_default_transforms(
+                self.transform_registry
+            )
 
-        self.transform_registry.register(
-            "rotation",
-            rotate_small
-        )
-        self.relation_registry.register(
-            "rotation",
-            RotationRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["rotation"] = (-60, 60)
+            # Register built-in relations
+            register_default_relations(
+                self.relation_registry,
+                epsilon
+            )
 
-        self.transform_registry.register(
-            "translation",
-            shift_right
-        )
-        self.relation_registry.register(
-            "translation",
-            TranslationRelation(tolerance=epsilon)
-        )
-        self.mr_ranges["translation"] = (0, 80)
+            # Default parameter ranges for each MR
+            self.mr_ranges = {
 
-        self.transform_registry.register(
-            "noise",
-            add_noise
-        )
-        self.relation_registry.register(
-            "noise",
-            NoiseRelation(tolerance=epsilon)
-        )
-        self.mr_ranges["noise"] = (0, 150)
+                # -------------------------------------------------
+                # Image
+                # -------------------------------------------------
+                "brightness": (0.1, 3.0),
+                "rotation": (-60, 60),
+                "translation": (0, 80),
+                "noise": (0, 150),
+                "blur": (1, 31),
+                "contrast": (0.1, 4.0),
+                "composite": (0.1, 1.5),
 
-        self.transform_registry.register(
-            "blur",
-            blur
-        )
-        self.relation_registry.register(
-            "blur",
-            BlurRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["blur"] = (1, 31)
+                # -------------------------------------------------
+                # Weather
+                # -------------------------------------------------
+                "rain": (0.0, 1.5),
+                "snow": (0.0, 1.5),
+                "fog": (0.0, 1.5),
+                "sandstorm": (0.0, 1.5),
+                "dust": (0.0, 1.5),
+                "haze": (0.0, 1.5),
+                "smoke": (0.0, 1.5),
 
-        self.transform_registry.register(
-            "contrast",
-            adjust_contrast
-        )
-        self.relation_registry.register(
-            "contrast",
-            ContrastRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["contrast"] = (0.1, 4.0)
+                # -------------------------------------------------
+                # Behavioral
+                # -------------------------------------------------
+                "visibility": (0.05, 1.5),
+                "darkness": (0.05, 1.5),
 
-        # WEATHER
-        self.transform_registry.register("rain", add_rain)
-        self.relation_registry.register(
-            "rain",
-            RainRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["rain"] = (0.0, 1.5)
-
-        self.transform_registry.register("snow", add_snow)
-        self.relation_registry.register(
-            "snow",
-            SnowRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["snow"] = (0.0, 1.5)
-
-        self.transform_registry.register("fog", add_fog)
-        self.relation_registry.register(
-            "fog",
-            FogRelation(epsilon=epsilon)
-        )
-        self.mr_ranges["fog"] = (0.0, 1.5)
-
-        # TEMPORAL
-        self.transform_registry.register(
-            "temporal",
-            next_frame_pair
-        )
-        self.relation_registry.register(
-            "temporal",
-            TemporalSmoothnessRelation(delta=epsilon)
-        )
-        self.mr_ranges["temporal"] = (0, 150)
-
-        # BEHAVIORAL
-        self.transform_registry.register(
-            "visibility",
-            reduce_visibility
-        )
-        self.relation_registry.register(
-            "visibility",
-            DarkVisibiltyRelation(max_change=epsilon)
-        )
-        self.mr_ranges["visibility"] = (0.05, 1.5)
-
-        self.transform_registry.register(
-            "darkness",
-            darken
-        )
-        self.relation_registry.register(
-            "darkness",
-            DarkVisibiltyRelation(max_change=epsilon)
-        )
-        self.mr_ranges["darkness"] = (0.05, 1.5)
+                # -------------------------------------------------
+                # Temporal
+                # -------------------------------------------------
+                "temporal": (0, 150),
+            }
 
     # ---------- MODEL WRAPPER ----------
     #def _wrap_if_needed(self, model):
@@ -233,32 +154,83 @@ class AutoMR:
     #                output = self.model(x)
     #            return float(output.max().item())    
 
-    # ---------- PLUGIN API ----------
+    # ==================================================
+    # Plugin API
+    # ==================================================
+
     def register_transform(
         self,
         name,
         transform,
         relation,
-        param_range
+        param_range,
     ):
+        """
+        Register a custom transformation and its
+        corresponding metamorphic relation.
+        """
+
         self.transform_registry.register(
             name,
-            transform
+            transform,
         )
 
         self.relation_registry.register(
             name,
-            relation
+            relation,
         )
 
         self.mr_ranges[name] = param_range
 
+    def unregister_transform(self, name):
+        """
+        Remove a registered transformation.
+        """
+
+        if name in self.transform_registry.transforms:
+            del self.transform_registry.transforms[name]
+
+        if name in self.relation_registry.relations:
+            del self.relation_registry.relations[name]
+
+        if name in self.mr_ranges:
+            del self.mr_ranges[name]
+
+    def has_transform(self, name):
+        """
+        Check whether a transformation exists.
+        """
+
+        return name in self.transform_registry.transforms
+
+    def get_transform(self, name):
+        """
+        Return a registered transformation.
+        """
+
+        return self.transform_registry.get(name)
+
+    def get_relation(self, name):
+        """
+        Return the relation associated with a transformation.
+        """
+
+        return self.relation_registry.get(name)
+
     def list_transforms(self):
-        return self.transform_registry.list()
+        """
+        List all registered transformations.
+        """
+
+        return sorted(self.transform_registry.list())
 
     def list_relations(self):
-        return self.relation_registry.list()
-        
+        """
+        List all registered relations.
+        """
+
+        return sorted(self.relation_registry.list())
+          
     # ---------- EXPECTED ----------
     def get_expected(self, relation_name):
 
@@ -272,82 +244,125 @@ class AutoMR:
                     return relation.expected()
 
         return "Invariant or monotonic behavior expected"
-    # ---------- RUN SINGLE ----------
-    def run_mr(self, input_data, mr_name, samples=50):
 
-        #input_data = self.input_handler.preprocess(input_data)
+    # ==================================================
+    # Run a Single Metamorphic Relation
+    # ==================================================
 
-        transform = self.transform_registry.get(mr_name)
-        relation = self.relation_registry.get(mr_name)
+    def run_mr(
+        self,
+        input_data,
+        mr_name,
+        samples=50,
+    ):
+        """
+        Execute a single metamorphic relation over its
+        configured parameter range.
+        """
+
+        if not self.has_transform(mr_name):
+            raise ValueError(
+                f"Unknown metamorphic relation: '{mr_name}'"
+            )
+
+        transform = self.get_transform(mr_name)
+        relation = self.get_relation(mr_name)
 
         start, end = self.mr_ranges[mr_name]
 
         results = self.range_tester.run_range(
-            self.model,
-            input_data,
-            transform,
-            relation,
-            start,
-            end,
-            samples,
+            model=self.model,
+            input_data=input_data,
+            transform=transform,
+            relation=relation,
+            start=start,
+            end=end,
+            samples=samples,
             comparator=self.comparator,
             image_saver=self.image_saver,
-            range_threshold=self.range_threshold
+            range_threshold=self.range_threshold,
         )
 
-        for r in results:
-            r["severity"] = abs(r["difference"])
+        for result in results:
+
+            result["severity"] = abs(result["difference"])
+
             self.logger.log(
-                    f"MR={mr_name} "
-                    f"param={r['param']} "
-                    f"orig={r['original']} "
-                    f"trans={r['transformed']} "
-                    f"diff={r['difference']} "
-                    f"pass={r['passed']}"
-                )
+                f"MR={mr_name} "
+                f"param={result['param']} "
+                f"orig={result['original']} "
+                f"trans={result['transformed']} "
+                f"diff={result['difference']} "
+                f"pass={result['passed']}"
+            )
 
         df = self.analyzer.to_dataframe(results)
+
         summary = self.analyzer.summary(df)
 
         return df, summary
 
-    def run_all_mrs(self, input_data, samples=50):
+    # ==================================================
+    # Run All Metamorphic Relations
+    # ==================================================
+
+    def run_all_mrs(
+        self,
+        input_data,
+        samples=50,
+        exclude=None,
+    ):
+        """
+        Execute all registered metamorphic relations.
+
+        Parameters
+        ----------
+        input_data : input sample
+
+        samples : int
+            Number of parameter samples.
+
+        exclude : list[str] | None
+            Optional list of MR names to skip.
+        """
+
+        if exclude is None:
+            exclude = ["temporal"]
 
         mr_names = [
-            name
-            for name in self.transform_registry.list()
-            if name != "temporal"
+            mr
+            for mr in self.list_transforms()
+            if mr not in exclude
         ]
 
-        def run_single_mr(name):
-
+        def _run(mr_name):
             df, _ = self.run_mr(
-                input_data,
-                name,
-                samples
+                input_data=input_data,
+                mr_name=mr_name,
+                samples=samples,
             )
-
             return df
 
         max_workers = min(
+            multiprocessing.cpu_count(),
             len(mr_names),
-            8
+            8,
         )
 
         with ThreadPoolExecutor(
             max_workers=max_workers
         ) as executor:
 
-            results = list(
+            dfs = list(
                 executor.map(
-                    run_single_mr,
-                    mr_names
+                    _run,
+                    mr_names,
                 )
             )
 
         return pd.concat(
-            results,
-            ignore_index=True
+            dfs,
+            ignore_index=True,
         )
     
     def _process_single_sample(self, args):
@@ -402,7 +417,10 @@ class AutoMR:
             epsilon=epsilon
         )
 
-    # ---------- RUN DATASET ----------
+    # ==================================================
+    # Run Dataset
+    # ==================================================
+
     def run_dataset(
         self,
         dataset,
@@ -412,81 +430,75 @@ class AutoMR:
         show_progress=False,
         epsilon=None,
     ):
+        """
+        Run AutoMR on an entire dataset.
+        """
+
+        # ----------------------------------------------
+        # Update epsilon if requested
+        # ----------------------------------------------
         if epsilon is not None:
-            apply_epsilon_to_relations(
-                self.relation_registry,
-                epsilon
-            )
+            self.set_epsilon(epsilon)
 
-            self.comparator = get_comparator(
-                task=self.task,
-                epsilon=epsilon
-            )
-
-        if max_samples:
+        # ----------------------------------------------
+        # Limit dataset size
+        # ----------------------------------------------
+        if max_samples is not None:
             dataset = dataset[:max_samples]
 
-        all_results = []
-
+        # ----------------------------------------------
+        # Run temporal MR once
+        # ----------------------------------------------
         df_temp = None
 
         if include_temporal:
+
             try:
+
                 df_temp, _ = self.run_mr(
-                    dataset,
-                    "temporal",
-                    samples=samples_per_mr
+                    input_data=dataset,
+                    mr_name="temporal",
+                    samples=samples_per_mr,
                 )
+
             except Exception:
+
                 df_temp = None
 
+        # ----------------------------------------------
+        # Dataset iterator
+        # ----------------------------------------------
         iterator = enumerate(dataset)
 
         if show_progress:
+
             iterator = tqdm(
                 iterator,
                 total=len(dataset),
-                desc="Running AutoMR"
+                desc="Running AutoMR",
             )
 
-        for i, sample in iterator:
+        # ----------------------------------------------
+        # Execute samples
+        # ----------------------------------------------
+        all_results = []
 
-            #sample = self.input_handler.preprocess(sample)
+        for args in (
+            (i, sample, samples_per_mr, df_temp)
+            for i, sample in iterator
+        ):
 
-            #if sample is None:
-            #    continue
+            df = self._process_single_sample(args)
 
-            df_img = self.run_all_mrs(
-                sample,
-                samples=samples_per_mr
-            )
+            if df is not None:
+                all_results.append(df)
 
-            if df_temp is not None:
-                df = pd.concat(
-                    [df_img, df_temp],
-                    ignore_index=True
-                )
-            else:
-                df = df_img
-
-            df["sample_id"] = i
-
-            df["expected_behavior"] = df["mr"].apply(
-                self.get_expected
-            )
-
-            df["actual_behavior"] = df["status"].apply(
-                lambda x:
-                "Consistent"
-                if x == "PASS"
-                else "Violation"
-            )
-
-            all_results.append(df)
+        if not all_results:
+            return pd.DataFrame()
 
         return pd.concat(
             all_results,
-            ignore_index=True
+            ignore_index=True,
         )
 
     # ---------- ANALYSIS ----------

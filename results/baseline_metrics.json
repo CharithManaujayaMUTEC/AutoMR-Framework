@@ -1,7 +1,7 @@
 {
     "num_samples": 2704,
-    "mean_prediction": -1.6324505999507988,
-    "std_prediction": 0.003064003493502071,
-    "min_prediction": -1.6486576795578003,
-    "max_prediction": -1.623123049736023
+    "mean_prediction": -1.6324505361138717,
+    "std_prediction": 0.0030640077170611163,
+    "min_prediction": -1.648658037185669,
+    "max_prediction": -1.6231228113174438
 }
