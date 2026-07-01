@@ -1,5 +1,31 @@
 import random
 
+# Image transforms
+from automr.transforms.image_transforms import (
+    increase_brightness,
+    adjust_contrast,
+    blur,
+    add_noise,
+    rotate_small,
+    shift_right,
+)
+
+# Weather transforms
+from automr.transforms.weather_transforms import (
+    add_rain,
+    add_snow,
+    add_fog,
+    add_dust,
+    add_haze,
+    add_smoke,
+    add_sandstorm,
+)
+
+# Behavioral transforms
+from automr.transforms.behavioral_transforms import (
+    darken,
+    reduce_visibility,
+)
 
 def composite_transform(image, factor=0.5):
     """

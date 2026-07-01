@@ -95,21 +95,6 @@ def rotate_small(
     min_patches=3,
     max_patches=7,
 ):
-    """
-    Spatially Variant Local Rotation.
-
-    Controlled parameter
-    --------------------
-    angle : rotation angle (degrees)
-
-    Randomized
-    ----------
-    • number of rotated regions
-    • locations
-    • region sizes
-    • ellipse orientations
-    • edge softness
-    """
 
     img = image.astype(np.float32).copy()
 
@@ -122,28 +107,32 @@ def rotate_small(
 
     for _ in range(num_patches):
 
-        patch_w = np.random.randint(
-            max(30, w // 8),
-            max(60, w // 3)
-        )
+        # Safe patch sizes
+        min_pw = max(20, w // 8)
+        max_pw = min(max(60, w // 3), w - 1)
 
-        patch_h = np.random.randint(
-            max(30, h // 8),
-            max(60, h // 3)
-        )
+        min_ph = max(20, h // 8)
+        max_ph = min(max(60, h // 3), h - 1)
 
-        x = np.random.randint(0, w - patch_w)
-        y = np.random.randint(0, h - patch_h)
+        if max_pw <= min_pw:
+            patch_w = max(10, w - 1)
+        else:
+            patch_w = np.random.randint(min_pw, max_pw + 1)
+
+        if max_ph <= min_ph:
+            patch_h = max(10, h - 1)
+        else:
+            patch_h = np.random.randint(min_ph, max_ph + 1)
+
+        x = np.random.randint(0, w - patch_w + 1)
+        y = np.random.randint(0, h - patch_h + 1)
 
         patch = img[
             y:y + patch_h,
             x:x + patch_w
         ].copy()
 
-        center = (
-            patch_w / 2,
-            patch_h / 2
-        )
+        center = (patch_w / 2, patch_h / 2)
 
         M = cv2.getRotationMatrix2D(
             center,
@@ -175,9 +164,7 @@ def rotate_small(
             -1
         )
 
-        blur_size = np.random.choice(
-            [21, 31, 41]
-        )
+        blur_size = np.random.choice([21, 31, 41])
 
         mask = cv2.GaussianBlur(
             mask,
@@ -207,28 +194,12 @@ def shift_right(
     min_patches=3,
     max_patches=7,
 ):
-    """
-    Spatially Variant Local Translation.
-
-    Controlled parameter
-    --------------------
-    pixels : translation magnitude
-
-    Randomized
-    ----------
-    • number of translated regions
-    • region locations
-    • region sizes
-    • translation direction
-    • ellipse orientation
-    • edge softness
-    """
 
     img = image.astype(np.float32).copy()
 
     h, w = img.shape[:2]
 
-    pixels = int(max(1, pixels))
+    pixels = max(1, int(pixels))
 
     num_patches = np.random.randint(
         min_patches,
@@ -237,25 +208,31 @@ def shift_right(
 
     for _ in range(num_patches):
 
-        patch_w = np.random.randint(
-            max(30, w // 8),
-            max(70, w // 3)
-        )
+        # Safe patch sizes
+        min_pw = max(20, w // 8)
+        max_pw = min(max(70, w // 3), w - 1)
 
-        patch_h = np.random.randint(
-            max(30, h // 8),
-            max(70, h // 3)
-        )
+        min_ph = max(20, h // 8)
+        max_ph = min(max(70, h // 3), h - 1)
 
-        x = np.random.randint(0, w - patch_w)
-        y = np.random.randint(0, h - patch_h)
+        if max_pw <= min_pw:
+            patch_w = max(10, w - 1)
+        else:
+            patch_w = np.random.randint(min_pw, max_pw + 1)
+
+        if max_ph <= min_ph:
+            patch_h = max(10, h - 1)
+        else:
+            patch_h = np.random.randint(min_ph, max_ph + 1)
+
+        x = np.random.randint(0, w - patch_w + 1)
+        y = np.random.randint(0, h - patch_h + 1)
 
         patch = img[
             y:y + patch_h,
             x:x + patch_w
         ].copy()
 
-        # Random translation direction
         dx = np.random.randint(-pixels, pixels + 1)
         dy = np.random.randint(-pixels, pixels + 1)
 
@@ -288,9 +265,7 @@ def shift_right(
             -1
         )
 
-        blur_size = np.random.choice(
-            [21, 31, 41]
-        )
+        blur_size = np.random.choice([21, 31, 41])
 
         mask = cv2.GaussianBlur(
             mask,
