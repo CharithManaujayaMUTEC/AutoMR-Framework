@@ -4,10 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automr"
-version = "0.4.0"
-
-description = "A Model-Agnostic Metamorphic Testing Framework for Regression-Based Autonomous Driving AI/ML Models"
-
+version = "0.5.0"
+description = "A Modular Model-Agnostic Metamorphic Testing Framework for AI/ML Model Robustness Validation"
 readme = "README.md"
 requires-python = ">=3.8"
 
@@ -22,22 +20,29 @@ authors = [
 
 keywords = [
   "metamorphic testing",
-  "autonomous driving",
   "machine learning",
   "deep learning",
-  "software testing",
-  "model validation",
+  "autonomous driving",
   "robustness testing",
-  "epsilon sensitivity",
+  "model validation",
   "computer vision",
-  "regression"
+  "regression",
+  "software testing",
+  "AI testing",
+  "metamorphic relations",
+  "epsilon sensitivity",
+  "plugin architecture",
+  "transformation registry"
 ]
 
 classifiers = [
   "Development Status :: 4 - Beta",
+
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
+
   "License :: OSI Approved :: MIT License",
+
   "Operating System :: OS Independent",
 
   "Programming Language :: Python :: 3",
@@ -48,7 +53,8 @@ classifiers = [
 
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Testing",
-  "Topic :: Scientific/Engineering :: Image Processing"
+  "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
 dependencies = [
@@ -63,6 +69,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework"
 Repository = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework"
+Documentation = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/wiki"
 Issues = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/issues"
 
 [tool.setuptools.packages.find]
