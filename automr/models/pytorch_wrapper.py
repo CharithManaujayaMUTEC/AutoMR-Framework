@@ -6,9 +6,10 @@ from automr.interfaces import BaseModel
 
 class PyTorchWrapper(BaseModel):
 
-    def __init__(self, model, device="cpu"):
+    def __init__(self, model, device="cpu", decoder=None):
         self.model = model.eval()
         self.device = device
+        self.decoder = decoder
 
     def predict(self, x):
         x = np.asarray(x, dtype=np.float32)
@@ -26,7 +27,17 @@ class PyTorchWrapper(BaseModel):
         with torch.no_grad():
             pred = self.model(x)
 
-        return float(pred.cpu().numpy().flatten()[0])
+        # ---------- custom decoder ----------
+        if self.decoder is not None:
+            return float(self.decoder(pred))
+
+        # ---------- normal pytorch ----------
+        if torch.is_tensor(pred):
+            return float(pred.cpu().numpy().flatten()[0])
+
+        raise TypeError(
+            f"Unsupported PyTorch output: {type(pred)}"
+        )
 
     def predict_batch(self, xs):
         batch = np.asarray(
@@ -44,5 +55,22 @@ class PyTorchWrapper(BaseModel):
 
         with torch.no_grad():
             preds = self.model(batch)
+
+        if self.decoder is not None:
+
+            outputs = []
+
+            if isinstance(preds, list):
+                for p in preds:
+                    outputs.append(float(self.decoder(p)))
+            else:
+                for i in range(batch.shape[0]):
+                    single = {
+                        k: v[i:i+1]
+                        for k, v in preds.items()
+                    }
+                    outputs.append(float(self.decoder(single)))
+
+            return outputs
 
         return preds.cpu().numpy().flatten().tolist()

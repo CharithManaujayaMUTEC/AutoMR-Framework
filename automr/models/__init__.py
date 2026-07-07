@@ -5,6 +5,7 @@ from .sklearn_wrapper import SklearnWrapper
 from .onnx_wrapper import ONNXWrapper
 from .remote_wrapper import RemoteWrapper
 from .custom_wrapper import CustomWrapper
+from .xgboost_wrapper import XGBoostWrapper
 
 __all__ = [
     "get_wrapper",
@@ -14,4 +15,5 @@ __all__ = [
     "ONNXWrapper",
     "RemoteWrapper",
     "CustomWrapper",
+    "XGBoostWrapper",
 ]
