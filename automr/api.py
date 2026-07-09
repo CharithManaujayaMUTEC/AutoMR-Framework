@@ -592,10 +592,9 @@ class AutoMR:
                     )
 
             except Exception as e:
-
-                print(
-                    f"Baseline failed: {idx}"
-                )
+                print(f"\nBaseline failed: {i}")
+                print(type(e).__name__, e)
+                raise
 
         baseline.save_predictions(
             predictions
