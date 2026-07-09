@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 from .tensorflow_wrapper import TensorFlowWrapper
 from .pytorch_wrapper import PyTorchWrapper
@@ -10,6 +11,9 @@ from .remote_wrapper import RemoteWrapper
 
 def get_wrapper(model):
 
+    # -------------------------
+    # String models
+    # -------------------------
     if isinstance(model, str):
 
         if model.lower().endswith(".onnx"):
@@ -20,21 +24,32 @@ def get_wrapper(model):
 
         raise ValueError(f"Unknown model path: {model}")
 
-    # Detect PyTorch correctly
-    if isinstance(model, torch.nn.Module):
-        return PyTorchWrapper(model)
-
+    # -------------------------
+    # Framework detection
+    # -------------------------
     module = model.__class__.__module__.lower()
 
+    # TensorFlow / Keras
     if "tensorflow" in module or "keras" in module:
         return TensorFlowWrapper(model)
 
+    # PyTorch (most reliable check)
+    if isinstance(model, nn.Module):
+        preprocess = getattr(model, "_automr_preprocess", None)
+        decoder = getattr(model, "_automr_decoder", None)
+
+        return PyTorchWrapper(
+            model=model,
+            preprocess=preprocess,
+            decoder=decoder,
+        )
+
+    # scikit-learn
     if "sklearn" in module:
         return SklearnWrapper(model)
 
+    # Generic custom model
     if hasattr(model, "predict"):
         return CustomWrapper(model)
 
-    raise ValueError(
-        f"Unsupported model type: {type(model)}"
-    )
+    raise ValueError(f"Unsupported model type: {type(model)}")
