@@ -9,7 +9,7 @@ class XGBoostWrapper(BaseModel):
         self.model = model
 
     def predict(self, x):
-        x = np.asarray(x)
+        x = np.asarray(x, dtype=np.float32)
 
         if x.ndim > 1:
             x = x.reshape(1, -1)
@@ -17,7 +17,11 @@ class XGBoostWrapper(BaseModel):
         return float(self.model.predict(x)[0])
 
     def predict_batch(self, xs):
-        xs = np.asarray(xs)
+        """
+        Native batch prediction.
+        """
+
+        xs = np.asarray(xs, dtype=np.float32)
 
         if xs.ndim > 2:
             xs = xs.reshape(xs.shape[0], -1)
