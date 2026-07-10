@@ -320,66 +320,39 @@ class AutoMR:
         samples=50,
         exclude=None,
         original_prediction=None,
-        prediction_cache=None,      # Cache reused across epsilon runs
     ):
         """
         Execute all registered metamorphic relations.
 
-        Optimizations
-        -------------
-        - Compute original prediction once
-        - Reuse cached transformed predictions
-        - Parallel execution across MRs
+        Optimized:
+        - Compute original prediction once.
+        - Keep MR execution sequential.
+        - Each MR already performs batched inference internally.
         """
 
         if exclude is None:
             exclude = ["temporal"]
 
-        mr_names = [
-            mr
-            for mr in self.list_transforms()
-            if mr not in exclude
-        ]
-
-        # ---------------------------------------
-        # Compute original prediction once
-        # ---------------------------------------
         if original_prediction is None:
             original_prediction = float(
                 self.model.predict(input_data)
             )
 
-        # ---------------------------------------
-        # Execute one MR
-        # ---------------------------------------
-        def _run(mr_name):
+        dfs = []
+
+        for mr_name in self.list_transforms():
+
+            if mr_name in exclude:
+                continue
 
             df, _ = self.run_mr(
                 input_data=input_data,
                 mr_name=mr_name,
                 samples=samples,
                 original_prediction=original_prediction,
-                prediction_cache=prediction_cache,
             )
 
-            return df
-
-        max_workers = min(
-            multiprocessing.cpu_count(),
-            len(mr_names),
-            8,
-        )
-
-        with ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as executor:
-
-            dfs = list(
-                executor.map(
-                    _run,
-                    mr_names,
-                )
-            )
+            dfs.append(df)
 
         return pd.concat(
             dfs,
@@ -388,61 +361,37 @@ class AutoMR:
 
     def _process_single_sample(self, args):
         """
-        Process a single dataset sample.
+        Process one sample.
 
-        Optimizations
-        -------------
-        - Compute original prediction once
-        - Reuse transformed predictions
-        - Prediction cache for epsilon sweeps
+        Optimized:
+        - Original prediction computed only once.
+        - Reused across every MR.
         """
 
-        # ---------------------------------------
-        # Unpack arguments
-        # ---------------------------------------
-        sample_id, sample, samples_per_mr, df_temp, prediction_cache = args
+        sample_id, sample, samples_per_mr, df_temp = args
 
-        # ---------------------------------------
-        # Original prediction (computed once)
-        # ---------------------------------------
+        # Compute original prediction once
         original_prediction = float(
             self.model.predict(sample)
         )
 
-        # ---------------------------------------
-        # Cache reused across all MRs
-        # ---------------------------------------
-        if prediction_cache is None:
-            prediction_cache = {}
-
-        # ---------------------------------------
-        # Execute all image MRs
-        # ---------------------------------------
+        # Run all image MRs
         df_img = self.run_all_mrs(
             input_data=sample,
             samples=samples_per_mr,
             original_prediction=original_prediction,
-            prediction_cache=prediction_cache,
         )
 
-        # ---------------------------------------
-        # Merge temporal MR
-        # ---------------------------------------
+        # Merge temporal results if available
         if df_temp is not None and not df_temp.empty:
-
             df = pd.concat(
                 [df_img, df_temp],
                 ignore_index=True,
                 copy=False,
             )
-
         else:
-
             df = df_img
 
-        # ---------------------------------------
-        # Metadata
-        # ---------------------------------------
         df["sample_id"] = sample_id
 
         df["expected_behavior"] = [
