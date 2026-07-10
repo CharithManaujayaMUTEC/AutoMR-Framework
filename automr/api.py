@@ -255,10 +255,14 @@ class AutoMR:
         input_data,
         mr_name,
         samples=50,
+        original_prediction=None,   # Cached original prediction
     ):
         """
-        Execute a single metamorphic relation over its
-        configured parameter range.
+        Execute a single metamorphic relation.
+
+        Optimization:
+        - Original prediction is computed only once.
+        - Reused across every MR.
         """
 
         if not self.has_transform(mr_name):
@@ -282,6 +286,11 @@ class AutoMR:
             comparator=self.comparator,
             image_saver=self.image_saver,
             range_threshold=self.range_threshold,
+
+            # ---------------------------------------
+            # Pass cached prediction
+            # ---------------------------------------
+            original_prediction=original_prediction,
         )
 
         for result in results:
@@ -312,19 +321,14 @@ class AutoMR:
         input_data,
         samples=50,
         exclude=None,
+        original_prediction=None,   # Cached original prediction
     ):
         """
         Execute all registered metamorphic relations.
 
-        Parameters
-        ----------
-        input_data : input sample
-
-        samples : int
-            Number of parameter samples.
-
-        exclude : list[str] | None
-            Optional list of MR names to skip.
+        Optimization:
+        - Original prediction computed only once.
+        - Shared across every MR.
         """
 
         if exclude is None:
@@ -336,12 +340,28 @@ class AutoMR:
             if mr not in exclude
         ]
 
+        # -----------------------------------------
+        # Compute original prediction once
+        # -----------------------------------------
+        if original_prediction is None:
+            original_prediction = float(
+                self.model.predict(input_data)
+            )
+
+        # -----------------------------------------
+        # Execute one MR
+        # -----------------------------------------
         def _run(mr_name):
+
             df, _ = self.run_mr(
                 input_data=input_data,
                 mr_name=mr_name,
                 samples=samples,
+
+                # Reuse prediction
+                original_prediction=original_prediction,
             )
+
             return df
 
         max_workers = min(
@@ -365,33 +385,39 @@ class AutoMR:
             dfs,
             ignore_index=True,
         )
-    
+
     def _process_single_sample(self, args):
         """
-        Process a single dataset sample.
+        Process one dataset sample.
 
-        Optimizations:
-        - Minimal DataFrame operations
-        - Single concat only when temporal MR exists
-        - Timing-friendly
-        - Keeps AutoMR architecture unchanged
+        Optimization:
+        - Compute original prediction ONCE.
+        - Reuse it across every MR.
         """
 
         # -------------------------------------------------------
-        # Unpack arguments
+        # Unpack
         # -------------------------------------------------------
         sample_id, sample, samples_per_mr, df_temp = args
 
         # -------------------------------------------------------
-        # Execute all registered MRs (except temporal)
+        # Compute original prediction ONCE
+        # -------------------------------------------------------
+        original_prediction = float(
+            self.model.predict(sample)
+        )
+
+        # -------------------------------------------------------
+        # Run all image MRs using cached prediction
         # -------------------------------------------------------
         df_img = self.run_all_mrs(
             input_data=sample,
             samples=samples_per_mr,
+            original_prediction=original_prediction,
         )
 
         # -------------------------------------------------------
-        # Merge temporal MR results only if available
+        # Merge temporal MR if available
         # -------------------------------------------------------
         if df_temp is not None and not df_temp.empty:
 
@@ -406,32 +432,23 @@ class AutoMR:
             df = df_img
 
         # -------------------------------------------------------
-        # Add sample identifier
+        # Metadata
         # -------------------------------------------------------
         df["sample_id"] = sample_id
 
-        # -------------------------------------------------------
-        # Expected behavior for each MR
-        # -------------------------------------------------------
         df["expected_behavior"] = [
             self.get_expected(mr)
             for mr in df["mr"]
         ]
 
-        # -------------------------------------------------------
-        # Actual behavior
-        # -------------------------------------------------------
         df["actual_behavior"] = np.where(
             df["status"] == "PASS",
             "Consistent",
             "Violation",
         )
 
-        # -------------------------------------------------------
-        # Return processed DataFrame
-        # -------------------------------------------------------
         return df
-   
+  
     #for dashboard
     def set_epsilon(self, epsilon):
         """

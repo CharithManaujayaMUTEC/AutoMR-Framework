@@ -15,7 +15,8 @@ class RangeTester:
         num_samples,
         comparator=None,
         image_saver=None,
-        range_threshold=5.0
+        range_threshold=5.0,
+        original_prediction=None,   # Cached original prediction
     ):
 
         values = self.generate_range(
@@ -76,9 +77,19 @@ class RangeTester:
         # ==================================================
         # NORMAL MRs
         # ==================================================
-        original = float(
-            model.predict(input_data)
-        )
+
+        # -----------------------------------------
+        # Reuse cached original prediction if given
+        # Otherwise compute it once.
+        # -----------------------------------------
+        if original_prediction is None:
+            original = float(
+                model.predict(input_data)
+            )
+        else:
+            original = float(
+                original_prediction
+            )
 
         transformed_images = []
 
