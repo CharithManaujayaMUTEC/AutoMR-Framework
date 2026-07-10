@@ -255,7 +255,8 @@ class AutoMR:
         input_data,
         mr_name,
         samples=50,
-        original_prediction=None,   # Cached original prediction
+        original_prediction=None,
+        prediction_cache=None,      # NEW
     ):
         """
         Execute a single metamorphic relation.
@@ -286,11 +287,8 @@ class AutoMR:
             comparator=self.comparator,
             image_saver=self.image_saver,
             range_threshold=self.range_threshold,
-
-            # ---------------------------------------
-            # Pass cached prediction
-            # ---------------------------------------
             original_prediction=original_prediction,
+            prediction_cache=prediction_cache,
         )
 
         for result in results:
@@ -321,14 +319,17 @@ class AutoMR:
         input_data,
         samples=50,
         exclude=None,
-        original_prediction=None,   # Cached original prediction
+        original_prediction=None,
+        prediction_cache=None,      # Cache reused across epsilon runs
     ):
         """
         Execute all registered metamorphic relations.
 
-        Optimization:
-        - Original prediction computed only once.
-        - Shared across every MR.
+        Optimizations
+        -------------
+        - Compute original prediction once
+        - Reuse cached transformed predictions
+        - Parallel execution across MRs
         """
 
         if exclude is None:
@@ -340,26 +341,25 @@ class AutoMR:
             if mr not in exclude
         ]
 
-        # -----------------------------------------
+        # ---------------------------------------
         # Compute original prediction once
-        # -----------------------------------------
+        # ---------------------------------------
         if original_prediction is None:
             original_prediction = float(
                 self.model.predict(input_data)
             )
 
-        # -----------------------------------------
+        # ---------------------------------------
         # Execute one MR
-        # -----------------------------------------
+        # ---------------------------------------
         def _run(mr_name):
 
             df, _ = self.run_mr(
                 input_data=input_data,
                 mr_name=mr_name,
                 samples=samples,
-
-                # Reuse prediction
                 original_prediction=original_prediction,
+                prediction_cache=prediction_cache,
             )
 
             return df
@@ -388,37 +388,46 @@ class AutoMR:
 
     def _process_single_sample(self, args):
         """
-        Process one dataset sample.
+        Process a single dataset sample.
 
-        Optimization:
-        - Compute original prediction ONCE.
-        - Reuse it across every MR.
+        Optimizations
+        -------------
+        - Compute original prediction once
+        - Reuse transformed predictions
+        - Prediction cache for epsilon sweeps
         """
 
-        # -------------------------------------------------------
-        # Unpack
-        # -------------------------------------------------------
-        sample_id, sample, samples_per_mr, df_temp = args
+        # ---------------------------------------
+        # Unpack arguments
+        # ---------------------------------------
+        sample_id, sample, samples_per_mr, df_temp, prediction_cache = args
 
-        # -------------------------------------------------------
-        # Compute original prediction ONCE
-        # -------------------------------------------------------
+        # ---------------------------------------
+        # Original prediction (computed once)
+        # ---------------------------------------
         original_prediction = float(
             self.model.predict(sample)
         )
 
-        # -------------------------------------------------------
-        # Run all image MRs using cached prediction
-        # -------------------------------------------------------
+        # ---------------------------------------
+        # Cache reused across all MRs
+        # ---------------------------------------
+        if prediction_cache is None:
+            prediction_cache = {}
+
+        # ---------------------------------------
+        # Execute all image MRs
+        # ---------------------------------------
         df_img = self.run_all_mrs(
             input_data=sample,
             samples=samples_per_mr,
             original_prediction=original_prediction,
+            prediction_cache=prediction_cache,
         )
 
-        # -------------------------------------------------------
-        # Merge temporal MR if available
-        # -------------------------------------------------------
+        # ---------------------------------------
+        # Merge temporal MR
+        # ---------------------------------------
         if df_temp is not None and not df_temp.empty:
 
             df = pd.concat(
@@ -431,9 +440,9 @@ class AutoMR:
 
             df = df_img
 
-        # -------------------------------------------------------
+        # ---------------------------------------
         # Metadata
-        # -------------------------------------------------------
+        # ---------------------------------------
         df["sample_id"] = sample_id
 
         df["expected_behavior"] = [
@@ -448,7 +457,7 @@ class AutoMR:
         )
 
         return df
-  
+
     #for dashboard
     def set_epsilon(self, epsilon):
         """
@@ -477,6 +486,7 @@ class AutoMR:
         include_temporal=True,
         show_progress=False,
         epsilon=None,
+        prediction_cache=None,   # NEW
     ):
         """
         Run AutoMR over an entire dataset.
@@ -537,6 +547,12 @@ class AutoMR:
 
         all_results = []
 
+        # ---------------------------------------
+        # Shared cache (reuse predictions)
+        # ---------------------------------------
+        if prediction_cache is None:
+            prediction_cache = {}
+
         # -------------------------------------------------------
         # Progress bar
         # -------------------------------------------------------
@@ -555,12 +571,27 @@ class AutoMR:
 
             iterator = range(total_images)
 
-        # -------------------------------------------------------
-        # Background loader
-        # -------------------------------------------------------
-        executor = ThreadPoolExecutor(max_workers=2)
+        # ---------------------------------------
+        # Parallel image loading
+        # ---------------------------------------
+        loader = ThreadPoolExecutor(max_workers=2)
 
-        future = executor.submit(dataset.__getitem__, 0)
+        future = loader.submit(dataset.__getitem__, 0)
+
+        # ---------------------------------------
+        # Parallel MR execution
+        # ---------------------------------------
+        workers = max(
+            1,
+            min(
+                multiprocessing.cpu_count(),
+                8,
+            ),
+        )
+
+        executor = ThreadPoolExecutor(max_workers=workers)
+
+        pending = []
 
         for idx in iterator:
 
@@ -589,19 +620,20 @@ class AutoMR:
                 # ---------------------------------------------
                 t0 = time.perf_counter()
 
-                df = self._process_single_sample(
+                future_df = executor.submit(
+                    self._process_single_sample,
                     (
                         idx,
                         sample,
                         samples_per_mr,
                         df_temp,
-                    )
+                        prediction_cache,
+                    ),
                 )
 
-                process_time += time.perf_counter() - t0
+                pending.append(future_df)
 
-                if df is not None:
-                    all_results.append(df)
+                process_time += time.perf_counter() - t0
 
                 # ---------------------------------------------
                 # Update progress
@@ -648,6 +680,17 @@ class AutoMR:
 
                 raise
 
+        # ---------------------------------------
+        # Collect completed jobs
+        # ---------------------------------------
+        for future in pending:
+
+            df = future.result()
+
+            if df is not None:
+                all_results.append(df)
+
+        loader.shutdown(wait=True)
         executor.shutdown(wait=True)
 
         # -------------------------------------------------------

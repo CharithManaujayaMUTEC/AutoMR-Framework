@@ -15,27 +15,44 @@ class EpsilonSensitivity:
         show_progress=False,
         output_dir="results",
     ):
+        """
+        Optimized epsilon sensitivity analysis.
+
+        Optimizations:
+        -------------------------
+        - Reuse transformed predictions
+        - Reuse original predictions
+        - Only comparator changes
+        - No repeated inference across epsilon values
+        """
 
         all_results = []
+
+        # --------------------------------------------------
+        # Shared cache across ALL epsilon runs
+        # --------------------------------------------------
+        prediction_cache = {}
 
         for eps in epsilon_values:
 
             print(f"\n===== Testing epsilon={eps:.4f} =====")
 
             df = self.api.run_dataset(
-                dataset,
+                dataset=dataset,
                 max_samples=max_samples,
                 samples_per_mr=samples_per_mr,
                 show_progress=show_progress,
                 epsilon=eps,
+
+                # Shared cache
+                prediction_cache=prediction_cache,
             )
 
             df["epsilon"] = eps
 
-            # Always keep for summary
             all_results.append(df)
 
-            # Save detailed MT results only if failures exist
+            # Save only if failures exist
             if (~df["passed"]).any():
 
                 print(f"Failures detected for epsilon={eps:.4f}")
@@ -47,8 +64,8 @@ class EpsilonSensitivity:
                     results,
                     output_dir=os.path.join(
                         output_dir,
-                        f"epsilon_{eps:.4f}"
-                    )
+                        f"epsilon_{eps:.4f}",
+                    ),
                 )
 
             else:

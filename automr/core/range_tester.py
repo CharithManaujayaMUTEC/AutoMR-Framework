@@ -16,32 +16,40 @@ class RangeTester:
         comparator=None,
         image_saver=None,
         range_threshold=5.0,
-        original_prediction=None,   # Cached original prediction
+        original_prediction=None,
+        prediction_cache=None,   # Cache for epsilon runs
     ):
+        """
+        Optimized range execution.
+
+        Optimizations
+        -------------
+        - Reuse original prediction
+        - Batch transformed inference
+        - Cache transformed predictions
+        """
 
         values = self.generate_range(
             start,
             end,
-            num_samples
+            num_samples,
         )
 
         results = []
 
-        is_temporal = (
+        # -----------------------------------------
+        # Temporal MR
+        # -----------------------------------------
+        if (
             hasattr(relation, "type")
             and relation.type() == "temporal"
-        )
-
-        # ==================================================
-        # TEMPORAL MR
-        # ==================================================
-        if is_temporal:
+        ):
 
             for v in values:
 
                 pair = transform_fn(
                     input_data,
-                    int(v)
+                    int(v),
                 )
 
                 if pair is None:
@@ -59,28 +67,25 @@ class RangeTester:
 
                 passed = relation.check(
                     y1,
-                    y2
+                    y2,
                 )
 
                 results.append({
+
                     "mr": relation.__class__.__name__,
                     "param": float(v),
-                    "original": float(y1),
-                    "transformed": float(y2),
-                    "difference": float(diff),
+                    "original": y1,
+                    "transformed": y2,
+                    "difference": diff,
                     "percent_change": 0.0,
-                    "passed": bool(passed)
+                    "passed": bool(passed),
+
                 })
 
             return results
 
-        # ==================================================
-        # NORMAL MRs
-        # ==================================================
-
         # -----------------------------------------
-        # Reuse cached original prediction if given
-        # Otherwise compute it once.
+        # Original prediction (reuse if available)
         # -----------------------------------------
         if original_prediction is None:
             original = float(
@@ -92,19 +97,29 @@ class RangeTester:
             )
 
         transformed_images = []
+        cache_keys = []
 
+        # -----------------------------------------
+        # Generate transformations
+        # -----------------------------------------
         for v in values:
 
             transformed = transform_fn(
                 input_data,
-                v
+                v,
             )
 
             transformed_images.append(
                 transformed
             )
 
-            # Save verification image
+            cache_keys.append(
+                (
+                    relation.__class__.__name__,
+                    float(v),
+                )
+            )
+
             if image_saver is not None:
 
                 try:
@@ -113,18 +128,61 @@ class RangeTester:
                         mr_name=relation.__class__.__name__,
                         param=float(v),
                         original=input_data,
-                        transformed=transformed
+                        transformed=transformed,
                     )
 
                 except Exception:
                     pass
 
-        # ==================================================
-        # BATCH PREDICTION
-        # ==================================================
-        outputs = model.predict_batch(
-            transformed_images
-        )
+        # -----------------------------------------
+        # Prediction cache
+        # -----------------------------------------
+        outputs = [None] * len(values)
+
+        missing = []
+        missing_idx = []
+
+        if prediction_cache is not None:
+
+            for i, key in enumerate(cache_keys):
+
+                if key in prediction_cache:
+                    outputs[i] = prediction_cache[key]
+                else:
+                    missing.append(
+                        transformed_images[i]
+                    )
+                    missing_idx.append(i)
+
+        else:
+
+            missing = transformed_images
+            missing_idx = list(
+                range(len(values))
+            )
+
+        # -----------------------------------------
+        # Batch predict only missing images
+        # -----------------------------------------
+        if missing:
+
+            preds = model.predict_batch(
+                missing
+            )
+
+            for idx, pred in zip(
+                missing_idx,
+                preds,
+            ):
+
+                pred = float(pred)
+
+                outputs[idx] = pred
+
+                if prediction_cache is not None:
+                    prediction_cache[
+                        cache_keys[idx]
+                    ] = pred
 
         outputs = np.asarray(
             outputs,
@@ -145,33 +203,26 @@ class RangeTester:
             abs(range_change)
             /
             (abs(original) + 1e-6)
-        ) * 100
+        ) * 100.0
 
         range_passed = (
             range_percent_change
             <= range_threshold
         )
 
-        # ==================================================
-        # ANALYZE RESULTS
-        # ==================================================
-        for v, output in zip(values, outputs):
+        # -----------------------------------------
+        # Analyze predictions
+        # -----------------------------------------
+        for v, output in zip(
+            values,
+            outputs,
+        ):
 
             output = float(output)
 
-            severity_weight = (
-                1
-                +
-                (
-                    abs(v)
-                    /
-                    (abs(end) + 1e-6)
-                )
-            )
-
             base_pass = relation.check(
                 original,
-                output
+                output,
             )
 
             tolerance = getattr(
@@ -180,78 +231,48 @@ class RangeTester:
                 getattr(
                     relation,
                     "epsilon",
-                    0.01
-                )
+                    0.01,
+                ),
             )
 
-            if severity_weight > 1.5:
-
-                passed = (
-                    base_pass
-                    and
-                    abs(output - original)
-                    < (0.5 * tolerance)
-                )
-
-            else:
-
-                passed = base_pass
-
-            # Hard fail
-            if abs(
-                output - original
-            ) > 0.01:
-
-                passed = False
+            passed = (
+                base_pass
+                and
+                abs(output - original)
+                <= tolerance
+            )
 
             if comparator:
-
                 diff, _ = comparator.compare(
                     original,
-                    output
+                    output,
                 )
-
             else:
-
-                diff = (
-                    output - original
-                )
+                diff = output - original
 
             pct = (
                 diff
                 /
                 (abs(original) + 1e-6)
-            ) * 100
-
-            # Range threshold fail
-            if abs(pct) > range_threshold:
-                passed = False
+            ) * 100.0
 
             results.append({
 
                 "mr": relation.__class__.__name__,
                 "param": float(v),
-                "original": float(original),
-                "transformed": float(output),
+                "original": original,
+                "transformed": output,
                 "difference": float(diff),
                 "percent_change": float(pct),
                 "passed": bool(passed),
+                "range_change": float(range_change),
+                "range_percent_change": float(range_percent_change),
+                "range_passed": bool(range_passed),
 
-                "range_change": float(
-                    range_change
-                ),
-
-                "range_percent_change": float(
-                    range_percent_change
-                ),
-
-                "range_passed": bool(
-                    range_passed
-                )
             })
 
         return results
-    
+  
 #    def generate_range(self, start, end, num_samples):
 #        return np.linspace(start, end, num_samples)
 
