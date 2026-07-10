@@ -3,6 +3,8 @@ import pandas as pd
 from tqdm import tqdm
 import os
 import multiprocessing
+import time
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
@@ -366,41 +368,71 @@ class AutoMR:
         )
     
     def _process_single_sample(self, args):
+        """
+        Process a single dataset sample.
 
-        i, sample, samples_per_mr, df_temp = args
+        Optimizations:
+        - Minimal DataFrame operations
+        - Single concat only when temporal MR exists
+        - Timing-friendly
+        - Keeps AutoMR architecture unchanged
+        """
 
-        #sample = self.input_handler.preprocess(sample)
+        # -------------------------------------------------------
+        # Unpack arguments
+        # -------------------------------------------------------
+        sample_id, sample, samples_per_mr, df_temp = args
 
-        #if sample is None:
-        #    return None
-
+        # -------------------------------------------------------
+        # Execute all registered MRs (except temporal)
+        # -------------------------------------------------------
         df_img = self.run_all_mrs(
-            sample,
+            input_data=sample,
             samples=samples_per_mr,
         )
 
-        if df_temp is not None:
+        # -------------------------------------------------------
+        # Merge temporal MR results only if available
+        # -------------------------------------------------------
+        if df_temp is not None and not df_temp.empty:
+
             df = pd.concat(
                 [df_img, df_temp],
-                ignore_index=True
+                ignore_index=True,
+                copy=False,
             )
+
         else:
+
             df = df_img
 
-        df["sample_id"] = i
+        # -------------------------------------------------------
+        # Add sample identifier
+        # -------------------------------------------------------
+        df["sample_id"] = sample_id
 
-        df["expected_behavior"] = df["mr"].apply(
-            self.get_expected
+        # -------------------------------------------------------
+        # Expected behavior for each MR
+        # -------------------------------------------------------
+        df["expected_behavior"] = [
+            self.get_expected(mr)
+            for mr in df["mr"]
+        ]
+
+        # -------------------------------------------------------
+        # Actual behavior
+        # -------------------------------------------------------
+        df["actual_behavior"] = np.where(
+            df["status"] == "PASS",
+            "Consistent",
+            "Violation",
         )
 
-        df["actual_behavior"] = df["status"].apply(
-            lambda x: "Consistent"
-            if x == "PASS"
-            else "Violation"
-        )
-
+        # -------------------------------------------------------
+        # Return processed DataFrame
+        # -------------------------------------------------------
         return df
-    
+   
     #for dashboard
     def set_epsilon(self, epsilon):
         """
@@ -431,75 +463,204 @@ class AutoMR:
         epsilon=None,
     ):
         """
-        Run AutoMR on an entire dataset.
+        Run AutoMR over an entire dataset.
+
+        Optimizations:
+        - Faster dataset limiting
+        - Progress bar with IPS
+        - Background image pre-loading
+        - Timing statistics
+        - No architecture changes
         """
 
-        # ----------------------------------------------
+        import time
+        from concurrent.futures import ThreadPoolExecutor
+
+        # -------------------------------------------------------
         # Update epsilon if requested
-        # ----------------------------------------------
+        # -------------------------------------------------------
         if epsilon is not None:
             self.set_epsilon(epsilon)
 
-        # ----------------------------------------------
-        # Limit dataset size
-        # ----------------------------------------------
+        # -------------------------------------------------------
+        # Limit dataset
+        # -------------------------------------------------------
         if max_samples is not None:
-            dataset = dataset[:max_samples]
+            total_images = min(max_samples, len(dataset))
+        else:
+            total_images = len(dataset)
 
-        # ----------------------------------------------
-        # Run temporal MR once
-        # ----------------------------------------------
+        # -------------------------------------------------------
+        # Temporal MR (run only once)
+        # -------------------------------------------------------
         df_temp = None
 
         if include_temporal:
-
             try:
+                temporal_data = [
+                    dataset[i]
+                    for i in range(total_images)
+                ]
 
                 df_temp, _ = self.run_mr(
-                    input_data=dataset,
+                    input_data=temporal_data,
                     mr_name="temporal",
                     samples=samples_per_mr,
                 )
 
             except Exception:
-
                 df_temp = None
 
-        # ----------------------------------------------
-        # Dataset iterator
-        # ----------------------------------------------
-        iterator = enumerate(dataset)
+        # -------------------------------------------------------
+        # Timing
+        # -------------------------------------------------------
+        start_time = time.time()
 
+        load_time = 0.0
+        process_time = 0.0
+
+        all_results = []
+
+        # -------------------------------------------------------
+        # Progress bar
+        # -------------------------------------------------------
         if show_progress:
 
             iterator = tqdm(
-                iterator,
-                total=len(dataset),
+                range(total_images),
+                total=total_images,
                 desc="Running AutoMR",
+                unit="image",
+                colour="cyan",
+                dynamic_ncols=True,
             )
 
-        # ----------------------------------------------
-        # Execute samples
-        # ----------------------------------------------
-        all_results = []
+        else:
 
-        for args in (
-            (i, sample, samples_per_mr, df_temp)
-            for i, sample in iterator
-        ):
+            iterator = range(total_images)
 
-            df = self._process_single_sample(args)
+        # -------------------------------------------------------
+        # Background loader
+        # -------------------------------------------------------
+        executor = ThreadPoolExecutor(max_workers=2)
 
-            if df is not None:
-                all_results.append(df)
+        future = executor.submit(dataset.__getitem__, 0)
 
+        for idx in iterator:
+
+            try:
+
+                # ---------------------------------------------
+                # Load image
+                # ---------------------------------------------
+                t0 = time.perf_counter()
+
+                sample = future.result()
+
+                load_time += time.perf_counter() - t0
+
+                # ---------------------------------------------
+                # Preload next image
+                # ---------------------------------------------
+                if idx + 1 < total_images:
+                    future = executor.submit(
+                        dataset.__getitem__,
+                        idx + 1,
+                    )
+
+                # ---------------------------------------------
+                # Execute all MRs
+                # ---------------------------------------------
+                t0 = time.perf_counter()
+
+                df = self._process_single_sample(
+                    (
+                        idx,
+                        sample,
+                        samples_per_mr,
+                        df_temp,
+                    )
+                )
+
+                process_time += time.perf_counter() - t0
+
+                if df is not None:
+                    all_results.append(df)
+
+                # ---------------------------------------------
+                # Update progress
+                # ---------------------------------------------
+                if show_progress:
+
+                    elapsed = time.time() - start_time
+
+                    ips = (
+                        (idx + 1) / elapsed
+                        if elapsed > 0
+                        else 0
+                    )
+
+                    total_profile = (
+                        load_time + process_time
+                    )
+
+                    load_percent = (
+                        100 * load_time / total_profile
+                        if total_profile > 0
+                        else 0
+                    )
+
+                    mr_percent = (
+                        100 * process_time / total_profile
+                        if total_profile > 0
+                        else 0
+                    )
+
+                    iterator.set_postfix({
+                        "IPS": f"{ips:.2f}",
+                        "Done": f"{idx+1}/{total_images}",
+                        "Load%": f"{load_percent:.1f}",
+                        "MR%": f"{mr_percent:.1f}",
+                    })
+
+            except Exception as e:
+
+                executor.shutdown(wait=False)
+
+                print(f"\nError processing sample {idx}")
+                print(type(e).__name__, e)
+
+                raise
+
+        executor.shutdown(wait=True)
+
+        # -------------------------------------------------------
+        # Nothing generated
+        # -------------------------------------------------------
         if not all_results:
             return pd.DataFrame()
 
-        return pd.concat(
+        # -------------------------------------------------------
+        # Merge results once (much faster than repeated concat)
+        # -------------------------------------------------------
+        result_df = pd.concat(
             all_results,
             ignore_index=True,
         )
+
+        total_time = time.time() - start_time
+
+        print("\n========================================")
+        print("Dataset processing completed")
+        print("========================================")
+        print(f"Images processed : {total_images}")
+        print(f"Total time       : {total_time:.2f} sec")
+        print(f"Average IPS      : {total_images/total_time:.2f}")
+        print(f"Image loading    : {load_time:.2f} sec")
+        print(f"MR processing    : {process_time:.2f} sec")
+        print("========================================")
+
+        return result_df
 
     # ---------- ANALYSIS ----------
     def analyze(self, df):
@@ -548,95 +709,214 @@ class AutoMR:
         self,
         dataset,
         output_dir="results",
-        labels=None
+        labels=None,
     ):
+        """
+        Generate and save baseline predictions for the entire dataset.
 
-        baseline = BaselineEvaluator(
-            output_dir
-        )
+        Optimizations:
+        - Progress bar with IPS (images/sec)
+        - Background thread preloads the next image while the current one is inferred
+        - Timing statistics
+        - No changes to AutoMR architecture
+        """
 
-        baseline.save_dataset_info(
-            dataset
-        )
+        import time
+        from concurrent.futures import ThreadPoolExecutor
+
+        baseline = BaselineEvaluator(output_dir)
+
+        # -------------------------------------------------------
+        # Save dataset information
+        # -------------------------------------------------------
+        baseline.save_dataset_info(dataset)
 
         predictions = []
 
         y_true = []
         y_pred = []
 
-        for idx, sample in enumerate(dataset):
+        # -------------------------------------------------------
+        # Timing statistics
+        # -------------------------------------------------------
+        start_time = time.time()
+
+        load_time = 0.0
+        predict_time = 0.0
+
+        total_images = len(dataset)
+
+        # -------------------------------------------------------
+        # Progress bar
+        # -------------------------------------------------------
+        iterator = tqdm(
+            range(total_images),
+            total=total_images,
+            desc="Generating baseline predictions",
+            unit="image",
+            colour="green",
+            dynamic_ncols=True,
+        )
+
+        # -------------------------------------------------------
+        # Background loader
+        #
+        # Loads the next image while the model predicts
+        # the current one.
+        # -------------------------------------------------------
+        executor = ThreadPoolExecutor(max_workers=2)
+
+        future = executor.submit(dataset.__getitem__, 0)
+
+        for idx in iterator:
 
             try:
 
-                #sample = self.input_handler.preprocess(
-                #    sample
-                #)
+                # ---------------------------------------------
+                # Get current image
+                # ---------------------------------------------
+                t0 = time.perf_counter()
 
-                pred = float(
-                    self.model.predict(sample)
-                )
+                sample = future.result()
 
+                load_time += time.perf_counter() - t0
+
+                # ---------------------------------------------
+                # Preload next image
+                # ---------------------------------------------
+                if idx + 1 < total_images:
+                    future = executor.submit(
+                        dataset.__getitem__,
+                        idx + 1,
+                    )
+
+                # ---------------------------------------------
+                # Run prediction
+                # ---------------------------------------------
+                t0 = time.perf_counter()
+
+                pred = self.model.predict(sample)
+
+                predict_time += time.perf_counter() - t0
+
+                # ---------------------------------------------
+                # Store prediction
+                # ---------------------------------------------
                 predictions.append({
                     "sample_id": idx,
-                    "prediction": pred
+                    "prediction": pred,
                 })
 
+                # ---------------------------------------------
+                # Optional regression metrics
+                # ---------------------------------------------
                 if labels is not None:
 
-                    y_true.append(
-                        float(labels[idx])
-                    )
+                    if isinstance(pred, (int, float, np.integer, np.floating)):
 
-                    y_pred.append(
-                        pred
-                    )
+                        y_true.append(float(labels[idx]))
+                        y_pred.append(float(pred))
+
+                # ---------------------------------------------
+                # Update progress bar
+                # ---------------------------------------------
+                elapsed = time.time() - start_time
+
+                ips = (
+                    (idx + 1) / elapsed
+                    if elapsed > 0
+                    else 0
+                )
+
+                total_profile = load_time + predict_time
+
+                load_percent = (
+                    100 * load_time / total_profile
+                    if total_profile > 0
+                    else 0
+                )
+
+                infer_percent = (
+                    100 * predict_time / total_profile
+                    if total_profile > 0
+                    else 0
+                )
+
+                iterator.set_postfix({
+                    "IPS": f"{ips:.2f}",
+                    "Done": f"{idx+1}/{total_images}",
+                    "Load%": f"{load_percent:.1f}",
+                    "Infer%": f"{infer_percent:.1f}",
+                })
 
             except Exception as e:
-                print(f"\nBaseline failed: {i}")
+
+                print(f"\nBaseline failed at sample {idx}")
                 print(type(e).__name__, e)
+
+                executor.shutdown(wait=False)
+
                 raise
 
-        baseline.save_predictions(
-            predictions
-        )
+        executor.shutdown(wait=True)
 
-        prediction_values = [
-            pred["prediction"]
-            for pred in predictions
+        # -------------------------------------------------------
+        # Save predictions
+        # -------------------------------------------------------
+        baseline.save_predictions(predictions)
+
+        numeric_predictions = [
+            p["prediction"]
+            for p in predictions
+            if isinstance(
+                p["prediction"],
+                (int, float, np.integer, np.floating),
+            )
         ]
 
-        if prediction_values:
+        if numeric_predictions:
+
             baseline.save_basic_metrics(
-                prediction_values
+                numeric_predictions
             )
 
-        if labels is not None:
+        # -------------------------------------------------------
+        # Regression metrics (if labels exist)
+        # -------------------------------------------------------
+        if labels is not None and len(y_pred) > 0:
 
             mse = np.mean(
-                (
-                    np.array(y_true) -
-                    np.array(y_pred)
-                ) ** 2
+                (np.array(y_true) - np.array(y_pred)) ** 2
             )
 
             mae = np.mean(
                 np.abs(
-                    np.array(y_true) -
-                    np.array(y_pred)
+                    np.array(y_true) - np.array(y_pred)
                 )
             )
 
             rmse = np.sqrt(mse)
 
-            metrics = {
+            baseline.save_metrics({
                 "mae": float(mae),
                 "mse": float(mse),
-                "rmse": float(rmse)
-            }
+                "rmse": float(rmse),
+            })
 
-            baseline.save_metrics(
-                metrics
-            )
+        # -------------------------------------------------------
+        # Final summary
+        # -------------------------------------------------------
+        total_time = time.time() - start_time
+
+        print("\n========================================")
+        print("Baseline prediction completed")
+        print("========================================")
+        print(f"Images processed : {total_images}")
+        print(f"Total time       : {total_time:.2f} sec")
+        print(f"Average IPS      : {total_images/total_time:.2f}")
+        print(f"Image loading    : {load_time:.2f} sec")
+        print(f"Inference        : {predict_time:.2f} sec")
+        print("========================================")
 
     def save_model_summary(
         self,
