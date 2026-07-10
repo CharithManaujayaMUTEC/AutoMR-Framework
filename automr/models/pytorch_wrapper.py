@@ -54,41 +54,76 @@ class PyTorchWrapper(BaseModel):
         raise TypeError(f"Unsupported PyTorch output: {type(pred)}")
 
     def predict_batch(self, xs):
+        """
+        Predict a batch of images.
+        Returns a list of decoded predictions.
+        """
 
+        # -------------------------------------------------
+        # Preprocess
+        # -------------------------------------------------
         if self.preprocess is not None:
-            batch = np.stack([self.preprocess(img) for img in xs])
-        else:
-            batch = np.asarray(xs, dtype=np.float32)
+            xs = [self.preprocess(img) for img in xs]
 
+        batch = np.asarray(xs, dtype=np.float32)
+
+        # NHWC -> NCHW
         if batch.ndim == 4:
             batch = np.transpose(batch, (0, 3, 1, 2))
 
         batch = torch.from_numpy(batch).float().to(self.device)
 
+        # -------------------------------------------------
+        # Forward
+        # -------------------------------------------------
         with torch.no_grad():
             preds = self.model(batch)
 
+        # -------------------------------------------------
+        # Decoder
+        # -------------------------------------------------
         if self.decoder is not None:
 
+            outputs = []
+
             if isinstance(preds, dict):
-                outputs = []
 
-                for i in range(batch.shape[0]):
-                    single = {
-                        k: (v[i:i+1] if torch.is_tensor(v) else v)
-                        for k, v in preds.items()
-                    }
+                batch_size = batch.shape[0]
 
-                    outputs.append(self.decoder(single))
+                for i in range(batch_size):
+
+                    single_pred = {}
+
+                    for k, v in preds.items():
+
+                        if torch.is_tensor(v):
+                            single_pred[k] = v[i:i + 1]
+                        else:
+                            single_pred[k] = v
+
+                    outputs.append(self.decoder(single_pred))
 
                 return outputs
 
-            if isinstance(preds, (list, tuple)):
-                return [self.decoder(p) for p in preds]
+            if torch.is_tensor(preds):
 
-            return [self.decoder(preds)]
+                for i in range(batch.shape[0]):
+                    outputs.append(
+                        self.decoder(preds[i:i + 1])
+                    )
 
+                return outputs
+
+        # -------------------------------------------------
+        # Tensor output
+        # -------------------------------------------------
         if torch.is_tensor(preds):
             return preds.cpu().numpy().tolist()
+
+        # -------------------------------------------------
+        # List / Tuple
+        # -------------------------------------------------
+        if isinstance(preds, (list, tuple)):
+            return list(preds)
 
         return preds

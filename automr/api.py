@@ -5,7 +5,6 @@ import os
 import multiprocessing
 import time
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 from automr.models import get_wrapper
@@ -709,26 +708,11 @@ class AutoMR:
         self,
         dataset,
         output_dir="results",
-        labels=None,
+        labels=None
     ):
-        """
-        Generate and save baseline predictions for the entire dataset.
-
-        Optimizations:
-        - Progress bar with IPS (images/sec)
-        - Background thread preloads the next image while the current one is inferred
-        - Timing statistics
-        - No changes to AutoMR architecture
-        """
-
-        import time
-        from concurrent.futures import ThreadPoolExecutor
 
         baseline = BaselineEvaluator(output_dir)
 
-        # -------------------------------------------------------
-        # Save dataset information
-        # -------------------------------------------------------
         baseline.save_dataset_info(dataset)
 
         predictions = []
@@ -736,136 +720,135 @@ class AutoMR:
         y_true = []
         y_pred = []
 
-        # -------------------------------------------------------
-        # Timing statistics
-        # -------------------------------------------------------
+        # --------------------------------------------
+        # Configuration
+        # --------------------------------------------
+        batch_size = 16
+        total_images = len(dataset)
+
+        # --------------------------------------------
+        # Statistics
+        # --------------------------------------------
         start_time = time.time()
 
         load_time = 0.0
         predict_time = 0.0
 
-        total_images = len(dataset)
+        # --------------------------------------------
+        # Batch containers
+        # --------------------------------------------
+        batch = []
+        batch_ids = []
 
-        # -------------------------------------------------------
+        # --------------------------------------------
         # Progress bar
-        # -------------------------------------------------------
+        # --------------------------------------------
         iterator = tqdm(
             range(total_images),
             total=total_images,
             desc="Generating baseline predictions",
             unit="image",
-            colour="green",
-            dynamic_ncols=True,
         )
 
-        # -------------------------------------------------------
-        # Background loader
-        #
-        # Loads the next image while the model predicts
-        # the current one.
-        # -------------------------------------------------------
-        executor = ThreadPoolExecutor(max_workers=2)
+        # --------------------------------------------
+        # Background image loading
+        # --------------------------------------------
+        with ThreadPoolExecutor(max_workers=1) as executor:
 
-        future = executor.submit(dataset.__getitem__, 0)
+            future = executor.submit(dataset.__getitem__, 0)
 
-        for idx in iterator:
+            for idx in iterator:
 
-            try:
-
-                # ---------------------------------------------
-                # Get current image
-                # ---------------------------------------------
+                # -------------------------
+                # Receive current image
+                # -------------------------
                 t0 = time.perf_counter()
 
                 sample = future.result()
 
                 load_time += time.perf_counter() - t0
 
-                # ---------------------------------------------
-                # Preload next image
-                # ---------------------------------------------
+                # -------------------------
+                # Start loading next image
+                # -------------------------
                 if idx + 1 < total_images:
                     future = executor.submit(
                         dataset.__getitem__,
-                        idx + 1,
+                        idx + 1
                     )
 
-                # ---------------------------------------------
-                # Run prediction
-                # ---------------------------------------------
+                # -------------------------
+                # Store into batch
+                # -------------------------
+                batch.append(sample)
+                batch_ids.append(idx)
+
+                # -------------------------
+                # Wait until batch is full
+                # -------------------------
+                if len(batch) < batch_size and idx != total_images - 1:
+
+                    elapsed = time.time() - start_time
+                    processed = len(predictions)
+
+                    iterator.set_postfix({
+                        "IPS": f"{processed/elapsed:.2f}" if elapsed else "0",
+                        "Done": f"{processed}/{total_images}",
+                        "Load%": f"{100*load_time/max(load_time+predict_time,1e-6):.1f}",
+                    })
+
+                    continue
+
+                # -------------------------
+                # Batch prediction
+                # -------------------------
                 t0 = time.perf_counter()
 
-                pred = self.model.predict(sample)
+                preds = self.model.predict_batch(batch)
 
                 predict_time += time.perf_counter() - t0
 
-                # ---------------------------------------------
-                # Store prediction
-                # ---------------------------------------------
-                predictions.append({
-                    "sample_id": idx,
-                    "prediction": pred,
-                })
+                # -------------------------
+                # Save predictions
+                # -------------------------
+                for sample_id, pred in zip(batch_ids, preds):
 
-                # ---------------------------------------------
-                # Optional regression metrics
-                # ---------------------------------------------
-                if labels is not None:
+                    predictions.append({
+                        "sample_id": sample_id,
+                        "prediction": pred,
+                    })
 
-                    if isinstance(pred, (int, float, np.integer, np.floating)):
-
-                        y_true.append(float(labels[idx]))
+                    if labels is not None and isinstance(
+                        pred,
+                        (int, float, np.integer, np.floating),
+                    ):
+                        y_true.append(float(labels[sample_id]))
                         y_pred.append(float(pred))
 
-                # ---------------------------------------------
-                # Update progress bar
-                # ---------------------------------------------
+                # -------------------------
+                # Clear batch
+                # -------------------------
+                batch.clear()
+                batch_ids.clear()
+
+                # -------------------------
+                # Update progress
+                # -------------------------
                 elapsed = time.time() - start_time
-
-                ips = (
-                    (idx + 1) / elapsed
-                    if elapsed > 0
-                    else 0
-                )
-
-                total_profile = load_time + predict_time
-
-                load_percent = (
-                    100 * load_time / total_profile
-                    if total_profile > 0
-                    else 0
-                )
-
-                infer_percent = (
-                    100 * predict_time / total_profile
-                    if total_profile > 0
-                    else 0
-                )
+                processed = len(predictions)
 
                 iterator.set_postfix({
-                    "IPS": f"{ips:.2f}",
-                    "Done": f"{idx+1}/{total_images}",
-                    "Load%": f"{load_percent:.1f}",
-                    "Infer%": f"{infer_percent:.1f}",
+                    "IPS": f"{processed/elapsed:.2f}" if elapsed else "0",
+                    "Done": f"{processed}/{total_images}",
+                    "Load%": f"{100*load_time/max(load_time+predict_time,1e-6):.1f}",
                 })
 
-            except Exception as e:
-
-                print(f"\nBaseline failed at sample {idx}")
-                print(type(e).__name__, e)
-
-                executor.shutdown(wait=False)
-
-                raise
-
-        executor.shutdown(wait=True)
-
-        # -------------------------------------------------------
-        # Save predictions
-        # -------------------------------------------------------
+        # --------------------------------------------
+        # Save baseline predictions
+        # --------------------------------------------
         baseline.save_predictions(predictions)
 
-        numeric_predictions = [
+        prediction_values = [
             p["prediction"]
             for p in predictions
             if isinstance(
@@ -874,27 +857,13 @@ class AutoMR:
             )
         ]
 
-        if numeric_predictions:
+        if prediction_values:
+            baseline.save_basic_metrics(prediction_values)
 
-            baseline.save_basic_metrics(
-                numeric_predictions
-            )
+        if labels is not None and y_true:
 
-        # -------------------------------------------------------
-        # Regression metrics (if labels exist)
-        # -------------------------------------------------------
-        if labels is not None and len(y_pred) > 0:
-
-            mse = np.mean(
-                (np.array(y_true) - np.array(y_pred)) ** 2
-            )
-
-            mae = np.mean(
-                np.abs(
-                    np.array(y_true) - np.array(y_pred)
-                )
-            )
-
+            mse = np.mean((np.array(y_true) - np.array(y_pred)) ** 2)
+            mae = np.mean(np.abs(np.array(y_true) - np.array(y_pred)))
             rmse = np.sqrt(mse)
 
             baseline.save_metrics({
@@ -902,21 +871,6 @@ class AutoMR:
                 "mse": float(mse),
                 "rmse": float(rmse),
             })
-
-        # -------------------------------------------------------
-        # Final summary
-        # -------------------------------------------------------
-        total_time = time.time() - start_time
-
-        print("\n========================================")
-        print("Baseline prediction completed")
-        print("========================================")
-        print(f"Images processed : {total_images}")
-        print(f"Total time       : {total_time:.2f} sec")
-        print(f"Average IPS      : {total_images/total_time:.2f}")
-        print(f"Image loading    : {load_time:.2f} sec")
-        print(f"Inference        : {predict_time:.2f} sec")
-        print("========================================")
 
     def save_model_summary(
         self,
