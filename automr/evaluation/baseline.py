@@ -2,7 +2,6 @@ import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from pathlib import Path
 
 
 class BaselineEvaluator:
@@ -15,6 +14,29 @@ class BaselineEvaluator:
             exist_ok=True
         )
 
+    # --------------------------------------------------
+    # Check whether cached predictions already exist
+    # --------------------------------------------------
+    def baseline_exists(self):
+        return (
+            self.output_dir /
+            "original_predictions.csv"
+        ).exists()
+
+    # --------------------------------------------------
+    # Load cached predictions
+    # --------------------------------------------------
+    def load_predictions(self):
+        df = pd.read_csv(
+            self.output_dir /
+            "original_predictions.csv"
+        )
+
+        return df["prediction"].tolist()
+
+    # --------------------------------------------------
+    # Save predictions
+    # --------------------------------------------------
     def save_predictions(self, predictions):
 
         pd.DataFrame(
@@ -25,6 +47,9 @@ class BaselineEvaluator:
             index=False
         )
 
+    # --------------------------------------------------
+    # Save dataset information
+    # --------------------------------------------------
     def save_dataset_info(self, dataset):
 
         info = {
@@ -43,6 +68,9 @@ class BaselineEvaluator:
                 indent=4
             )
 
+    # --------------------------------------------------
+    # Save regression metrics
+    # --------------------------------------------------
     def save_metrics(self, metrics):
 
         with open(
@@ -57,6 +85,9 @@ class BaselineEvaluator:
                 indent=4
             )
 
+    # --------------------------------------------------
+    # Save model summary
+    # --------------------------------------------------
     def save_model_summary(
         self,
         summary_text
@@ -71,6 +102,9 @@ class BaselineEvaluator:
 
             f.write(summary_text)
 
+    # --------------------------------------------------
+    # Save basic prediction statistics
+    # --------------------------------------------------
     def save_basic_metrics(
         self,
         predictions
@@ -87,7 +121,8 @@ class BaselineEvaluator:
         }
 
         with open(
-            self.output_dir / "baseline_metrics.json",
+            self.output_dir /
+            "baseline_metrics.json",
             "w"
         ) as f:
 
