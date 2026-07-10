@@ -71,7 +71,12 @@ class PyTorchWrapper(BaseModel):
         if batch.ndim == 4:
             batch = np.transpose(batch, (0, 3, 1, 2))
 
-        batch = torch.from_numpy(batch).float().to(self.device)
+        batch = (
+            torch.from_numpy(batch)
+            .float()
+            .contiguous()      # <-- make tensor contiguous
+            .to(self.device)
+        )
 
         # -------------------------------------------------
         # Forward
