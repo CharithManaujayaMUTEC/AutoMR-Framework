@@ -126,16 +126,16 @@ class RangeTester:
             transformed_images
         )
 
-        outputs = [
-            float(o)
-            for o in outputs
-        ]
+        outputs = np.asarray(
+            outputs,
+            dtype=np.float32,
+        )
 
-        if len(outputs) == 0:
+        if outputs.size == 0:
             return results
 
-        min_output = min(outputs)
-        max_output = max(outputs)
+        min_output = float(outputs.min())
+        max_output = float(outputs.max())
 
         range_change = (
             max_output - min_output
