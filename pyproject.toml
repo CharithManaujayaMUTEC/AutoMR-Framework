@@ -4,9 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automr"
-version = "0.7.0"
-description = "A Modular Model-Agnostic Metamorphic Testing Framework for AI/ML Model Robustness Validation"
+version = "0.8.0"
+
+description = "A Model-Agnostic Metamorphic Testing Framework for Regression-Based AI/ML Models with High-Performance Parallel Validation"
+
 readme = "README.md"
+
 requires-python = ">=3.8"
 
 license = { text = "MIT" }
@@ -22,39 +25,49 @@ keywords = [
   "metamorphic testing",
   "machine learning",
   "deep learning",
-  "autonomous driving",
-  "robustness testing",
+  "artificial intelligence",
+  "ai testing",
   "model validation",
+  "robustness testing",
+  "autonomous driving",
   "computer vision",
   "regression",
+  "image processing",
   "software testing",
-  "AI testing",
-  "metamorphic relations",
+  "parallel computing",
+  "high performance computing",
+  "batch inference",
+  "prediction caching",
   "epsilon sensitivity",
+  "parameter range testing",
+  "failure analysis",
   "plugin architecture",
-  "transformation registry"
+  "transformation registry",
+  "metamorphic relations",
+  "reliability testing",
+  "verification",
+  "validation"
 ]
 
 classifiers = [
   "Development Status :: 4 - Beta",
-
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-
+  "Intended Audience :: Education",
   "License :: OSI Approved :: MIT License",
-
   "Operating System :: OS Independent",
-
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
-
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "Topic :: Software Development :: Testing",
   "Topic :: Scientific/Engineering :: Image Processing",
-  "Topic :: Software Development :: Libraries :: Python Modules"
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Framework :: Pytest"
 ]
 
 dependencies = [
@@ -71,13 +84,18 @@ Homepage = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework"
 Repository = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework"
 Documentation = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/wiki"
 Issues = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/issues"
+Changelog = "https://github.com/CharithManaujayaMUTEC/AutoMR-Framework/releases"
 
 [tool.setuptools.packages.find]
 include = ["automr*"]
+
 exclude = [
   "results*",
+  "results_hpc*",
   "examples*",
   "tests*",
   "notebooks*",
-  "logs*"
+  "logs*",
+  "docs*",
+  "benchmarks*"
 ]

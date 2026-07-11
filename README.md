@@ -39,8 +39,8 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Model-Agnostic Testing** — works with TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, or any custom model
 - **Input-Agnostic Architecture** — supports images, time-series, sequential, and tabular data
 - **Output-Agnostic Validation** — handles regression, continuous, and numerical outputs
-- **Built-in Metamorphic Relations** — 11 ready-to-use relations covering weather, geometric, behavioral, and temporal properties
-- **Automated Transformation Pipeline** — end-to-end execution with configurable parameters
+- **Built-in Metamorphic Relations** — 16 ready-to-use metamorphic relations covering geometric, photometric, weather, behavioral, composite, and temporal transformations
+- **Automated Transformation Pipeline** — 17 built-in transformations with configurable parameter ranges for robustness evaluation.
 - **Parameter Range Testing** — sweep transformation parameters across configurable ranges
 - **Epsilon Sensitivity Analysis** — automatically evaluates model robustness across multiple epsilon thresholds
 - **Automatic Epsilon Recommendation** — identifies first failure, stabilization, and recommended epsilon values
@@ -53,6 +53,14 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Verification Artifact Generation** — transformed samples saved automatically
 - **Progress Tracking** — optional live progress bars for long-running evaluations
 - **Extensible Plugin Architecture** — easily add custom transformations and relations
+- **Standard AutoMR Engine** — easy-to-use metamorphic testing pipeline for AI/ML models
+- **HighPerformanceAutoMR (HPC)** — optimized execution engine for large-scale metamorphic testing
+- **Parallel Dataset Processing** — concurrent sample execution using configurable worker pools
+- **Batch Inference Support** — reduces model inference overhead through batched prediction
+- **Prediction Caching** — reuses predictions across epsilon sensitivity analyses to eliminate redundant inference
+- **Shared Baseline Prediction Cache** — baseline predictions are computed once and reused across experiments
+- **CPU Optimizations** — configurable threading and optimized execution for multicore processors
+- **Configurable HPC Execution** — control worker count, chunk size, batch size, and prefetch behavior
 
 ---
 
@@ -100,6 +108,56 @@ df, results = automr.run_full_test(
     epsilon_count=4
 )
 ```
+### HighPerformanceAutoMR
+
+```python
+from automr.hpc import HighPerformanceAutoMR
+
+automr = HighPerformanceAutoMR(
+    model=model,
+    task="regression",
+    input_type="image",
+    epsilon=0.05,
+    range_threshold=5.0,
+    workers=8,
+    batch_size=64,
+    chunk_size=64,
+)
+
+df, results = automr.run_full_test(
+    dataset=dataset,
+    max_samples=None,
+    samples_per_mr=5,
+    epsilon_min=0.005,
+    epsilon_max=0.05,
+    epsilon_count=3,
+)
+```
+
+---
+
+# Execution Engines
+
+AutoMR provides two execution engines depending on the scale of testing.
+
+| Engine | Description |
+|---------|-------------|
+| **AutoMR** | Standard execution engine suitable for small and medium datasets. |
+| **HighPerformanceAutoMR** | Optimized execution engine for large datasets using parallel execution, batch inference, and prediction caching. |
+
+---
+
+# AutoMR vs HighPerformanceAutoMR
+
+| Feature | AutoMR | HighPerformanceAutoMR |
+|----------|--------|-----------------------|
+| Standard Testing | ✅ | ✅ |
+| Parallel Processing | ❌ | ✅ |
+| Batch Inference | ❌ | ✅ |
+| Prediction Cache | Limited | ✅ |
+| CPU Optimization | Limited | ✅ |
+| Large Dataset Support | Good | Excellent |
+| Epsilon Prediction Reuse | ✅ | ✅ |
 
 ---
 
@@ -112,7 +170,13 @@ Load Model
       ↓
 Apply Transformations
       ↓
-Generate Predictions
+Generate Transformations
+      ↓
+Batch Prediction
+      ↓
+Prediction Cache
+      ↓
+Metamorphic Validation
       ↓
 Validate Metamorphic Relations
       ↓
@@ -126,43 +190,85 @@ Interactive Live Dashboard
       ↓
 Export Results
 ```
+---
+
+# HighPerformanceAutoMR
+
+HighPerformanceAutoMR extends the standard AutoMR framework with high-performance execution capabilities.
+
+## Features
+
+- Parallel dataset processing
+- Parallel metamorphic relation execution
+- Batch model inference
+- Prediction caching
+- Shared epsilon prediction reuse
+- Configurable worker threads
+- Configurable batch sizes
+- CPU optimized execution
+- Scalable large dataset validation
+
+---
+
+# Performance Optimizations
+
+AutoMR includes several optimization strategies to improve testing efficiency.
+
+- Batch prediction
+- Prediction caching
+- Baseline prediction reuse
+- Parallel dataset execution
+- Shared epsilon prediction cache
+- Background data prefetching
+- CPU thread optimization
+- Parallel metamorphic relation execution
 
 ---
 
 ## Supported Metamorphic Relations
 
-| Relation                     | Purpose                                 |
-| ---------------------------- | --------------------------------------- |
-| `BrightnessRelation`         | Robustness to brightness variation      |
-| `ContrastRelation`           | Robustness to contrast variation        |
-| `BlurRelation`               | Robustness to blur                      |
-| `RotationRelation`           | Stability under rotation                |
-| `TranslationRelation`        | Stability under translation             |
-| `NoiseRelation`              | Robustness to Gaussian noise            |
-| `RainRelation`               | Robustness under rain simulation        |
-| `SnowRelation`               | Robustness under snow simulation        |
-| `FogRelation`                | Robustness under fog simulation         |
-| `DarkVisibilityRelation`     | Robustness under visibility degradation |
-| `TemporalSmoothnessRelation` | Temporal consistency across frames      |
+| Relation | Purpose |
+|----------|---------|
+| `BlurRelation` | Tests robustness to Gaussian blur |
+| `BrightnessRelation` | Tests robustness to brightness variation |
+| `CompositeRelation` | Tests robustness under combined image perturbations |
+| `ContrastRelation` | Tests robustness to contrast variation |
+| `DarkVisibilityRelation` | Tests robustness under low-light and reduced visibility conditions |
+| `DustRelation` | Tests robustness under dust simulation |
+| `FogRelation` | Tests robustness under fog simulation |
+| `HazeRelation` | Tests robustness under haze simulation |
+| `NoiseRelation` | Tests robustness to Gaussian noise |
+| `RainRelation` | Tests robustness under rain simulation |
+| `RotationRelation` | Tests prediction stability under image rotation |
+| `SandstormRelation` | Tests robustness under sandstorm simulation |
+| `SmokeRelation` | Tests robustness under smoke simulation |
+| `SnowRelation` | Tests robustness under snow simulation |
+| `TemporalSmoothnessRelation` | Tests temporal consistency between sequential frames |
+| `TranslationRelation` | Tests prediction stability under image translation |
 
 ---
 
 ## Supported Transformations
 
-| Transformation | Description                  |
-| -------------- | ---------------------------- |
-| Brightness     | Pixel intensity modification |
-| Contrast       | Contrast adjustment          |
-| Blur           | Gaussian blur                |
-| Rotation       | Image rotation               |
-| Translation    | Spatial translation          |
-| Noise          | Gaussian noise injection     |
-| Rain           | Rain simulation              |
-| Snow           | Snow simulation              |
-| Fog            | Fog simulation               |
-| Visibility     | Visibility degradation       |
-| Darkness       | Low-light simulation         |
-| Temporal       | Sequential frame analysis    |
+| Transformation | Description |
+|---------------|-------------|
+| `brightness` | Adjust image brightness |
+| `contrast` | Modify image contrast |
+| `blur` | Apply Gaussian blur |
+| `rotation` | Rotate the image |
+| `translation` | Translate the image horizontally or vertically |
+| `noise` | Inject Gaussian noise |
+| `composite` | Apply multiple image transformations simultaneously |
+| `rain` | Simulate rainy weather |
+| `snow` | Simulate snowy weather |
+| `fog` | Simulate foggy conditions |
+| `sandstorm` | Simulate sandstorm conditions |
+| `dust` | Simulate dusty environments |
+| `haze` | Simulate haze |
+| `smoke` | Simulate smoke |
+| `visibility` | Reduce scene visibility |
+| `darkness` | Simulate low-light/night-time conditions |
+| `temporal` | Generate temporal frame pairs for sequence consistency testing |
 
 ---
 
@@ -235,6 +341,19 @@ All reports are automatically saved to the `results/` directory.
 | `range_analysis.csv`   | Detailed per-range analysis                             |
 | `prediction_trace.csv` | Full prediction trace across all samples and transforms |
 
+### HPC Reports
+
+When using HighPerformanceAutoMR, the same reports are generated with significantly faster execution on large datasets.
+
+HighPerformanceAutoMR also reports execution statistics including:
+
+- Total runtime
+- Images processed
+- Average images per second
+- Worker count
+- Batch size
+- Prediction cache utilization
+
 ### Metadata Reports
 
 | File                       | Description                        |
@@ -299,6 +418,20 @@ AutoMR automatically computes the following after each test run:
 - **Prediction Trace Analysis** — tracks prediction drift across all transformations
 - Epsilon Sensitivity Analysis
 - Automatic Epsilon Recommendation
+
+---
+
+# API Overview
+
+| Class | Description |
+|--------|-------------|
+| AutoMR | Standard metamorphic testing engine |
+| HighPerformanceAutoMR | High-performance execution engine |
+| TransformationRegistry | Transformation management |
+| RelationRegistry | Metamorphic relation management |
+| FailureAnalyzer | Failure analysis utilities |
+| EpsilonSensitivity | Automatic epsilon evaluation |
+| EpsilonSummary | Epsilon reporting utilities |
 
 ---
 
@@ -420,6 +553,13 @@ AutoMR-Framework/
 ├── automr/
 │   ├── __init__.py
 │   ├── api.py
+|   ├── hpc/
+|   │   ├── __init__.py
+|   │   ├── automr.py
+|   │   ├── executor.py
+|   │   ├── batch_predictor.py
+|   │   ├── cache.py
+|   │   └── scheduler.py
 │   │
 │   ├── analysis/
 │   │   ├── __init__.py
