@@ -256,7 +256,7 @@ class AutoMR:
         mr_name,
         samples=50,
         original_prediction=None,
-        prediction_cache=None,      # NEW
+        prediction_cache=None,
     ):
         """
         Execute a single metamorphic relation.
@@ -320,6 +320,7 @@ class AutoMR:
         samples=50,
         exclude=None,
         original_prediction=None,
+        prediction_cache=None,
     ):
         """
         Execute all registered metamorphic relations.
@@ -350,6 +351,7 @@ class AutoMR:
                 mr_name=mr_name,
                 samples=samples,
                 original_prediction=original_prediction,
+                prediction_cache=prediction_cache,
             )
 
             dfs.append(df)
@@ -368,7 +370,7 @@ class AutoMR:
         - Reused across every MR.
         """
 
-        sample_id, sample, samples_per_mr, df_temp = args
+        sample_id, sample, samples_per_mr, df_temp, prediction_cache = args
 
         # Compute original prediction once
         original_prediction = float(
@@ -380,6 +382,7 @@ class AutoMR:
             input_data=sample,
             samples=samples_per_mr,
             original_prediction=original_prediction,
+            prediction_cache=prediction_cache,
         )
 
         # Merge temporal results if available

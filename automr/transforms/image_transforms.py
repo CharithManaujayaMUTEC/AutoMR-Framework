@@ -3,6 +3,7 @@ import numpy as np
 
 from .utils import (
     create_rng,
+    create_random_patch,
     create_random_mask,
     blend_images,
     random_motion_kernel,
@@ -146,6 +147,11 @@ def blur(
 
     img = image.astype(np.float32)
 
+    k = int(round(float(k)))
+
+    if k < 3:
+        k = 3
+
     if k % 2 == 0:
         k += 1
 
@@ -170,8 +176,8 @@ def blur(
     else:
 
         kernel = random_motion_kernel(
-            k,
-            rng,
+            ksize=k,
+            rng=rng,
         )
 
         blurred = cv2.filter2D(
@@ -318,8 +324,13 @@ def rotate_small(
         1.03,
     )
 
+    angle = float(angle)
+
+    theta = float(angle) * rng.uniform(-1.0, 1.0)
+    scale = float(rng.uniform(0.97, 1.03))
+
     M = cv2.getRotationMatrix2D(
-        (pw / 2, ph / 2),
+        (pw / 2.0, ph / 2.0),
         theta,
         scale,
     )

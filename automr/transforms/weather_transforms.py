@@ -64,6 +64,7 @@ def add_rain(
     Depth-aware localized rain.
     """
 
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -76,7 +77,7 @@ def add_rain(
 
     alpha = np.zeros((h, w), np.float32)
 
-    cells = rng.integers(3, 8)
+    cells = int(rng.integers(3, 8))
 
     for _ in range(cells):
 
@@ -179,6 +180,7 @@ def add_snow(
     Depth-aware snow.
     """
 
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -257,7 +259,7 @@ def add_fog(
     """
     Depth-aware atmospheric fog.
     """
-
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -314,6 +316,7 @@ def add_sandstorm(
     Depth-aware sandstorm.
     """
 
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -398,6 +401,7 @@ def add_dust(
     Random airborne dust.
     """
 
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -461,25 +465,23 @@ def add_haze(
     intensity=0.5,
     seed=None,
 ):
-    """
-    Mild atmospheric haze.
-    """
-
-    rng = create_rng(seed)
+    intensity = float(intensity)
 
     img = image.astype(np.float32)
 
-    haze_color = np.ones_like(img) * rng.integers(
-        235,
-        256,
+    white = np.full(
+        img.shape,
+        255.0,
+        dtype=np.float32,
     )
 
     out = cv2.addWeighted(
         img,
-        1 - 0.30 * intensity,
-        haze_color,
-        0.30 * intensity,
+        1.0 - 0.3 * intensity,
+        white,
+        0.3 * intensity,
         0,
+        dtype=cv2.CV_32F,
     )
 
     return np.clip(
@@ -487,7 +489,6 @@ def add_haze(
         0,
         255,
     ).astype(np.uint8)
-
 
 # ==========================================================
 # Smoke
@@ -502,6 +503,7 @@ def add_smoke(
     Random localized smoke clouds.
     """
 
+    intensity = float(intensity)
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -515,10 +517,7 @@ def add_smoke(
         dtype=np.float32,
     )
 
-    clouds = rng.integers(
-        4,
-        10,
-    )
+    clouds = int(rng.integers(4, 10))
 
     for _ in range(clouds):
 
