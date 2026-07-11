@@ -172,7 +172,7 @@ class BatchManager:
 
                 outputs[idx] = pred
 
-                cache[idx] = pred
+                cache[cache_keys[idx]] = pred
 
         return np.asarray(
             outputs,
