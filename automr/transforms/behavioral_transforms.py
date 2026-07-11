@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from automr.transforms.utils import create_rng
+
 
 # ==========================================================
 # Localized Visibility Reduction
@@ -11,23 +13,31 @@ def reduce_visibility(
     factor=0.5,
     min_patches=3,
     max_patches=8,
+    seed=None,
+    sample_id=None,
 ):
     """
     Localized visibility degradation.
 
-    Controlled parameter
-    --------------------
-    factor : visibility reduction intensity
+    Controlled
+    ----------
+    factor
 
     Randomized
     ----------
-    • number of degraded regions
+    • number of regions
     • locations
     • sizes
     • orientations
-    • overlap
-    • soft edges
+    • blur size
     """
+
+    rng = create_rng(
+        seed=seed,
+        sample_id=sample_id,
+        mr_name="visibility",
+        intensity=factor,
+    )
 
     img = image.astype(np.float32).copy()
 
@@ -37,31 +47,33 @@ def reduce_visibility(
 
     factor = np.clip(float(factor), 0.0, 1.5)
 
-    num_regions = np.random.randint(
+    num_regions = rng.integers(
         min_patches,
-        max_patches + 1
+        max_patches + 1,
     )
 
     alpha = np.zeros((h, w), dtype=np.float32)
 
     for _ in range(num_regions):
 
-        axis_x = np.random.randint(
+        axis_x = rng.integers(
             max(40, w // 12),
-            max(100, w // 3)
+            max(100, w // 3),
         )
 
-        axis_y = np.random.randint(
+        axis_y = rng.integers(
             max(40, h // 12),
-            max(100, h // 3)
+            max(100, h // 3),
         )
 
         center = (
-            np.random.randint(0, w),
-            np.random.randint(0, h)
+            int(rng.integers(0, w)),
+            int(rng.integers(0, h)),
         )
 
-        angle = np.random.uniform(0, 360)
+        angle = float(
+            rng.uniform(0, 360)
+        )
 
         mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -73,17 +85,17 @@ def reduce_visibility(
             0,
             360,
             255,
-            -1
+            -1,
         )
 
-        blur_size = np.random.choice(
-            [41, 61, 81]
+        blur_size = int(
+            rng.choice([41, 61, 81])
         )
 
         mask = cv2.GaussianBlur(
             mask,
             (blur_size, blur_size),
-            0
+            0,
         )
 
         alpha += mask.astype(np.float32) / 255.0
@@ -97,7 +109,11 @@ def reduce_visibility(
         + fog * alpha[:, :, None]
     )
 
-    return np.clip(result, 0, 255).astype(np.uint8)
+    return np.clip(
+        result,
+        0,
+        255,
+    ).astype(np.uint8)
 
 
 # ==========================================================
@@ -109,23 +125,31 @@ def darken(
     factor=0.5,
     min_patches=3,
     max_patches=8,
+    seed=None,
+    sample_id=None,
 ):
     """
     Localized illumination reduction.
 
-    Controlled parameter
-    --------------------
-    factor : brightness scaling
+    Controlled
+    ----------
+    factor
 
     Randomized
     ----------
-    • number of dark regions
+    • number of regions
     • locations
     • sizes
     • orientations
-    • overlap
-    • soft edges
+    • blur size
     """
+
+    rng = create_rng(
+        seed=seed,
+        sample_id=sample_id,
+        mr_name="darkness",
+        intensity=factor,
+    )
 
     img = image.astype(np.float32).copy()
 
@@ -133,29 +157,31 @@ def darken(
 
     factor = np.clip(float(factor), 0.05, 1.0)
 
-    num_regions = np.random.randint(
+    num_regions = rng.integers(
         min_patches,
-        max_patches + 1
+        max_patches + 1,
     )
 
     for _ in range(num_regions):
 
-        axis_x = np.random.randint(
+        axis_x = rng.integers(
             max(40, w // 12),
-            max(100, w // 3)
+            max(100, w // 3),
         )
 
-        axis_y = np.random.randint(
+        axis_y = rng.integers(
             max(40, h // 12),
-            max(100, h // 3)
+            max(100, h // 3),
         )
 
         center = (
-            np.random.randint(0, w),
-            np.random.randint(0, h)
+            int(rng.integers(0, w)),
+            int(rng.integers(0, h)),
         )
 
-        angle = np.random.uniform(0, 360)
+        angle = float(
+            rng.uniform(0, 360)
+        )
 
         mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -167,17 +193,17 @@ def darken(
             0,
             360,
             255,
-            -1
+            -1,
         )
 
-        blur_size = np.random.choice(
-            [41, 61, 81]
+        blur_size = int(
+            rng.choice([41, 61, 81])
         )
 
         mask = cv2.GaussianBlur(
             mask,
             (blur_size, blur_size),
-            0
+            0,
         )
 
         mask = mask.astype(np.float32) / 255.0
@@ -189,4 +215,8 @@ def darken(
             + darkened * mask[:, :, None]
         )
 
-    return np.clip(img, 0, 255).astype(np.uint8)
+    return np.clip(
+        img,
+        0,
+        255,
+    ).astype(np.uint8)

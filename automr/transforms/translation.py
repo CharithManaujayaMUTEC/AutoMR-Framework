@@ -1,12 +1,18 @@
 import cv2
 import numpy as np
 
+from .utils import (
+    create_rng,
+    create_random_patch,
+    create_random_mask,
+    blend_images,
+)
+
 
 def shift_right(
     image,
     pixels=5,
-    min_patches=3,
-    max_patches=8,
+    seed=None,
 ):
     """
     Localized Spatial Translation.
@@ -21,9 +27,13 @@ def shift_right(
     • region locations
     • region sizes
     • translation direction
-    • ellipse orientation
+    • mask geometry
     • edge softness
+
+    Reproducible when a seed is provided.
     """
+
+    rng = create_rng(seed)
 
     img = image.astype(np.float32).copy()
 
@@ -31,115 +41,79 @@ def shift_right(
 
     pixels = max(1, int(pixels))
 
-    num_regions = np.random.randint(
-        min_patches,
-        max_patches + 1
-    )
+    num_regions = rng.integers(3, 9)
 
     for _ in range(num_regions):
 
-        # -------------------------------------
-        # Random region size
-        # -------------------------------------
-        patch_w = np.random.randint(
-            max(40, w // 10),
-            max(120, w // 3)
-        )
-
-        patch_h = np.random.randint(
-            max(40, h // 10),
-            max(120, h // 3)
-        )
-
-        x = np.random.randint(
-            0,
-            w - patch_w
-        )
-
-        y = np.random.randint(
-            0,
-            h - patch_h
+        # ---------------------------------
+        # Random patch
+        # ---------------------------------
+        x, y, patch_w, patch_h = create_random_patch(
+            (h, w),
+            rng=rng,
+            min_scale=0.10,
+            max_scale=0.35,
         )
 
         patch = img[
             y:y + patch_h,
-            x:x + patch_w
+            x:x + patch_w,
         ].copy()
 
-        # -------------------------------------
+        # ---------------------------------
         # Random translation direction
-        # -------------------------------------
-        angle = np.random.uniform(
-            0,
-            360
+        # ---------------------------------
+        theta = rng.uniform(0.0, 2.0 * np.pi)
+
+        distance = rng.uniform(
+            pixels * 0.5,
+            pixels,
         )
 
-        dx = int(
-            pixels * np.cos(
-                np.deg2rad(angle)
-            )
-        )
+        dx = int(np.round(distance * np.cos(theta)))
+        dy = int(np.round(distance * np.sin(theta)))
 
-        dy = int(
-            pixels * np.sin(
-                np.deg2rad(angle)
-            )
+        M = np.float32(
+            [
+                [1, 0, dx],
+                [0, 1, dy],
+            ]
         )
-
-        M = np.float32([
-            [1, 0, dx],
-            [0, 1, dy]
-        ])
 
         translated = cv2.warpAffine(
             patch,
             M,
             (patch_w, patch_h),
             flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_REFLECT
-        )
+            borderMode=cv2.BORDER_REFLECT101,
+        ).astype(np.float32)
 
-        # -------------------------------------
-        # Soft elliptical mask
-        # -------------------------------------
-        mask = np.zeros(
+        # ---------------------------------
+        # Random soft blending mask
+        # ---------------------------------
+        mask = create_random_mask(
             (patch_h, patch_w),
-            dtype=np.uint8
+            rng=rng,
+            min_regions=1,
+            max_regions=2,
+            min_scale=0.70,
+            max_scale=1.00,
+            blur_choices=(21, 31, 41, 51),
         )
 
-        cv2.ellipse(
+        blended = blend_images(
+            patch,
+            translated,
             mask,
-            (patch_w // 2, patch_h // 2),
-            (patch_w // 2, patch_h // 2),
-            np.random.uniform(0, 360),
-            0,
-            360,
-            255,
-            -1
         )
-
-        blur_size = np.random.choice(
-            [21, 31, 41, 51]
-        )
-
-        mask = cv2.GaussianBlur(
-            mask,
-            (blur_size, blur_size),
-            0
-        )
-
-        mask = mask.astype(np.float32) / 255.0
 
         img[
             y:y + patch_h,
-            x:x + patch_w
-        ] = (
-            patch * (1 - mask[:, :, None]) +
-            translated * mask[:, :, None]
-        )
+            x:x + patch_w,
+        ] = blended
 
     return np.clip(
         img,
         0,
-        255
+        255,
     ).astype(np.uint8)

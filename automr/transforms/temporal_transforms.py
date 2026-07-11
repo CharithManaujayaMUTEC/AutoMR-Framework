@@ -1,4 +1,6 @@
-import random
+import numpy as np
+
+from .utils import create_rng
 
 
 # ==========================================================
@@ -17,7 +19,11 @@ def identity_sequence(sequence):
 # Random Temporal Window
 # ==========================================================
 
-def sample_sequence(dataset, length=10):
+def sample_sequence(
+    dataset,
+    length=10,
+    seed=None,
+):
     """
     Randomly samples a contiguous temporal window.
 
@@ -30,36 +36,45 @@ def sample_sequence(dataset, length=10):
     • starting frame
     """
 
+    rng = create_rng(seed)
+
     if len(dataset) <= length:
         return list(dataset)
 
-    start = random.randint(
+    start = rng.integers(
         0,
-        len(dataset) - length
+        len(dataset) - length + 1,
     )
 
-    return dataset[start:start + length]
+    return list(
+        dataset[start:start + length]
+    )
 
 
 # ==========================================================
 # Consecutive Frame Pair
 # ==========================================================
 
-def next_frame_pair(dataset, idx):
+def next_frame_pair(
+    dataset,
+    idx,
+):
     """
     Returns two consecutive frames.
     """
 
     idx = int(idx)
 
+    if idx < 0:
+        idx = 0
+
     if idx >= len(dataset) - 1:
         return None
 
     return (
         dataset[idx],
-        dataset[idx + 1]
+        dataset[idx + 1],
     )
-
 
 # ==========================================================
 # Random Temporal Pair
@@ -68,6 +83,7 @@ def next_frame_pair(dataset, idx):
 def temporal_pair(
     dataset,
     max_gap=5,
+    seed=None,
 ):
     """
     Returns two temporally nearby frames.
@@ -82,27 +98,31 @@ def temporal_pair(
     • temporal gap
     """
 
+    rng = create_rng(seed)
+
     if len(dataset) < 2:
         return None
 
-    start = random.randint(
+    max_gap = max(1, int(max_gap))
+
+    start = rng.integers(
         0,
-        len(dataset) - 2
+        len(dataset) - 1,
     )
 
-    gap = random.randint(
+    gap = rng.integers(
         1,
-        max_gap
+        max_gap + 1,
     )
 
     end = min(
         start + gap,
-        len(dataset) - 1
+        len(dataset) - 1,
     )
 
     return (
         dataset[start],
-        dataset[end]
+        dataset[end],
     )
 
 
@@ -115,16 +135,21 @@ def skip_sequence(
     step=2,
 ):
     """
-    Samples frames with a fixed temporal skip.
+    Samples frames using a fixed interval.
 
     Controlled parameter
     --------------------
     step : frame interval
     """
 
-    step = max(1, int(step))
+    step = max(
+        1,
+        int(step),
+    )
 
-    return dataset[::step]
+    return list(
+        dataset[::step]
+    )
 
 
 # ==========================================================
@@ -134,6 +159,7 @@ def skip_sequence(
 def jitter_sequence(
     dataset,
     max_offset=2,
+    seed=None,
 ):
     """
     Creates a sequence with small random temporal jitter.
@@ -147,26 +173,35 @@ def jitter_sequence(
     • frame offsets
     """
 
+    rng = create_rng(seed)
+
     if len(dataset) == 0:
         return []
+
+    max_offset = max(
+        0,
+        int(max_offset),
+    )
 
     output = []
 
     for i in range(len(dataset)):
 
-        offset = random.randint(
+        offset = rng.integers(
             -max_offset,
-            max_offset
+            max_offset + 1,
         )
 
         idx = min(
             max(
                 i + offset,
-                0
+                0,
             ),
-            len(dataset) - 1
+            len(dataset) - 1,
         )
 
-        output.append(dataset[idx])
+        output.append(
+            dataset[idx]
+        )
 
     return output
