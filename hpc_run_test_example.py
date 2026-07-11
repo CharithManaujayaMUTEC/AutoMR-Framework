@@ -1,4 +1,4 @@
-# examples/run_test.py
+# examples/hpc_run_test.py
 
 import sys
 import os
@@ -21,26 +21,33 @@ sys.path.append("Path/to/your/model")
 # Dataset
 DATASET_PATH = "Path/to/your/dataset"
 
-# AutoMR settings
+# AutoMR Settings
 TASK = "regression"
 INPUT_TYPE = "image"
 
 # Testing
-MAX_SAMPLES = None          # None = entire dataset
+MAX_SAMPLES = None          # None = Full dataset
 SAMPLES_PER_MR = 5
 
 # MR
 EPSILON = 0.05
 RANGE_THRESHOLD = 5.0
 
-# Epsilon sensitivity
+# Epsilon Sweep
 ENABLE_EPSILON_ANALYSIS = True
 EPSILON_MIN = 0.005
 EPSILON_MAX = 0.05
 EPSILON_COUNT = 3
 
+# HPC Settings
+WORKERS = os.cpu_count()
+BATCH_SIZE = 64
+CHUNK_SIZE = 64
+PREFETCH = True
+CACHE_PREDICTIONS = True
+
 # Output
-OUTPUT_DIR = "results"
+OUTPUT_DIR = "results_hpc"
 
 SHOW_PROGRESS = True
 SAVE_RESULTS = True
@@ -67,7 +74,7 @@ print(f"Using {CPU_THREADS} CPU threads")
 from load_data import load_images
 from load_model import get_model
 
-from automr.api import AutoMR
+from automr.hpc import HighPerformanceAutoMR
 
 # ==========================================================
 # MODEL WRAPPER
@@ -137,19 +144,15 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
 
     print("=" * 60)
-    print("AutoMR Validation")
+    print("HighPerformanceAutoMR Validation")
     print("=" * 60)
 
-    print(f"Platform        : {platform.system()}")
-    print(f"CPU Threads     : {CPU_THREADS}")
-
-    # ------------------------------------------------------
+    print(f"Platform      : {platform.system()}")
+    print(f"CPU Threads   : {CPU_THREADS}")
 
     dataset = load_images(DATASET_PATH)
 
-    print(f"Dataset Size    : {len(dataset)}")
-
-    # ------------------------------------------------------
+    print(f"Dataset Size  : {len(dataset)}")
 
     model = RealModel()
 
@@ -159,9 +162,7 @@ if __name__ == "__main__":
 
     print("Sample Prediction:", model.predict(sample))
 
-    # ------------------------------------------------------
-
-    automr = AutoMR(
+    automr = HighPerformanceAutoMR(
 
         model=model,
 
@@ -173,6 +174,16 @@ if __name__ == "__main__":
 
         range_threshold=RANGE_THRESHOLD,
 
+        workers=WORKERS,
+
+        batch_size=BATCH_SIZE,
+
+        chunk_size=CHUNK_SIZE,
+
+        prefetch=PREFETCH,
+
+        cache_predictions=CACHE_PREDICTIONS,
+
     )
 
     print("\nRegistered Transformations")
@@ -181,22 +192,15 @@ if __name__ == "__main__":
     print("\nRegistered Relations")
     print(automr.list_relations())
 
-    print("\nConfiguration")
+    print("\nHPC Configuration")
     print("----------------------------")
-    print(f"Task               : {TASK}")
-    print(f"Input Type         : {INPUT_TYPE}")
+    print(f"Workers            : {WORKERS}")
+    print(f"Batch Size         : {BATCH_SIZE}")
+    print(f"Chunk Size         : {CHUNK_SIZE}")
+    print(f"Prefetch           : {PREFETCH}")
+    print(f"Prediction Cache   : {CACHE_PREDICTIONS}")
     print(f"Max Samples        : {MAX_SAMPLES}")
     print(f"Samples Per MR     : {SAMPLES_PER_MR}")
-    print(f"Epsilon            : {EPSILON}")
-    print(f"Range Threshold    : {RANGE_THRESHOLD}")
-
-    if ENABLE_EPSILON_ANALYSIS:
-
-        print(f"Epsilon Min        : {EPSILON_MIN}")
-        print(f"Epsilon Max        : {EPSILON_MAX}")
-        print(f"Epsilon Count      : {EPSILON_COUNT}")
-
-    print()
 
     start = time.time()
 
@@ -246,9 +250,7 @@ if __name__ == "__main__":
 
         )
 
-    end = time.time()
-
-    runtime = end - start
+    runtime = time.time() - start
 
     print("\nValidation Complete")
     print(f"Runtime : {runtime:.2f} sec")
@@ -291,11 +293,9 @@ if __name__ == "__main__":
         else:
             print(f"[--] {path}")
 
-    print()
-
     try:
 
-        print(f"Total Results : {len(df)}")
+        print(f"\nTotal Results : {len(df)}")
         print(f"Unique MRs    : {df['mr'].nunique()}")
         print(f"Pass Rate     : {(df['passed'].mean()*100):.2f}%")
 
