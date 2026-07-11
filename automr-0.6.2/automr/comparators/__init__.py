@@ -1,3 +1,0 @@
-from .comparator_factory import get_comparator
-from .regression import RegressionComparator
-from .classification import ClassificationComparator
