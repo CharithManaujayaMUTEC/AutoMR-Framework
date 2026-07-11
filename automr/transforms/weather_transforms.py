@@ -149,6 +149,99 @@ def _color_cast(
     )
 
 # ==========================================================
+# Camera Lens Effects
+# ==========================================================
+
+def _apply_lens_droplets(
+    image,
+    rng,
+    intensity,
+    tint=(255,255,255),
+):
+    """
+    Realistic camera-lens droplets.
+
+    Used for:
+        rain
+        snow
+        fog
+        dust
+        smoke
+    """
+
+    img = image.astype(np.float32)
+
+    h, w = img.shape[:2]
+
+    alpha = np.zeros((h,w), np.float32)
+
+    blurred = cv2.GaussianBlur(
+        img,
+        (0,0),
+        sigmaX=8,
+    )
+
+    out = img.copy()
+
+    droplets = int(
+        rng.uniform(
+            10,
+            80
+        ) * intensity
+    )
+
+    for _ in range(droplets):
+
+        cx = int(rng.integers(0,w))
+        cy = int(rng.integers(0,h))
+
+        r = rng.uniform(
+            6,
+            35
+        ) * (0.5 + intensity)
+
+        mask = np.zeros((h,w), np.float32)
+
+        cv2.circle(
+            mask,
+            (cx,cy),
+            int(r),
+            1,
+            -1,
+        )
+
+        mask = cv2.GaussianBlur(
+            mask,
+            (0,0),
+            sigmaX=r*0.25,
+        )
+
+        alpha = np.maximum(
+            alpha,
+            mask*0.55,
+        )
+
+        # highlight
+
+        hx = int(cx-r*0.3)
+        hy = int(cy-r*0.3)
+
+        cv2.circle(
+            out,
+            (hx,hy),
+            max(1,int(r*0.18)),
+            tint,
+            -1,
+        )
+
+    out = (
+        out*(1-alpha[:,:,None])
+        + blurred*alpha[:,:,None]
+    )
+
+    return out
+
+# ==========================================================
 # Rain
 # ==========================================================
 
@@ -158,20 +251,18 @@ def add_rain(
     seed=None,
 ):
     """
-    Physically-inspired rain.
+    Realistic dashcam rain.
 
-    Characteristics
-    ---------------
-    • Whole-image rainfall
-    • Spatial density variation
-    • Perspective streak length
-    • Wind
-    • Motion blur
-    • Slight atmospheric haze
+    Features
+    --------
+    • Perspective rain
+    • Wind variation
+    • Lens droplets
+    • Slight refraction
+    • Atmospheric darkening
     """
 
     intensity = float(intensity)
-
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -180,77 +271,61 @@ def add_rain(
 
     depth = _depth_map(h, w)
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=96,
-        blur=81,
+    # --------------------------------------------------
+    # Slight rainy atmosphere
+    # --------------------------------------------------
+
+    out = img * (1.0 - 0.15 * intensity)
+
+    # --------------------------------------------------
+    # Rain streak layer
+    # --------------------------------------------------
+
+    rain = np.zeros_like(out)
+
+    wind = rng.uniform(-18, 18)
+
+    n = int(
+        h * w * (0.0008 + 0.0025 * intensity)
     )
 
-    rain = np.zeros_like(img)
+    for _ in range(n):
 
-    angle = float(
-        rng.uniform(-20, 20)
-    )
-
-    dx = np.sin(
-        np.deg2rad(angle)
-    )
-
-    dy = np.cos(
-        np.deg2rad(angle)
-    )
-
-    n_streaks = int(
-        h * w * intensity * 0.0015
-    )
-
-    ys = rng.integers(
-        0,
-        h,
-        n_streaks,
-    )
-
-    xs = rng.integers(
-        0,
-        w,
-        n_streaks,
-    )
-
-    for x, y in zip(xs, ys):
-
-        if rng.random() > density[y, x]:
-            continue
+        x = int(rng.integers(0, w))
+        y = int(rng.integers(0, h))
 
         d = depth[y, x]
 
         length = int(
-            8 + 22 * d
+            rng.uniform(8, 28)
+            * (1.8 - d)
         )
 
-        thickness = (
-            1
-            if d > 0.4
-            else 2
+        thickness = max(
+            1,
+            int(
+                rng.uniform(1, 3)
+                * (1.8 - d)
+            ),
         )
 
-        brightness = int(
-            170 + 55 * d
-        )
+        angle = wind + rng.normal(0, 5)
+
+        dx = np.sin(np.deg2rad(angle))
+        dy = np.cos(np.deg2rad(angle))
 
         x2 = int(x + dx * length)
         y2 = int(y + dy * length)
+
+        b = int(
+            rng.uniform(170, 255)
+        )
 
         cv2.line(
             rain,
             (x, y),
             (x2, y2),
-            (
-                brightness,
-                brightness,
-                brightness,
-            ),
+            (b, b, b),
             thickness,
             cv2.LINE_AA,
         )
@@ -261,31 +336,119 @@ def add_rain(
         0,
     )
 
-    airlight = np.full_like(
-        img,
-        230,
-        dtype=np.float32,
-    )
-
-    scene = _atmospheric_scatter(
-        img,
-        airlight,
-        beta=0.30 * intensity,
-        depth=depth,
-    )
-
-    scene = _reduce_contrast(
-        scene,
-        0.15 * intensity,
-    )
-
     out = cv2.addWeighted(
-        scene,
+        out,
         1.0,
         rain,
-        0.55,
+        0.35 * intensity,
         0,
         dtype=cv2.CV_32F,
+    )
+
+    # --------------------------------------------------
+    # Lens droplets
+    # --------------------------------------------------
+
+    droplets = int(
+        20 + intensity * 120
+    )
+
+    for _ in range(droplets):
+
+        cx = int(rng.integers(0, w))
+        cy = int(rng.integers(0, h))
+
+        r = int(
+            rng.uniform(
+                3,
+                18 + 30 * intensity,
+            )
+        )
+
+        mask = np.zeros(
+            (h, w),
+            np.uint8,
+        )
+
+        cv2.circle(
+            mask,
+            (cx, cy),
+            r,
+            255,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        blur = max(
+            9,
+            int(r * 2 + 1),
+        )
+
+        if blur % 2 == 0:
+            blur += 1
+
+        mask = cv2.GaussianBlur(
+            mask,
+            (blur, blur),
+            0,
+        )
+
+        alpha = (
+            mask.astype(np.float32)
+            / 255.0
+        )
+
+        alpha *= rng.uniform(
+            0.15,
+            0.45,
+        ) * intensity
+
+        # slight magnification
+        scale = rng.uniform(
+            1.01,
+            1.05,
+        )
+
+        M = cv2.getRotationMatrix2D(
+            (cx, cy),
+            0,
+            scale,
+        )
+
+        warped = cv2.warpAffine(
+            out,
+            M,
+            (w, h),
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_REFLECT101,
+        )
+
+        out = (
+            out * (1 - alpha[:, :, None])
+            + warped * alpha[:, :, None]
+        )
+
+        cv2.circle(
+            out,
+            (cx, cy),
+            r,
+            (
+                255,
+                255,
+                255,
+            ),
+            1,
+            cv2.LINE_AA,
+        )
+
+    # --------------------------------------------------
+    # Final blur
+    # --------------------------------------------------
+
+    out = cv2.GaussianBlur(
+        out,
+        (3, 3),
+        0,
     )
 
     return np.clip(
@@ -427,18 +590,17 @@ def add_fog(
     seed=None,
 ):
     """
-    Physically-inspired fog.
+    Realistic atmospheric fog.
 
-    Characteristics
-    ---------------
-    • Whole-scene fog
-    • Depth-aware attenuation
-    • Smooth density variation
-    • Atmospheric scattering
+    Features
+    --------
+    • Depth-aware scattering
+    • Patchy density
+    • Soft turbulence
+    • Contrast reduction
     """
 
     intensity = float(intensity)
-
     rng = create_rng(seed)
 
     img = image.astype(np.float32)
@@ -447,49 +609,92 @@ def add_fog(
 
     depth = _depth_map(h, w)
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=180,
-        blur=151,
+    # ---------------------------------------------
+    # Large smooth fog density
+    # ---------------------------------------------
+
+    noise = rng.normal(
+        0,
+        1,
+        (h, w),
+    ).astype(np.float32)
+
+    noise = cv2.GaussianBlur(
+        noise,
+        (0, 0),
+        sigmaX=max(h, w) / 12,
+    )
+
+    noise -= noise.min()
+    noise /= noise.max() + 1e-6
+
+    density = (
+        0.5
+        + 0.5 * noise
     )
 
     beta = (
-        1.2
-        + 1.2 * density
+        1.4
+        + rng.uniform(-0.2, 0.2)
     ) * intensity
 
-    airlight = np.full_like(
+    transmission = np.exp(
+        -beta * depth * density
+    )
+
+    transmission = transmission[:, :, None]
+
+    atmosphere = np.full_like(
         img,
-        245,
+        255,
         dtype=np.float32,
     )
 
-    fog = _atmospheric_scatter(
-        img,
-        airlight,
-        beta,
-        depth,
+    out = (
+        img * transmission
+        + atmosphere * (1.0 - transmission)
     )
 
-    fog = _reduce_contrast(
-        fog,
-        0.20 * intensity,
+    # ---------------------------------------------
+    # Slight desaturation
+    # ---------------------------------------------
+
+    gray = cv2.cvtColor(
+        out.astype(np.uint8),
+        cv2.COLOR_BGR2GRAY,
+    ).astype(np.float32)
+
+    gray = gray[:, :, None]
+
+    out = (
+        out * (1 - 0.20 * intensity)
+        + gray * (0.20 * intensity)
     )
 
-    fog = cv2.GaussianBlur(
-        fog,
-        (15, 15),
-        0,
+    # ---------------------------------------------
+    # Reduce distant contrast
+    # ---------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=8,
+    )
+
+    far = (
+        1.0 - depth
+    )[:, :, None]
+
+    out = (
+        out * (1 - far * 0.25 * intensity)
+        + blur * (far * 0.25 * intensity)
     )
 
     return np.clip(
-        fog,
+        out,
         0,
         255,
     ).astype(np.uint8)
-
 
 # ==========================================================
 # Haze
@@ -501,14 +706,14 @@ def add_haze(
     seed=None,
 ):
     """
-    Light atmospheric haze.
+    Realistic atmospheric haze.
 
-    Characteristics
-    ---------------
-    • Mild atmospheric scattering
-    • Slight whitening
-    • Contrast reduction
-    • Smooth spatial variation
+    Features
+    --------
+    • Uneven atmospheric scattering
+    • Reduced contrast
+    • Slight bluish tint
+    • Large-scale density variation
     """
 
     intensity = float(intensity)
@@ -519,53 +724,107 @@ def add_haze(
 
     h, w = img.shape[:2]
 
-    depth = _depth_map(h, w)
+    # --------------------------------------------------
+    # Large-scale haze density
+    # --------------------------------------------------
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=220,
-        blur=181,
+    noise = rng.normal(
+        0,
+        1,
+        (h, w),
+    ).astype(np.float32)
+
+    noise = cv2.GaussianBlur(
+        noise,
+        (0, 0),
+        sigmaX=max(h, w) / 8,
     )
 
-    beta = (
-        0.35
-        + 0.35 * density
-    ) * intensity
+    noise -= noise.min()
+    noise /= noise.max() + 1e-6
 
-    airlight = np.full_like(
+    density = (
+        0.55
+        + 0.45 * noise
+    )
+
+    density *= intensity
+
+    density = density[:, :, None]
+
+    # --------------------------------------------------
+    # Slight blue-gray atmosphere
+    # --------------------------------------------------
+
+    atmosphere = np.full_like(
         img,
-        255,
+        (
+            235,
+            238,
+            245,
+        ),
         dtype=np.float32,
     )
 
-    haze = _atmospheric_scatter(
-        img,
-        airlight,
-        beta,
-        depth,
+    out = (
+        img * (1 - density * 0.45)
+        + atmosphere * (density * 0.45)
     )
 
-    haze = _reduce_contrast(
-        haze,
-        0.10 * intensity,
+    # --------------------------------------------------
+    # Reduce contrast
+    # --------------------------------------------------
+
+    mean = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=25,
     )
 
-    haze = _color_cast(
-        haze,
-        [245, 248, 255],
-        0.05 * intensity,
+    contrast = (
+        1.0
+        - 0.30 * intensity
     )
 
-    haze = cv2.GaussianBlur(
-        haze,
-        (9, 9),
+    out = mean + contrast * (out - mean)
+
+    # --------------------------------------------------
+    # Soft atmospheric blur
+    # --------------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=2 + 4 * intensity,
+    )
+
+    out = cv2.addWeighted(
+        out,
+        0.8,
+        blur,
+        0.2,
         0,
+        dtype=cv2.CV_32F,
+    )
+
+    # --------------------------------------------------
+    # Slight desaturation
+    # --------------------------------------------------
+
+    gray = cv2.cvtColor(
+        out.astype(np.uint8),
+        cv2.COLOR_BGR2GRAY,
+    ).astype(np.float32)
+
+    gray = gray[:, :, None]
+
+    out = (
+        out * (1 - 0.12 * intensity)
+        + gray * (0.12 * intensity)
     )
 
     return np.clip(
-        haze,
+        out,
         0,
         255,
     ).astype(np.uint8)
@@ -580,14 +839,15 @@ def add_dust(
     seed=None,
 ):
     """
-    Atmospheric airborne dust.
+    Realistic airborne dust.
 
-    Characteristics
-    ---------------
-    • Whole-image dust field
-    • Small drifting particles
-    • Slight brown color cast
-    • Contrast reduction
+    Features
+    --------
+    • Fine suspended particles
+    • Multi-scale dust clouds
+    • Warm brown atmospheric tint
+    • Reduced visibility
+    • Slight lens softness
     """
 
     intensity = float(intensity)
@@ -598,86 +858,131 @@ def add_dust(
 
     h, w = img.shape[:2]
 
-    depth = _depth_map(h, w)
+    out = img.copy()
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=140,
-        blur=121,
+    # --------------------------------------------------
+    # Multi-scale dust density
+    # --------------------------------------------------
+
+    n1 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    n2 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    n3 = rng.normal(0, 1, (h, w)).astype(np.float32)
+
+    n1 = cv2.GaussianBlur(n1, (0, 0), sigmaX=max(h, w) / 5)
+    n2 = cv2.GaussianBlur(n2, (0, 0), sigmaX=max(h, w) / 12)
+    n3 = cv2.GaussianBlur(n3, (0, 0), sigmaX=max(h, w) / 30)
+
+    density = (
+        0.55 * n1 +
+        0.30 * n2 +
+        0.15 * n3
     )
 
-    dust = np.zeros_like(img)
+    density -= density.min()
+    density /= density.max() + 1e-6
 
-    particles = int(
-        h * w * intensity * 0.0012
+    density = np.power(density, 1.8)
+
+    density *= intensity
+
+    density = density[:, :, None]
+
+    # --------------------------------------------------
+    # Warm dust atmosphere
+    # --------------------------------------------------
+
+    dust_color = np.full_like(
+        img,
+        (175, 170, 145),
+        dtype=np.float32,
     )
 
-    xs = rng.integers(0, w, particles)
-    ys = rng.integers(0, h, particles)
+    out = (
+        img * (1 - density * 0.45)
+        + dust_color * (density * 0.45)
+    )
 
-    for x, y in zip(xs, ys):
+    # --------------------------------------------------
+    # Floating particles
+    # --------------------------------------------------
 
-        if rng.random() > density[y, x]:
-            continue
+    particles = np.zeros_like(out)
 
-        r = max(
-            1,
-            int(
-                1 + (1.0 - depth[y, x]) * 3
-            ),
-        )
+    count = int(
+        h * w * intensity * 0.002
+    )
 
-        c = int(
-            rng.uniform(170, 220)
-        )
+    for _ in range(count):
+
+        x = int(rng.integers(0, w))
+        y = int(rng.integers(0, h))
+
+        r = int(rng.uniform(1, 4))
+
+        c = int(rng.uniform(170, 230))
 
         cv2.circle(
-            dust,
-            (int(x), int(y)),
+            particles,
+            (x, y),
             r,
-            (
-                c,
-                c - 10,
-                c - 20,
-            ),
+            (c, c - 8, c - 25),
             -1,
             cv2.LINE_AA,
         )
 
-    dust = cv2.GaussianBlur(
-        dust,
-        (7, 7),
-        0,
-    )
-
-    scene = _color_cast(
-        img,
-        [195, 185, 160],
-        0.06 * intensity,
-    )
-
-    scene = _reduce_contrast(
-        scene,
-        0.08 * intensity,
+    particles = cv2.GaussianBlur(
+        particles,
+        (0, 0),
+        sigmaX=1.5,
     )
 
     out = cv2.addWeighted(
-        scene,
+        out,
         1.0,
-        dust,
-        0.35,
+        particles,
+        0.45 * intensity,
         0,
         dtype=cv2.CV_32F,
     )
+
+    # --------------------------------------------------
+    # Reduce sharpness
+    # --------------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=2 + 4 * intensity,
+    )
+
+    out = cv2.addWeighted(
+        out,
+        0.85,
+        blur,
+        0.15,
+        0,
+        dtype=cv2.CV_32F,
+    )
+
+    # --------------------------------------------------
+    # Slight contrast reduction
+    # --------------------------------------------------
+
+    mean = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=25,
+    )
+
+    out = mean + (
+        1 - 0.25 * intensity
+    ) * (out - mean)
 
     return np.clip(
         out,
         0,
         255,
     ).astype(np.uint8)
-
 
 # ==========================================================
 # Sandstorm
@@ -691,12 +996,13 @@ def add_sandstorm(
     """
     Realistic sandstorm.
 
-    Characteristics
-    ---------------
-    • Atmospheric scattering
-    • Yellow/brown color cast
-    • Dust particles
-    • Reduced visibility
+    Features
+    --------
+    • Directional blowing sand
+    • Multi-scale dust density
+    • Warm atmospheric tint
+    • Flying sand particles
+    • Motion blur
     """
 
     intensity = float(intensity)
@@ -707,97 +1013,157 @@ def add_sandstorm(
 
     h, w = img.shape[:2]
 
-    depth = _depth_map(h, w)
+    out = img.copy()
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=110,
-        blur=101,
+    wind = rng.uniform(-25, 25)
+
+    # --------------------------------------------------
+    # Large atmospheric dust
+    # --------------------------------------------------
+
+    n1 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    n2 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    n3 = rng.normal(0, 1, (h, w)).astype(np.float32)
+
+    n1 = cv2.GaussianBlur(n1, (0, 0), sigmaX=max(h, w) / 4)
+    n2 = cv2.GaussianBlur(n2, (0, 0), sigmaX=max(h, w) / 12)
+    n3 = cv2.GaussianBlur(n3, (0, 0), sigmaX=max(h, w) / 28)
+
+    density = (
+        0.55 * n1 +
+        0.30 * n2 +
+        0.15 * n3
     )
 
-    beta = (
-        0.8
-        + density * 1.2
-    ) * intensity
+    density -= density.min()
+    density /= density.max() + 1e-6
 
-    airlight = np.full(
-        img.shape,
-        (190, 175, 130),
+    density = np.power(density, 1.7)
+
+    density *= intensity
+
+    density = density[:, :, None]
+
+    sand_color = np.full_like(
+        out,
+        (175, 165, 125),
         dtype=np.float32,
     )
 
-    scene = _atmospheric_scatter(
-        img,
-        airlight,
-        beta,
-        depth,
+    out = (
+        out * (1 - density * 0.55)
+        + sand_color * (density * 0.55)
     )
 
-    scene = _reduce_contrast(
-        scene,
-        0.25 * intensity,
-    )
+    # --------------------------------------------------
+    # Blowing sand streaks
+    # --------------------------------------------------
 
-    scene = _color_cast(
-        scene,
-        [188, 173, 130],
-        0.18 * intensity,
-    )
-
-    particles = np.zeros_like(scene)
+    streaks = np.zeros_like(out)
 
     count = int(
-        h * w * intensity * 0.0015
+        h * w * intensity * 0.0025
     )
 
-    xs = rng.integers(0, w, count)
-    ys = rng.integers(0, h, count)
+    theta = np.deg2rad(wind)
 
-    for x, y in zip(xs, ys):
+    dx = np.cos(theta)
+    dy = np.sin(theta)
 
-        if rng.random() > density[y, x]:
-            continue
+    for _ in range(count):
 
-        r = max(
-            1,
-            int(
-                1 + (1.0 - depth[y, x]) * 2
-            ),
-        )
+        x = int(rng.integers(0, w))
+        y = int(rng.integers(0, h))
 
-        c = int(
-            rng.uniform(170, 210)
-        )
+        length = int(rng.uniform(8, 28))
 
-        cv2.circle(
-            particles,
-            (int(x), int(y)),
-            r,
+        x2 = int(x + dx * length)
+        y2 = int(y + dy * length)
+
+        color = int(rng.uniform(170, 220))
+
+        cv2.line(
+            streaks,
+            (x, y),
+            (x2, y2),
             (
-                c,
-                c - 15,
-                c - 45,
+                color,
+                color - 15,
+                color - 40,
             ),
-            -1,
+            1,
             cv2.LINE_AA,
         )
 
-    particles = cv2.GaussianBlur(
-        particles,
-        (5, 5),
-        0,
+    # --------------------------------------------------
+    # Motion blur
+    # --------------------------------------------------
+
+    kernel = np.zeros((21, 21), np.float32)
+
+    kernel[10, :] = 1
+
+    M = cv2.getRotationMatrix2D(
+        (10.5, 10.5),
+        wind,
+        1,
+    )
+
+    kernel = cv2.warpAffine(
+        kernel,
+        M,
+        (21, 21),
+    )
+
+    kernel /= kernel.sum()
+
+    streaks = cv2.filter2D(
+        streaks,
+        -1,
+        kernel,
     )
 
     out = cv2.addWeighted(
-        scene,
+        out,
         1.0,
-        particles,
-        0.30,
+        streaks,
+        0.65 * intensity,
         0,
         dtype=cv2.CV_32F,
     )
+
+    # --------------------------------------------------
+    # Visibility reduction
+    # --------------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=3 + 5 * intensity,
+    )
+
+    out = cv2.addWeighted(
+        out,
+        0.82,
+        blur,
+        0.18,
+        0,
+        dtype=cv2.CV_32F,
+    )
+
+    # --------------------------------------------------
+    # Contrast reduction
+    # --------------------------------------------------
+
+    mean = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=30,
+    )
+
+    out = mean + (
+        1 - 0.30 * intensity
+    ) * (out - mean)
 
     return np.clip(
         out,
@@ -815,13 +1181,14 @@ def add_smoke(
     seed=None,
 ):
     """
-    Physically-inspired smoke.
+    Realistic turbulent smoke.
 
-    Characteristics
-    ---------------
-    • Global turbulent smoke field
-    • Irregular cloud structures
-    • Smooth density variation
+    Features
+    --------
+    • Procedural turbulence
+    • Large smoke plumes
+    • Soft edges
+    • Slight blue-gray tint
     • Atmospheric scattering
     """
 
@@ -833,58 +1200,122 @@ def add_smoke(
 
     h, w = img.shape[:2]
 
-    depth = _depth_map(h, w)
-
+    # --------------------------------------------------
     # Multi-scale turbulence
-    density = (
-        0.55 * _density_field(h, w, rng, scale=200, blur=151)
-        + 0.30 * _density_field(h, w, rng, scale=90, blur=81)
-        + 0.15 * _density_field(h, w, rng, scale=45, blur=41)
+    # --------------------------------------------------
+
+    noise1 = rng.normal(
+        0,
+        1,
+        (h, w),
+    ).astype(np.float32)
+
+    noise2 = rng.normal(
+        0,
+        1,
+        (h, w),
+    ).astype(np.float32)
+
+    noise3 = rng.normal(
+        0,
+        1,
+        (h, w),
+    ).astype(np.float32)
+
+    noise1 = cv2.GaussianBlur(
+        noise1,
+        (0, 0),
+        sigmaX=max(h, w) / 4,
     )
 
-    density -= density.min()
-    density /= density.max() + 1e-6
+    noise2 = cv2.GaussianBlur(
+        noise2,
+        (0, 0),
+        sigmaX=max(h, w) / 10,
+    )
 
-    # Keep only denser regions
-    density = np.clip((density - 0.35) / 0.65, 0.0, 1.0)
+    noise3 = cv2.GaussianBlur(
+        noise3,
+        (0, 0),
+        sigmaX=max(h, w) / 25,
+    )
 
-    smoke_color = np.full(
-        img.shape,
-        180,
+    smoke = (
+        0.55 * noise1
+        + 0.30 * noise2
+        + 0.15 * noise3
+    )
+
+    smoke -= smoke.min()
+    smoke /= smoke.max() + 1e-6
+
+    smoke = np.power(
+        smoke,
+        1.8,
+    )
+
+    smoke *= intensity
+
+    smoke = smoke[:, :, None]
+
+    # --------------------------------------------------
+    # Smoke color
+    # --------------------------------------------------
+
+    color = np.full_like(
+        img,
+        (
+            180,
+            182,
+            186,
+        ),
         dtype=np.float32,
     )
 
-    beta = (
-        0.45
-        + density * 1.2
-    ) * intensity
-
-    smoke = _atmospheric_scatter(
-        img,
-        smoke_color,
-        beta,
-        depth,
+    out = (
+        img * (1 - smoke * 0.55)
+        + color * (smoke * 0.55)
     )
 
-    smoke = _reduce_contrast(
-        smoke,
-        0.22 * intensity,
+    # --------------------------------------------------
+    # Reduce local contrast
+    # --------------------------------------------------
+
+    blur = cv2.GaussianBlur(
+        out,
+        (0, 0),
+        sigmaX=10,
     )
 
-    alpha = (
-        density ** 1.8
-    ) * 0.65 * intensity
-
-    out = blend_images(
-        img,
-        smoke,
-        alpha,
+    out = (
+        out * (1 - smoke * 0.35)
+        + blur * (smoke * 0.35)
     )
+
+    # --------------------------------------------------
+    # Slight desaturation
+    # --------------------------------------------------
+
+    gray = cv2.cvtColor(
+        out.astype(np.uint8),
+        cv2.COLOR_BGR2GRAY,
+    ).astype(np.float32)
+
+    gray = gray[:, :, None]
+
+    out = (
+        out * (1 - smoke * 0.20)
+        + gray * (smoke * 0.20)
+    )
+
+    # --------------------------------------------------
+    # Soft atmospheric blur
+    # --------------------------------------------------
 
     out = cv2.GaussianBlur(
         out,
-        (15, 15),
-        0,
+        (0, 0),
+        sigmaX=1 + 3 * intensity,
     )
 
     return np.clip(
