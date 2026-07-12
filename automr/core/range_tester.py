@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import torch
 class RangeTester:
 
     def generate_range(self, start, end, num_samples):

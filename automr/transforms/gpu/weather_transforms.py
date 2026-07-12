@@ -784,21 +784,23 @@ def add_smoke_batch(
 def _to_batch(image):
 
     if isinstance(image, np.ndarray):
+        x = torch.from_numpy(image)
 
-        x = torch.from_numpy(
-            image
-        ).permute(
-            2,
-            0,
-            1,
-        ).float()
+    elif torch.is_tensor(image):
+        x = image
 
     else:
+        raise TypeError(type(image))
 
-        x = image.float()
+    # HWC -> CHW
+    if x.ndim == 3 and x.shape[-1] in (1, 3, 4):
+        x = x.permute(2, 0, 1)
 
-    return x.unsqueeze(0).to(DEVICE)
+    # CHW -> NCHW
+    if x.ndim == 3:
+        x = x.unsqueeze(0)
 
+    return x.float().to(DEVICE)
 
 def _from_batch(batch):
 

@@ -1,5 +1,6 @@
-import numpy as np
+import platform
 import torch
+import numpy as np
 
 from automr.interfaces import BaseModel
 
@@ -26,14 +27,27 @@ class PyTorchWrapper(BaseModel):
         device=None,
         preprocess=None,
         decoder=None,
+        enable_compile=False,   # default OFF
     ):
         self.model = model.eval()
 
-        if hasattr(torch, "compile"):
+        # -------------------------------------------------
+        # Optional torch.compile
+        # Disabled by default because Windows has no Triton.
+        # -------------------------------------------------
+        if (
+            enable_compile
+            and hasattr(torch, "compile")
+            and platform.system() != "Windows"
+        ):
             try:
-                self.model = torch.compile(self.model)
-            except Exception:
-                pass
+                self.model = torch.compile(
+                    self.model,
+                    mode="reduce-overhead",
+                )
+                print("torch.compile enabled.")
+            except Exception as e:
+                print(f"torch.compile disabled: {e}")
 
         if device is None:
             device = next(self.model.parameters()).device
@@ -77,7 +91,7 @@ class PyTorchWrapper(BaseModel):
         tensor = tensor.to(
             self.device,
             non_blocking=True,
-        )
+        ).contiguous()
 
         with torch.inference_mode():
 
@@ -149,7 +163,7 @@ class PyTorchWrapper(BaseModel):
         tensor = tensor.to(
             self.device,
             non_blocking=True,
-        )
+        ).contiguous()
 
         # -----------------------------------------
         # Forward pass

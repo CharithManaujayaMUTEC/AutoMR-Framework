@@ -10,6 +10,43 @@ DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
+def _to_tensor(image):
+    if isinstance(image, torch.Tensor):
+        x = image
+
+    else:
+        x = torch.from_numpy(image)
+
+    if x.ndim == 3:
+        # HWC
+        if x.shape[-1] in (1, 3):
+            x = x.permute(2, 0, 1)
+
+        # CHW
+        elif x.shape[0] in (1, 3):
+            pass
+
+        else:
+            raise ValueError(f"Unexpected image shape: {tuple(x.shape)}")
+
+        x = x.unsqueeze(0)
+
+    elif x.ndim == 4:
+        # NHWC
+        if x.shape[-1] in (1, 3):
+            x = x.permute(0, 3, 1, 2)
+
+        # NCHW
+        elif x.shape[1] in (1, 3):
+            pass
+
+        else:
+            raise ValueError(f"Unexpected batch shape: {tuple(x.shape)}")
+
+    else:
+        raise ValueError(f"Expected 3D or 4D image, got {x.ndim}D")
+
+    return x.float().to(DEVICE)
 
 # ==========================================================
 # Visibility (Batch)
@@ -104,54 +141,28 @@ def darken_batch(
 # Single-image wrappers
 # ==========================================================
 
-def reduce_visibility(
-    image,
-    factor=0.5,
-    **kwargs,
-):
-    x = (
-        torch.from_numpy(image)
-        .permute(2, 0, 1)
-        .unsqueeze(0)
-        .float()
-        .to(DEVICE)
-    )
-
-    y = reduce_visibility_batch(
-        x,
-        factor=factor,
-    )
+def reduce_visibility(image, factor=0.5, **kwargs):
+    x = _to_tensor(image)
+    y = reduce_visibility_batch(x, factor=factor)
 
     return (
         y.squeeze(0)
         .permute(1, 2, 0)
+        .clamp(0, 255)
         .byte()
         .cpu()
         .numpy()
     )
 
 
-def darken(
-    image,
-    factor=0.5,
-    **kwargs,
-):
-    x = (
-        torch.from_numpy(image)
-        .permute(2, 0, 1)
-        .unsqueeze(0)
-        .float()
-        .to(DEVICE)
-    )
-
-    y = darken_batch(
-        x,
-        factor=factor,
-    )
+def darken(image, factor=0.5, **kwargs):
+    x = _to_tensor(image)
+    y = darken_batch(x, factor=factor)
 
     return (
         y.squeeze(0)
         .permute(1, 2, 0)
+        .clamp(0, 255)
         .byte()
         .cpu()
         .numpy()

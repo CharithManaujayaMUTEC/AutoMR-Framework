@@ -20,30 +20,43 @@ DEVICE = torch.device(
 # ----------------------------------------------------------
 
 def _to_tensor(image):
-    """
-    numpy(H,W,C) -> torch(1,C,H,W)
-    """
 
     if isinstance(image, torch.Tensor):
-        if image.ndim == 3:
-            image = image.permute(2, 0, 1).unsqueeze(0)
-        return image.float().to(DEVICE)
 
-    x = torch.from_numpy(image)
-    x = x.permute(2, 0, 1).unsqueeze(0)
+        if image.ndim == 4:
+            return image.float().to(DEVICE)
+
+        if image.ndim == 3:
+
+            # already CHW
+            if image.shape[0] in (1, 3):
+                return image.unsqueeze(0).float().to(DEVICE)
+
+            # HWC
+            return image.permute(2, 0, 1).unsqueeze(0).float().to(DEVICE)
+
+    x = torch.from_numpy(np.asarray(image))
+
+    if x.ndim == 3:
+        x = x.permute(2, 0, 1).unsqueeze(0)
+
     return x.float().to(DEVICE)
 
 
-def _to_numpy(tensor):
-    """
-    torch(1,C,H,W) -> numpy(H,W,C)
-    """
+def _to_numpy(t):
 
-    tensor = tensor.squeeze(0)
-    tensor = tensor.permute(1, 2, 0)
-    tensor = tensor.clamp(0, 255)
+    if t.ndim == 4:
+        t = t.squeeze(0)
 
-    return tensor.byte().cpu().numpy()
+    if t.shape[0] in (1, 3):
+        t = t.permute(1, 2, 0)
+
+    return (
+        t.clamp(0,255)
+         .byte()
+         .cpu()
+         .numpy()
+    )
 
 
 def _blend(original, transformed, mask):
@@ -51,25 +64,32 @@ def _blend(original, transformed, mask):
 
 
 def _random_mask(h, w):
-    mask = torch.zeros(
-        (1, 1, h, w),
-        device=DEVICE,
-    )
+    mask = torch.zeros((1, 1, h, w), device=DEVICE)
+
+    # Handle tiny images
+    if h < 4 or w < 4:
+        return mask
 
     for _ in range(np.random.randint(3, 8)):
 
-        ph = np.random.randint(
-            int(h * 0.08),
-            int(h * 0.30),
-        )
+        min_ph = max(1, int(h * 0.08))
+        max_ph = max(min_ph + 1, int(h * 0.30))
 
-        pw = np.random.randint(
-            int(w * 0.08),
-            int(w * 0.30),
-        )
+        min_pw = max(1, int(w * 0.08))
+        max_pw = max(min_pw + 1, int(w * 0.30))
 
-        y = np.random.randint(0, h - ph + 1)
-        x = np.random.randint(0, w - pw + 1)
+        ph = np.random.randint(min_ph, max_ph)
+        pw = np.random.randint(min_pw, max_pw)
+
+        # Never allow the patch to exceed the image
+        ph = min(ph, h)
+        pw = min(pw, w)
+
+        max_y = max(1, h - ph + 1)
+        max_x = max(1, w - pw + 1)
+
+        y = np.random.randint(0, max_y)
+        x = np.random.randint(0, max_x)
 
         mask[:, :, y:y + ph, x:x + pw] = 1.0
 
@@ -80,7 +100,6 @@ def _random_mask(h, w):
     )
 
     return mask.clamp(0, 1)
-
 
 # ==========================================================
 # Brightness
