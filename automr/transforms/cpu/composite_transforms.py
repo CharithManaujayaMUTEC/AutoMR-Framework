@@ -1,7 +1,7 @@
 import random
 
 # Image transforms
-from automr.transforms.image_transforms import (
+from automr.transforms.cpu.image_transforms import (
     increase_brightness,
     adjust_contrast,
     blur,
@@ -11,7 +11,7 @@ from automr.transforms.image_transforms import (
 )
 
 # Weather transforms
-from automr.transforms.weather_transforms import (
+from automr.transforms.cpu.weather_transforms import (
     add_rain,
     add_snow,
     add_fog,
@@ -22,7 +22,7 @@ from automr.transforms.weather_transforms import (
 )
 
 # Behavioral transforms
-from automr.transforms.behavioral_transforms import (
+from automr.transforms.cpu.behavioral_transforms import (
     darken,
     reduce_visibility,
 )

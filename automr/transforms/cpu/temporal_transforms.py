@@ -1,6 +1,6 @@
 import numpy as np
 
-from .utils import create_rng
+from ..utils import create_rng
 
 
 # ==========================================================

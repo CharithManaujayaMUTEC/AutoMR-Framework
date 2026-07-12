@@ -1,8 +1,8 @@
-from automr.transforms.image_transforms import *
-from automr.transforms.weather_transforms import *
-from automr.transforms.behavioral_transforms import *
-from automr.transforms.temporal_transforms import *
-from automr.transforms.composite_transforms import *
+from automr.transforms.cpu.image_transforms import *
+from automr.transforms.cpu.weather_transforms import *
+from automr.transforms.cpu.behavioral_transforms import *
+from automr.transforms.cpu.temporal_transforms import *
+from automr.transforms.cpu.composite_transforms import *
 
 
 def register_default_transforms(registry):
