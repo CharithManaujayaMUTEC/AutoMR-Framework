@@ -1,20 +1,39 @@
 <div align="center">
   <img src="automrlogo.png" width="400"/>
 
-<br/><br/>
+  <br/><br/>
 
-![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)
-![Status](https://img.shields.io/badge/Status-Active-22c55e?style=flat-square)
-![Domain](https://img.shields.io/badge/Domain-Autonomous%20Driving-7c6fcd?style=flat-square)
+  ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)
+  ![PyPI](https://img.shields.io/pypi/v/automr?style=flat-square&color=3776AB)
+  ![Downloads](https://img.shields.io/pypi/dm/automr?style=flat-square&color=22c55e)
+  ![CI](https://img.shields.io/github/actions/workflow/status/CharithManaujayaMUTEC/AutoMR-Framework/ci.yml?style=flat-square&label=CI)
+  ![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)
+  ![Status](https://img.shields.io/badge/Status-Active-22c55e?style=flat-square)
+  ![Domain](https://img.shields.io/badge/Domain-Autonomous%20Driving-7c6fcd?style=flat-square)
+  ![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000?style=flat-square)
 
-<br/><br/>
+  <br/><br/>
 
   <p>
-    A Model-Agnostic, Input-Agnostic, and Output-Agnostic Metamorphic Testing Framework<br/>
-    for Regression-Based Autonomous Driving AI/ML Models.
+    A Model-Agnostic Metamorphic Testing Framework for Regression-Based AI/ML Models<br/>
+    with Standard and High-Performance Execution Engines.
   </p>
 </div>
+
+---
+
+## What's New in v0.7
+
+- **HighPerformanceAutoMR (HPC)** — parallel execution engine for large-scale testing
+- **Batch inference** — process multiple samples in a single model call
+- **Prediction caching** — automatic baseline prediction reuse across MR sweeps
+- **Parallel MR execution** — run multiple metamorphic relations concurrently
+- **CPU/GPU backend selection** — automatic or manual backend switching per environment
+- **GPU-accelerated transformations** — OpenCV CUDA acceleration for supported operations
+- **Expanded model support** — TensorFlow, PyTorch, scikit-learn, XGBoost, ONNX Runtime, Remote API, and custom models
+- **Epsilon sensitivity analysis** — automated threshold sweep with first-failure and stabilization detection
+- **Automatic epsilon recommendation** — framework selects the optimal comparator threshold
+- **New example scripts** — HPC, plugin, classification, dashboard, and backend examples
 
 ---
 
@@ -26,45 +45,56 @@ Instead of checking whether predictions exactly match expected outputs, AutoMR v
 
 The framework automatically applies transformations, validates metamorphic relations, analyzes failures, and generates comprehensive reports — all with zero boilerplate.
 
-| Problem                  | What AutoMR Does                                         |
-| ------------------------ | -------------------------------------------------------- |
-| No labeled data          | Tests models without any ground-truth labels             |
+| Problem | What AutoMR Does |
+|---|---|
+| No labeled data | Tests models without any ground-truth labels |
 | Real-world perturbations | Measures robustness under realistic noise and conditions |
-| Silent failures          | Pinpoints when and how models begin to fail              |
+| Silent failures | Pinpoints when and how models begin to fail |
 
 ---
 
 ## Key Features
 
 - **Model-Agnostic Testing** — works with TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, or any custom model
+- **Multi-Framework Model Support** — TensorFlow/Keras, PyTorch, scikit-learn, XGBoost, ONNX Runtime, Remote REST APIs, and custom models
 - **Input-Agnostic Architecture** — supports images, time-series, sequential, and tabular data
 - **Output-Agnostic Validation** — handles regression, continuous, and numerical outputs
-- **Built-in Metamorphic Relations** — 16 ready-to-use metamorphic relations covering geometric, photometric, weather, behavioral, composite, and temporal transformations
-- **Automated Transformation Pipeline** — 17 built-in transformations with configurable parameter ranges for robustness evaluation.
+- **Built-in Metamorphic Relations** — 16 ready-to-use relations covering geometric, photometric, weather, behavioral, composite, and temporal transformations
+- **Automated Transformation Pipeline** — 17 built-in transformations with configurable parameter ranges
+- **CPU/GPU Transformation Backend** — automatically switches between CPU and GPU implementations or allows manual backend selection
+- **GPU-Accelerated Transformations** — OpenCV CUDA acceleration for supported image transformations
+- **Backend-Agnostic Architecture** — identical API regardless of execution backend
+- **HighPerformanceAutoMR (HPC) Engine** — parallel, batched, cache-accelerated execution for large datasets
+- **Multi-Threaded Dataset Processing** — concurrent sample loading and transformation across worker pools
+- **Native Batch Prediction** — optimized wrappers for supported frameworks
+- **Batch Model Inference** — grouped prediction calls to reduce inference overhead
+- **Prediction Caching** — baseline predictions computed once and reused across all MR sweeps
+- **Shared Baseline Prediction Cache** — single baseline pass feeds all MR sweeps in the same run
+- **CPU Optimizations** — configurable threading, prefetch loading, and shared epsilon cache
+- **Parallel Metamorphic Testing** — multiple relations evaluated concurrently
 - **Parameter Range Testing** — sweep transformation parameters across configurable ranges
 - **Epsilon Sensitivity Analysis** — automatically evaluates model robustness across multiple epsilon thresholds
 - **Automatic Epsilon Recommendation** — identifies first failure, stabilization, and recommended epsilon values
-- **Interactive Live Dashboard** — real-time webcam/video testing with configurable metamorphic relations and epsilon
+- **Interactive Live Dashboard** — real-time webcam/video testing with configurable MRs and epsilon
 - **Failure Detection and Localization** — pinpoints the exact conditions where models break
 - **Severity Analysis** — ranks failures by output deviation magnitude
 - **Failure Region Identification** — isolates parameter ranges with highest instability
 - **Worst-Case Sample Discovery** — surfaces samples with the largest prediction deviations
-- **CSV, JSON, and Text Report Generation** — comprehensive reporting with reproducible outputs
-- **Verification Artifact Generation** — transformed samples saved automatically
+- **Generic Model Wrapper Support** — wrap any callable as an AutoMR-compatible model
+- **Plugin Architecture** — register custom transformations and relations at runtime
+- **Verification Artifact Generation** — transformed samples saved automatically per relation
+- **CSV, JSON, and Text Report Generation** — comprehensive reproducible outputs
 - **Progress Tracking** — optional live progress bars for long-running evaluations
-- **Extensible Plugin Architecture** — easily add custom transformations and relations
-- **Standard AutoMR Engine** — easy-to-use metamorphic testing pipeline for AI/ML models
-- **HighPerformanceAutoMR (HPC)** — optimized execution engine for large-scale metamorphic testing
-- **Parallel Dataset Processing** — concurrent sample execution using configurable worker pools
-- **Batch Inference Support** — reduces model inference overhead through batched prediction
-- **Prediction Caching** — reuses predictions across epsilon sensitivity analyses to eliminate redundant inference
-- **Shared Baseline Prediction Cache** — baseline predictions are computed once and reused across experiments
-- **CPU Optimizations** — configurable threading and optimized execution for multicore processors
-- **Configurable HPC Execution** — control worker count, chunk size, batch size, and prefetch behavior
 
 ---
 
 ## Installation
+
+### Basic Installation
+
+```bash
+pip install -r requirements.txt
+```
 
 ### PyPI
 
@@ -84,12 +114,55 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### Optional GPU Support
+
+For CUDA-enabled systems:
+
+```bash
+pip install onnxruntime-gpu
+```
+
+For PyTorch CUDA, install the appropriate build from:
+https://pytorch.org/get-started/locally/
+
+---
+
+## Supported Models
+
+AutoMR automatically detects and wraps supported model frameworks through a unified wrapper factory.
+
+| Framework | Supported |
+|---|---|
+| TensorFlow / Keras | ✅ |
+| PyTorch | ✅ |
+| scikit-learn | ✅ |
+| XGBoost | ✅ |
+| ONNX Runtime | ✅ |
+| Remote REST APIs | ✅ |
+| Custom `predict()` models | ✅ |
+
+---
+
+## Supported Backends
+
+| Backend | Status |
+|---|---|
+| CPU | ✅ |
+| GPU (CUDA / OpenCV CUDA) | ✅ |
+| Automatic selection | ✅ |
+
 ---
 
 ## Quick Start
 
+### Standard Engine
+
 ```python
 from automr.api import AutoMR
+from automr.transforms.backend import set_backend
+
+# auto | cpu | gpu
+set_backend("auto")
 
 automr = AutoMR(
     model=model,
@@ -108,10 +181,14 @@ df, results = automr.run_full_test(
     epsilon_count=4
 )
 ```
-### HighPerformanceAutoMR
+
+### High-Performance Engine (HPC)
 
 ```python
 from automr.hpc import HighPerformanceAutoMR
+from automr.transforms.backend import set_backend
+
+set_backend("auto")
 
 automr = HighPerformanceAutoMR(
     model=model,
@@ -119,9 +196,8 @@ automr = HighPerformanceAutoMR(
     input_type="image",
     epsilon=0.05,
     range_threshold=5.0,
-    workers=8,
+    num_workers=8,
     batch_size=64,
-    chunk_size=64,
 )
 
 df, results = automr.run_full_test(
@@ -136,28 +212,122 @@ df, results = automr.run_full_test(
 
 ---
 
-# Execution Engines
+## Backend Selection
 
-AutoMR provides two execution engines depending on the scale of testing.
+AutoMR supports three execution modes for transformation processing.
 
-| Engine | Description |
-|---------|-------------|
-| **AutoMR** | Standard execution engine suitable for small and medium datasets. |
-| **HighPerformanceAutoMR** | Optimized execution engine for large datasets using parallel execution, batch inference, and prediction caching. |
+```python
+from automr.transforms.backend import set_backend
+
+# Automatic backend selection (recommended)
+set_backend("auto")
+
+# Force CPU
+set_backend("cpu")
+
+# Force GPU
+set_backend("gpu")
+```
+
+| Backend | Description |
+|---|---|
+| `auto` | Automatically selects GPU when available, falls back to CPU |
+| `cpu` | Always uses CPU implementations |
+| `gpu` | Always uses GPU (CUDA) implementations |
 
 ---
 
-# AutoMR vs HighPerformanceAutoMR
+## Architecture
+
+```
+User Model
+      │
+      ▼
+Wrapper Factory
+      │
+      ▼
+Model Wrapper
+      │
+      ▼
+AutoMR / HighPerformanceAutoMR
+      │
+      ▼
+Backend Selector
+      │
+ ┌────┴────┐
+ │         │
+CPU       GPU
+ │         │
+ └────┬────┘
+      ▼
+Transformations
+      ▼
+Range Tester
+      ▼
+Relations
+      ▼
+Analyzer
+      ▼
+Reports
+```
+
+```
+AutoMR
+    │
+    ├── Standard Engine
+    │       ├── TransformationRegistry
+    │       ├── RelationRegistry
+    │       ├── FailureAnalyzer
+    │       └── EpsilonSensitivity
+    │
+    └── HighPerformanceAutoMR
+            ├── Parallel Executor
+            ├── Batch Predictor
+            ├── Prediction Cache
+            ├── Prefetch Loader
+            └── Result Aggregator
+```
+
+---
+
+## Execution Engines
+
+AutoMR provides two execution engines depending on the scale and performance requirements of testing.
+
+| Engine | Description |
+|---|---|
+| **AutoMR** | Standard execution engine suitable for small and medium datasets |
+| **HighPerformanceAutoMR** | Optimized engine for large datasets using parallel execution, batch inference, and prediction caching |
+
+---
+
+## HighPerformanceAutoMR
+
+`HighPerformanceAutoMR` extends the standard `AutoMR` engine with a parallel, cache-accelerated execution backend designed for large-scale or latency-sensitive testing.
+
+| Capability | Description |
+|---|---|
+| Parallel dataset processing | Multiple samples processed concurrently across configurable worker threads |
+| Batch inference | Samples grouped into batches and passed to the model in a single call |
+| Prediction caching | Baseline predictions computed once and shared across all MR sweeps |
+| CPU optimization | Prefetch loading and shared epsilon cache minimize redundant computation |
+| GPU acceleration | CUDA-backed transformations via OpenCV CUDA when GPU backend is active |
+| Configurable workers | `num_workers` controls the thread pool size |
+| Configurable batch sizes | `batch_size` controls how many samples are grouped per inference call |
+
+### AutoMR vs. HighPerformanceAutoMR
 
 | Feature | AutoMR | HighPerformanceAutoMR |
-|----------|--------|-----------------------|
-| Standard Testing | ✅ | ✅ |
-| Parallel Processing | ❌ | ✅ |
-| Batch Inference | ❌ | ✅ |
-| Prediction Cache | Limited | ✅ |
-| CPU Optimization | Limited | ✅ |
-| Large Dataset Support | Good | Excellent |
-| Epsilon Prediction Reuse | ✅ | ✅ |
+|---|---|---|
+| Standard execution | ✅ | ✅ |
+| CPU backend | ✅ | ✅ |
+| GPU backend | ✅ | ✅ |
+| Parallel processing | ❌ | ✅ |
+| Batch inference | ❌ | ✅ |
+| Prediction caching | Limited | ✅ |
+| HPC optimization | ❌ | ✅ |
+| Epsilon prediction reuse | ✅ | ✅ |
+| Large dataset support | Good | Excellent |
 
 ---
 
@@ -168,7 +338,7 @@ Load Dataset
       ↓
 Load Model
       ↓
-Apply Transformations
+Select Backend (CPU / GPU)
       ↓
 Generate Transformations
       ↓
@@ -178,87 +348,53 @@ Prediction Cache
       ↓
 Metamorphic Validation
       ↓
-Validate Metamorphic Relations
+Failure Analysis
       ↓
-Analyze Failures
+Epsilon Sensitivity Analysis
       ↓
-Run Epsilon Sensitivity Analysis
-      ↓
-Generate Reports
+Report Generation
       ↓
 Interactive Live Dashboard
       ↓
 Export Results
 ```
----
-
-# HighPerformanceAutoMR
-
-HighPerformanceAutoMR extends the standard AutoMR framework with high-performance execution capabilities.
-
-## Features
-
-- Parallel dataset processing
-- Parallel metamorphic relation execution
-- Batch model inference
-- Prediction caching
-- Shared epsilon prediction reuse
-- Configurable worker threads
-- Configurable batch sizes
-- CPU optimized execution
-- Scalable large dataset validation
-
----
-
-# Performance Optimizations
-
-AutoMR includes several optimization strategies to improve testing efficiency.
-
-- Batch prediction
-- Prediction caching
-- Baseline prediction reuse
-- Parallel dataset execution
-- Shared epsilon prediction cache
-- Background data prefetching
-- CPU thread optimization
-- Parallel metamorphic relation execution
 
 ---
 
 ## Supported Metamorphic Relations
 
 | Relation | Purpose |
-|----------|---------|
-| `BlurRelation` | Tests robustness to Gaussian blur |
-| `BrightnessRelation` | Tests robustness to brightness variation |
-| `CompositeRelation` | Tests robustness under combined image perturbations |
-| `ContrastRelation` | Tests robustness to contrast variation |
-| `DarkVisibilityRelation` | Tests robustness under low-light and reduced visibility conditions |
-| `DustRelation` | Tests robustness under dust simulation |
-| `FogRelation` | Tests robustness under fog simulation |
-| `HazeRelation` | Tests robustness under haze simulation |
-| `NoiseRelation` | Tests robustness to Gaussian noise |
-| `RainRelation` | Tests robustness under rain simulation |
-| `RotationRelation` | Tests prediction stability under image rotation |
-| `SandstormRelation` | Tests robustness under sandstorm simulation |
-| `SmokeRelation` | Tests robustness under smoke simulation |
-| `SnowRelation` | Tests robustness under snow simulation |
-| `TemporalSmoothnessRelation` | Tests temporal consistency between sequential frames |
-| `TranslationRelation` | Tests prediction stability under image translation |
+|---|---|
+| `BlurRelation` | Robustness to Gaussian blur |
+| `BrightnessRelation` | Robustness to brightness variation |
+| `CompositeRelation` | Robustness under combined image perturbations |
+| `ContrastRelation` | Robustness to contrast variation |
+| `DarkVisibilityRelation` | Robustness under low-light and reduced visibility conditions |
+| `DustRelation` | Robustness under dust simulation |
+| `FogRelation` | Robustness under fog simulation |
+| `HazeRelation` | Robustness under haze simulation |
+| `NoiseRelation` | Robustness to Gaussian noise |
+| `RainRelation` | Robustness under rain simulation |
+| `RotationRelation` | Stability under image rotation |
+| `SandstormRelation` | Robustness under sandstorm simulation |
+| `SmokeRelation` | Robustness under smoke simulation |
+| `SnowRelation` | Robustness under snow simulation |
+| `TemporalSmoothnessRelation` | Temporal consistency across sequential frames |
+| `TranslationRelation` | Stability under image translation |
 
 ---
 
 ## Supported Transformations
 
 | Transformation | Description |
-|---------------|-------------|
+|---|---|
 | `brightness` | Adjust image brightness |
 | `contrast` | Modify image contrast |
 | `blur` | Apply Gaussian blur |
 | `rotation` | Rotate the image |
 | `translation` | Translate the image horizontally or vertically |
 | `noise` | Inject Gaussian noise |
-| `composite` | Apply multiple image transformations simultaneously |
+| `composite` | Apply multiple transformations simultaneously |
 | `rain` | Simulate rainy weather |
 | `snow` | Simulate snowy weather |
 | `fog` | Simulate foggy conditions |
@@ -267,7 +403,7 @@ AutoMR includes several optimization strategies to improve testing efficiency.
 | `haze` | Simulate haze |
 | `smoke` | Simulate smoke |
 | `visibility` | Reduce scene visibility |
-| `darkness` | Simulate low-light/night-time conditions |
+| `darkness` | Simulate low-light / night-time conditions |
 | `temporal` | Generate temporal frame pairs for sequence consistency testing |
 
 ---
@@ -294,33 +430,49 @@ SnowRelation                  50      50       0        0.00
 
 ## Epsilon Sensitivity Analysis
 
-```
-
-AutoMR can automatically evaluate a model across multiple comparator thresholds.
-
-Instead of manually selecting an epsilon value, the framework performs repeated metamorphic testing over a configurable epsilon range and reports:
+AutoMR can automatically evaluate a model across multiple comparator thresholds. Instead of manually selecting an epsilon value, the framework performs repeated metamorphic testing over a configurable epsilon range and reports:
 
 - First Failure Epsilon
 - Recommended Epsilon
 - Stabilization Epsilon
 - Maximum Failure Rate
 
-Example console output
+```
 ========== EPSILON ANALYSIS ==========
 
-First Failure Epsilon : 0.01
-Recommended Epsilon : 0.1367
-Stabilization Epsilon : 0.1367
-Maximum Failure Rate : 6.25%
+First Failure Epsilon  : 0.01
+Recommended Epsilon    : 0.1367
+Stabilization Epsilon  : 0.1367
+Maximum Failure Rate   : 6.25%
 
 ======================================
+```
 
+Generated files:
 
-Generated files
+```
 results/
 ├── epsilon_summary.csv
 └── epsilon_report.txt
 ```
+
+---
+
+## Performance Optimizations
+
+AutoMR and HighPerformanceAutoMR apply a layered optimization stack to maximize throughput:
+
+- **Parallel dataset execution** — concurrent sample processing across a configurable worker thread pool
+- **Batch prediction** — samples grouped into batches per inference call
+- **Prediction caching** — baseline predictions stored and reused; never recomputed for the same sample
+- **Shared baseline prediction cache** — single baseline pass feeds all MR sweeps in the same run
+- **Shared epsilon prediction cache** — epsilon sensitivity results shared across MR evaluations
+- **Background data prefetching** — next batch prepared while the current batch is being evaluated
+- **CPU thread optimization** — configurable threading for multicore processors
+- **GPU-accelerated transformations** — CUDA-backed OpenCV operations when GPU backend is active
+- **Automatic backend selection** — environment-aware CPU/GPU switching with no API changes
+- **Native batch prediction wrappers** — framework-specific batched inference for TensorFlow, PyTorch, ONNX Runtime
+- **Parallel metamorphic relation execution** — multiple relations evaluated concurrently where dataset size permits
 
 ---
 
@@ -330,22 +482,22 @@ All reports are automatically saved to the `results/` directory.
 
 ### Core Reports
 
-| File                   | Description                                             |
-| ---------------------- | ------------------------------------------------------- |
-| `automr_results.csv`   | Full per-sample test log                                |
-| `failure_summary.csv`  | Failure rate per metamorphic relation                   |
-| `severity_summary.csv` | Average output deviation per MR                         |
-| `worst_cases.csv`      | Samples with the highest deviations                     |
-| `failure_regions.txt`  | Parameter ranges where failures cluster                 |
-| `range_summary.csv`    | Summary of parametric range sweep results               |
-| `range_analysis.csv`   | Detailed per-range analysis                             |
+| File | Description |
+|---|---|
+| `automr_results.csv` | Full per-sample test log |
 | `prediction_trace.csv` | Full prediction trace across all samples and transforms |
+| `failure_summary.csv` | Failure rate per metamorphic relation |
+| `severity_summary.csv` | Average output deviation per MR |
+| `worst_cases.csv` | Samples with the highest deviations |
+| `failure_regions.txt` | Parameter ranges where failures cluster |
+| `range_summary.csv` | Summary of parametric range sweep results |
+| `range_analysis.csv` | Detailed per-range analysis |
+| `epsilon_summary.csv` | Failure rate at each evaluated epsilon threshold |
+| `epsilon_report.txt` | Human-readable epsilon recommendation report |
 
 ### HPC Reports
 
-When using HighPerformanceAutoMR, the same reports are generated with significantly faster execution on large datasets.
-
-HighPerformanceAutoMR also reports execution statistics including:
+When using `HighPerformanceAutoMR`, the same core reports are generated with significantly faster execution. Additionally, HPC runs report execution statistics:
 
 - Total runtime
 - Images processed
@@ -356,12 +508,23 @@ HighPerformanceAutoMR also reports execution statistics including:
 
 ### Metadata Reports
 
-| File                       | Description                        |
-| -------------------------- | ---------------------------------- |
-| `baseline_metrics.json`    | Model baseline performance metrics |
-| `dataset_info.json`        | Dataset structure and statistics   |
-| `model_summary.txt`        | Model architecture summary         |
-| `original_predictions.csv` | Unmodified model predictions       |
+| File | Description |
+|---|---|
+| `baseline_metrics.json` | Model baseline performance metrics |
+| `dataset_info.json` | Dataset structure and statistics |
+| `model_summary.txt` | Model architecture summary |
+| `original_predictions.csv` | Unmodified model predictions |
+
+### Live Dashboard Reports
+
+```
+results/live_dashboard/
+├── webcam_results.csv
+├── dashboard_summary.csv
+└── violations/
+```
+
+Each dashboard record stores the epsilon value used during evaluation, allowing experiments to be reproduced even when the threshold changes interactively.
 
 ### Verification Artifacts
 
@@ -388,20 +551,20 @@ transformation_samples/
 
 ## Output Columns
 
-| Column              | Description                                    |
-| ------------------- | ---------------------------------------------- |
-| `mr`                | Metamorphic relation identifier                |
-| `param`             | Transformation parameter value                 |
-| `original`          | Original model prediction                      |
-| `transformed`       | Prediction after transformation                |
-| `difference`        | Absolute prediction difference                 |
-| `percent_change`    | Relative prediction change (%)                 |
-| `passed`            | Boolean pass/fail result                       |
-| `status`            | `PASS` or `FAIL`                               |
-| `severity`          | Failure severity score                         |
-| `sample_id`         | Dataset sample index                           |
-| `expected_behavior` | Expected MR behavioral rule                    |
-| `actual_behavior`   | Observed behavior (`Consistent` / `Violation`) |
+| Column | Description |
+|---|---|
+| `mr` | Metamorphic relation identifier |
+| `param` | Transformation parameter value |
+| `original` | Original model prediction |
+| `transformed` | Prediction after transformation |
+| `difference` | Absolute prediction difference |
+| `percent_change` | Relative prediction change (%) |
+| `passed` | Boolean pass/fail result |
+| `status` | `PASS` or `FAIL` |
+| `severity` | Failure severity score |
+| `sample_id` | Dataset sample index |
+| `expected_behavior` | Expected MR behavioral rule |
+| `actual_behavior` | Observed behavior (`Consistent` / `Violation`) |
 
 ---
 
@@ -416,42 +579,29 @@ AutoMR automatically computes the following after each test run:
 - **Parameter Sensitivity** — how model behavior shifts with transformation intensity
 - **Range Stability Analysis** — identifies safe vs. unstable transformation ranges
 - **Prediction Trace Analysis** — tracks prediction drift across all transformations
-- Epsilon Sensitivity Analysis
-- Automatic Epsilon Recommendation
-
----
-
-# API Overview
-
-| Class | Description |
-|--------|-------------|
-| AutoMR | Standard metamorphic testing engine |
-| HighPerformanceAutoMR | High-performance execution engine |
-| TransformationRegistry | Transformation management |
-| RelationRegistry | Metamorphic relation management |
-| FailureAnalyzer | Failure analysis utilities |
-| EpsilonSensitivity | Automatic epsilon evaluation |
-| EpsilonSummary | Epsilon reporting utilities |
+- **Epsilon Sensitivity Analysis** — failure rate curve across a threshold sweep
+- **Automatic Epsilon Recommendation** — heuristic-based optimal threshold selection
 
 ---
 
 ## Live Dashboard
 
-````
 AutoMR includes a real-time dashboard for evaluating metamorphic relations on webcam or video streams.
 
-Features
+**Features**
 
 - Live webcam/video inference
 - Adjustable epsilon threshold
-- Configurable metamorphic relations
+- Configurable metamorphic relations (per-MR enable/disable)
+- Per-MR result hold — result frames remain visible after each test cycle
+- Active MR focus — only the selected MR is tested each cycle; others served from cache
 - Interactive parameter range selection
-- Real-time failure detection
+- Real-time failure detection with colour-coded tiles
 - Automatic violation image capture
 - Continuous CSV logging
-- Summary statistics during execution
+- Summary statistics panel during execution
 
-Launch
+**Launch**
 
 ```python
 from automr.dashboard import run_live_dashboard
@@ -461,53 +611,85 @@ run_live_dashboard(
     model,
     video_source=0
 )
+```
 
-Dashboard Controls
+**Dashboard Controls**
 
-Control	Purpose
-MR Index	Select relation
-Enable	Enable/Disable relation
-Tests	Number of parameter samples
-Range %	Scale transformation range
-Epsilon	Comparator threshold
-Frame Skip	Processing frequency
-R	Run benchmark
-ESC	Exit
+| Control | Purpose |
+|---|---|
+| MR Index | Select active metamorphic relation |
+| Enable | Enable / disable the selected relation |
+| Tests | Number of parameter samples per sweep |
+| Range % | Scale the transformation range |
+| Epsilon x1000 | Comparator threshold |
+| FrameSkip | Processing frequency (frames between tests) |
+| 1–9 / V / D | Toggle MRs by keyboard |
+| R | Run focused benchmark on current MR |
+| ESC | Exit dashboard |
 
 ---
 
-## 5. Update Generated Reports
+## API Overview
 
-Add the new files.
+| Class | Description |
+|---|---|
+| `AutoMR` | Standard metamorphic testing engine |
+| `HighPerformanceAutoMR` | Parallel, batched HPC engine |
+| `TransformationRegistry` | Register and retrieve input transformations |
+| `RelationRegistry` | Register and retrieve metamorphic relations |
+| `FailureAnalyzer` | Compute failure metrics, severity, and worst cases |
+| `EpsilonSensitivity` | Run threshold sweeps and generate epsilon reports |
+| `EpsilonSummary` | Epsilon reporting utilities |
+| `Dashboard` | Real-time live testing interface |
 
-### Core Reports
-automr_results.csv
-prediction_trace.csv
-failure_summary.csv
-severity_summary.csv
-worst_cases.csv
-failure_regions.txt
-range_summary.csv
-range_analysis.csv
-epsilon_summary.csv
-epsilon_report.txt
+---
 
+## Extending AutoMR
 
-### Dashboard Reports
+### Register a custom transformation
 
-Add a new subsection.
+```python
+from automr.registry import TransformationRegistry
 
-```markdown
-### Live Dashboard Reports
-results/live_dashboard/
-├── dashboard_results.csv
-├── dashboard_summary.csv
-└── violations/
+registry = TransformationRegistry()
 
+@registry.register("custom_blur")
+def my_blur(image, param):
+    return cv2.GaussianBlur(image, (0, 0), param)
+```
 
-Each dashboard record stores the epsilon value used during evaluation, allowing experiments to be reproduced even when the threshold changes interactively.
+### Register a custom relation
 
-````
+```python
+from automr.registry import RelationRegistry
+from automr.relations.base import BaseRelation
+
+class MyRelation(BaseRelation):
+    def check(self, original, transformed):
+        return abs(original - transformed) < self.epsilon
+
+registry = RelationRegistry()
+registry.register("my_relation", MyRelation)
+```
+
+### Unregister a plugin
+
+```python
+registry.unregister("custom_blur")
+```
+
+### Custom model wrapper
+
+```python
+from automr.models.wrapper import ModelWrapper
+
+class MyModelWrapper(ModelWrapper):
+    def predict(self, x):
+        return self.model(x).item()
+
+    def predict_batch(self, batch):
+        return self.model(batch).numpy()
+```
 
 ---
 
@@ -521,7 +703,7 @@ Any model implementing a `predict(x)` interface is compatible:
 output = model.predict(input)
 ```
 
-Supported frameworks include TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, and fully custom models.
+Supported frameworks include TensorFlow, Keras, PyTorch, scikit-learn, XGBoost, ONNX Runtime, and fully custom models.
 
 ### Input-Agnostic
 
@@ -533,15 +715,20 @@ AutoMR accepts any input type — images, time-series, sequential data, tabular 
 
 AutoMR supports regression outputs, continuous predictions, numerical outputs, and custom scalar outputs. No assumptions are made about output scale or range — the comparator is configurable via the `epsilon` parameter.
 
+### Backend-Agnostic
+
+The transformation pipeline exposes an identical API regardless of whether CPU or GPU execution is active. Switching backends requires a single `set_backend()` call and no changes to model or testing code.
+
 ### Modular Architecture
 
-| Component   | Role                                   |
-| ----------- | -------------------------------------- |
-| `Model`     | Generates predictions                  |
-| `Transform` | Modifies input samples                 |
-| `Relation`  | Defines expected behavioral properties |
-| `Analyzer`  | Computes failure metrics and summaries |
-| `Reporter`  | Exports CSV, JSON, and artifact files  |
+| Component | Role |
+|---|---|
+| `Model` | Generates predictions |
+| `Transform` | Modifies input samples |
+| `Backend` | Selects CPU or GPU execution path |
+| `Relation` | Defines expected behavioral properties |
+| `Analyzer` | Computes failure metrics and summaries |
+| `Reporter` | Exports CSV, JSON, and artifact files |
 
 ---
 
@@ -553,13 +740,15 @@ AutoMR-Framework/
 ├── automr/
 │   ├── __init__.py
 │   ├── api.py
-|   ├── hpc/
-|   │   ├── __init__.py
-|   │   ├── automr.py
-|   │   ├── executor.py
-|   │   ├── batch_predictor.py
-|   │   ├── cache.py
-|   │   └── scheduler.py
+│   │
+│   ├── hpc/
+│   │   ├── __init__.py
+│   │   ├── api.py
+│   │   ├── executor.py
+│   │   ├── scheduler.py
+│   │   ├── batcher.py
+│   │   ├── cache.py
+│   │   └── utils.py
 │   │
 │   ├── analysis/
 │   │   ├── __init__.py
@@ -607,7 +796,14 @@ AutoMR-Framework/
 │   │
 │   ├── models/
 │   │   ├── __init__.py
-│   │   └── wrapper.py
+│   │   ├── tensorflow_wrapper.py
+│   │   ├── pytorch_wrapper.py
+│   │   ├── sklearn_wrapper.py
+│   │   ├── xgboost_wrapper.py
+│   │   ├── onnx_wrapper.py
+│   │   ├── remote_wrapper.py
+│   │   ├── custom_wrapper.py
+│   │   └── wrapper_factory.py
 │   │
 │   ├── registry/
 │   │   ├── __init__.py
@@ -621,10 +817,17 @@ AutoMR-Framework/
 │   │   └── temporal_relations.py
 │   │
 │   ├── transforms/
+│   │   ├── backend.py
+│   │   ├── backend_utils.py
 │   │   ├── image_transforms.py
 │   │   ├── weather_transforms.py
 │   │   ├── behavioral_transforms.py
-│   │   └── temporal_transforms.py
+│   │   ├── temporal_transforms.py
+│   │   ├── composite_transforms.py
+│   │   ├── translation.py
+│   │   ├── cpu/
+│   │   ├── gpu/
+│   │   └── effects/
 │   │
 │   └── verification/
 │       ├── __init__.py
@@ -632,8 +835,12 @@ AutoMR-Framework/
 │
 ├── examples/
 │   ├── run_test.py
-│   ├── webcam_automr_live.py
-│   └── custom_relation_example.py
+│   ├── hpc_run_test.py
+│   ├── custom_model_example.py
+│   ├── plugin_example.py
+│   ├── classification_example.py
+│   ├── dashboard_example.py
+│   └── webcam_automr_live.py
 │
 ├── results/
 │
@@ -650,27 +857,30 @@ AutoMR-Framework/
 
 - Transformation suite is primarily focused on image-based inputs
 - Classification-specific metamorphic relations are still under development
-- Automatic (`epsilon`) recommendation is heuristic-based and should be validated for domain-specific safety requirements.
+- Automatic epsilon recommendation is heuristic-based and should be validated against domain-specific safety requirements
 - Runtime depends on model inference speed
-- Large datasets may require longer execution times
+- HPC batch inference requires models that support batched input
+- GPU backend requires a CUDA-capable device and compatible OpenCV build
 
 ---
 
 ## Future Work
 
-- NLP and text transformation extensions
-- Tabular data transformation support
-- Classification-specific metamorphic relations
+- Multi-GPU execution support
+- Distributed multi-node execution
+- Ray / Dask integration for elastic scaling
+- Kubernetes-native execution support
+- CUDA kernels for additional transformations
+- Apple Metal backend
+- ROCm backend
+- Cloud execution backend
+- Interactive HTML report generation
+- Automated result visualizations (plots, charts, heatmaps)
+- Classification-specific metamorphic relation library
+- NLP and tabular MR support
+- Cross-model comparison testing
 - Native web dashboard
-- Automatic epsilon optimization strategies
 - Multi-camera live testing
-- GPU-accelerated batch validation
-- NLP and tabular metamorphic relations
-- Distributed testing across multiple machines
-- Cross-model MR comparison
-- Automated result visualizations (plots and charts)
-- Distributed and parallel testing support
-- Web-based reporting interface
 
 ---
 
@@ -682,7 +892,26 @@ AutoMR provides the following contributions for regression-based autonomous driv
 - Label-free robustness validation under realistic conditions
 - Parameterized MR evaluation with range sweep support
 - Failure region detection and severity-based ranking
-- Reusable and extensible testing infrastructure
+- Epsilon sensitivity analysis with automatic threshold recommendation
+- HPC execution engine for scalable parallel metamorphic testing
+- CPU/GPU backend abstraction for environment-adaptive execution
+- Expanded multi-framework model support via wrapper factory
+- Reusable and extensible plugin architecture
+
+---
+
+## Examples
+
+```
+examples/
+├── run_test.py               Standard AutoMR test run
+├── hpc_run_test.py           HighPerformanceAutoMR test run
+├── custom_model_example.py   Wrapping a custom model
+├── plugin_example.py         Registering custom transforms and relations
+├── classification_example.py Classification model testing (preview)
+├── dashboard_example.py      Launching the live dashboard
+└── webcam_automr_live.py     Webcam-based live MR evaluation
+```
 
 ---
 
