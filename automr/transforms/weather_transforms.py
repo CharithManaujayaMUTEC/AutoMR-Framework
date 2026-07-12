@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from ..utils import (
+from .utils import (
     create_rng,
     blend_images,
 )
