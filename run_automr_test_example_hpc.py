@@ -1,5 +1,3 @@
-# examples/run_test.py
-
 import sys
 import os
 import time
@@ -9,56 +7,66 @@ import platform
 
 import cv2
 import numpy as np
+import torch
 
 # ==========================================================
 # USER CONFIGURATION
 # ==========================================================
 
-# Add your project paths
 sys.path.append("Path/to/your/dataset")
 sys.path.append("Path/to/your/model")
 
-# Dataset
 DATASET_PATH = "Path/to/your/dataset"
 
-# AutoMR settings
 TASK = "regression"
 INPUT_TYPE = "image"
 
-# Testing
-MAX_SAMPLES = None          # None = entire dataset
+MAX_SAMPLES = None
 SAMPLES_PER_MR = 5
 
-# MR
 EPSILON = 0.05
 RANGE_THRESHOLD = 5.0
 
-# Epsilon sensitivity
 ENABLE_EPSILON_ANALYSIS = True
 EPSILON_MIN = 0.005
 EPSILON_MAX = 0.05
 EPSILON_COUNT = 3
 
-# Output
-OUTPUT_DIR = "results"
+# Backend
+BACKEND = "auto"      # auto | cpu | gpu
+DEVICE = "auto"       # auto | cpu | cuda
+
+# HPC
+NUM_WORKERS = os.cpu_count()
+BATCH_SIZE = 64
+
+OUTPUT_DIR = "results_hpc"
 
 SHOW_PROGRESS = True
 SAVE_RESULTS = True
 VERBOSE = True
 
 # ==========================================================
-# CPU SETTINGS
+# DEVICE CONFIGURATION
 # ==========================================================
 
-import torch
+if DEVICE == "auto":
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-CPU_THREADS = os.cpu_count()
+if DEVICE == "cpu":
 
-torch.set_num_threads(CPU_THREADS)
-torch.set_num_interop_threads(max(1, CPU_THREADS // 2))
-torch.backends.mkldnn.enabled = True
+    CPU_THREADS = os.cpu_count()
 
-print(f"Using {CPU_THREADS} CPU threads")
+    torch.set_num_threads(CPU_THREADS)
+    torch.set_num_interop_threads(max(1, CPU_THREADS // 2))
+    torch.backends.mkldnn.enabled = True
+
+else:
+
+    torch.backends.cudnn.benchmark = True
+
+print(f"Backend : {BACKEND}")
+print(f"Device  : {DEVICE}")
 
 # ==========================================================
 # IMPORTS
@@ -67,7 +75,10 @@ print(f"Using {CPU_THREADS} CPU threads")
 from load_data import load_images
 from load_model import get_model
 
-from automr.api import AutoMR
+from automr.hpc import HighPerformanceAutoMR
+from automr.transforms.backend import set_backend
+
+set_backend(BACKEND)
 
 # ==========================================================
 # MODEL WRAPPER
@@ -76,7 +87,11 @@ from automr.api import AutoMR
 class RealModel:
 
     def __init__(self):
+
         self.model = get_model()
+
+        if hasattr(self.model, "to"):
+            self.model = self.model.to(DEVICE)
 
     def preprocess(self, img):
 
@@ -109,9 +124,7 @@ class RealModel:
             if img is None:
                 continue
 
-            batch.append(
-                self.preprocess(img)
-            )
+            batch.append(self.preprocess(img))
 
         if len(batch) == 0:
             return []
@@ -127,7 +140,7 @@ class RealModel:
         )
 
         return predictions.flatten().tolist()
-
+    
 # ==========================================================
 # MAIN
 # ==========================================================
@@ -137,19 +150,25 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
 
     print("=" * 60)
-    print("AutoMR Validation")
+    print("HighPerformanceAutoMR Validation")
     print("=" * 60)
 
-    print(f"Platform        : {platform.system()}")
-    print(f"CPU Threads     : {CPU_THREADS}")
+    print(f"Platform         : {platform.system()}")
+    print(f"Backend          : {BACKEND}")
+    print(f"Device           : {DEVICE}")
+
+    if DEVICE == "cpu":
+        print(f"CPU Threads      : {os.cpu_count()}")
+    else:
+        print(f"CUDA Available   : {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            print(f"GPU              : {torch.cuda.get_device_name(0)}")
 
     # ------------------------------------------------------
 
     dataset = load_images(DATASET_PATH)
 
-    print(f"Dataset Size    : {len(dataset)}")
-
-    # ------------------------------------------------------
+    print(f"Dataset Size     : {len(dataset)}")
 
     model = RealModel()
 
@@ -159,9 +178,7 @@ if __name__ == "__main__":
 
     print("Sample Prediction:", model.predict(sample))
 
-    # ------------------------------------------------------
-
-    automr = AutoMR(
+    automr = HighPerformanceAutoMR(
 
         model=model,
 
@@ -173,6 +190,10 @@ if __name__ == "__main__":
 
         range_threshold=RANGE_THRESHOLD,
 
+        num_workers=NUM_WORKERS,
+
+        batch_size=BATCH_SIZE,
+
     )
 
     print("\nRegistered Transformations")
@@ -183,8 +204,10 @@ if __name__ == "__main__":
 
     print("\nConfiguration")
     print("----------------------------")
-    print(f"Task               : {TASK}")
-    print(f"Input Type         : {INPUT_TYPE}")
+    print(f"Backend            : {BACKEND}")
+    print(f"Device             : {DEVICE}")
+    print(f"Workers            : {NUM_WORKERS}")
+    print(f"Batch Size         : {BATCH_SIZE}")
     print(f"Max Samples        : {MAX_SAMPLES}")
     print(f"Samples Per MR     : {SAMPLES_PER_MR}")
     print(f"Epsilon            : {EPSILON}")
@@ -246,9 +269,7 @@ if __name__ == "__main__":
 
         )
 
-    end = time.time()
-
-    runtime = end - start
+    runtime = time.time() - start
 
     print("\nValidation Complete")
     print(f"Runtime : {runtime:.2f} sec")
