@@ -10,6 +10,6 @@ class TabularHandler(BaseInputHandler):
         return data
 
     def batch(self, data, batch_size):
-
-        for i in range(0, len(data), batch_size):
-            yield data[i:i + batch_size]
+        n = len(data)
+        for i in range(0, n, batch_size):
+            yield data[i:min(i + batch_size, n)]

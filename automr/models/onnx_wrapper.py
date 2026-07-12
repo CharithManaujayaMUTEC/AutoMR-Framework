@@ -20,7 +20,10 @@ class ONNXWrapper(BaseModel):
 
         self.session = ort.InferenceSession(
             model_path,
-            providers=["CPUExecutionProvider"],
+            providers=[
+                "CUDAExecutionProvider",
+                "CPUExecutionProvider",
+            ],
         )
 
         self.input_name = self.session.get_inputs()[0].name
