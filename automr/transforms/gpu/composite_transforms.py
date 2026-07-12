@@ -1,4 +1,4 @@
-import random
+import torch
 
 # Image transforms
 from automr.transforms.image_transforms import (
@@ -28,6 +28,7 @@ from automr.transforms.behavioral_transforms import (
 )
 
 from automr.transforms.utils import create_rng
+from automr.transforms.backend import DEVICE
 
 
 def composite_transform(
@@ -36,26 +37,23 @@ def composite_transform(
     seed=None,
 ):
     """
-    Random Composite Transformation.
-
-    Controlled parameter
-    --------------------
-    factor : transformation severity
-
-    Randomized
-    ----------
-    • Number of transformations
-    • Selected transformations
-    • Order of execution
-
-    Reproducible when a seed is supplied.
+    GPU-compatible composite transform.
     """
 
     rng = create_rng(seed)
 
-    img = image.copy()
-
     factor = float(factor)
+
+    # Move image to GPU if needed
+    if not isinstance(image, torch.Tensor):
+        img = (
+            torch.from_numpy(image)
+            .permute(2, 0, 1)
+            .float()
+            .to(DEVICE)
+        )
+    else:
+        img = image.to(DEVICE)
 
     available = [
 
@@ -150,7 +148,7 @@ def composite_transform(
         ),
     ]
 
-    # Random number of transformations
+    # Random number of transforms
     num_transforms = int(
         rng.integers(2, 6)
     )
@@ -167,7 +165,7 @@ def composite_transform(
     # Random order
     rng.shuffle(chosen)
 
-    # Apply sequentially
+    # Sequential GPU execution
     for transform in chosen:
         img = transform(img)
 

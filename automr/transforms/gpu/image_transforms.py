@@ -1,13 +1,85 @@
-import cv2
+import torch
+import torch.nn.functional as F
+import kornia
+import kornia.geometry.transform as KGT
+import kornia.filters as KF
 import numpy as np
 
-from .utils import (
-    create_rng,
-    create_random_patch,
-    create_random_mask,
-    blend_images,
-    random_motion_kernel,
+
+# ----------------------------------------------------------
+# Device
+# ----------------------------------------------------------
+
+DEVICE = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
 )
+
+
+# ----------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------
+
+def _to_tensor(image):
+    """
+    numpy(H,W,C) -> torch(1,C,H,W)
+    """
+
+    if isinstance(image, torch.Tensor):
+        if image.ndim == 3:
+            image = image.permute(2, 0, 1).unsqueeze(0)
+        return image.float().to(DEVICE)
+
+    x = torch.from_numpy(image)
+    x = x.permute(2, 0, 1).unsqueeze(0)
+    return x.float().to(DEVICE)
+
+
+def _to_numpy(tensor):
+    """
+    torch(1,C,H,W) -> numpy(H,W,C)
+    """
+
+    tensor = tensor.squeeze(0)
+    tensor = tensor.permute(1, 2, 0)
+    tensor = tensor.clamp(0, 255)
+
+    return tensor.byte().cpu().numpy()
+
+
+def _blend(original, transformed, mask):
+    return original * (1.0 - mask) + transformed * mask
+
+
+def _random_mask(h, w):
+    mask = torch.zeros(
+        (1, 1, h, w),
+        device=DEVICE,
+    )
+
+    for _ in range(np.random.randint(3, 8)):
+
+        ph = np.random.randint(
+            int(h * 0.08),
+            int(h * 0.30),
+        )
+
+        pw = np.random.randint(
+            int(w * 0.08),
+            int(w * 0.30),
+        )
+
+        y = np.random.randint(0, h - ph + 1)
+        x = np.random.randint(0, w - pw + 1)
+
+        mask[:, :, y:y + ph, x:x + pw] = 1.0
+
+    mask = KF.gaussian_blur2d(
+        mask,
+        (31, 31),
+        (10.0, 10.0),
+    )
+
+    return mask.clamp(0, 1)
 
 
 # ==========================================================
@@ -19,43 +91,22 @@ def increase_brightness(
     factor=1.2,
     seed=None,
 ):
-    """
-    Localized adaptive brightness.
 
-    Deterministic:
-        factor
+    img = _to_tensor(image)
 
-    Random:
-        • patch count
-        • patch size
-        • patch locations
-        • edge softness
-        • local intensity variation
-    """
+    _, _, h, w = img.shape
 
-    rng = create_rng(seed)
+    mask = _random_mask(h, w)
 
-    img = image.astype(np.float32)
+    bright = img * float(factor)
 
-    mask = create_random_mask(
-        image.shape[:2],
-        rng=rng,
-        min_regions=3,
-        max_regions=8,
-        min_scale=0.08,
-        max_scale=0.30,
-        blur_choices=(31, 41, 51, 61),
-    )
-
-    local_factor = factor * rng.uniform(0.9, 1.15)
-
-    bright = img * local_factor
-
-    return blend_images(
+    out = _blend(
         img,
         bright,
         mask,
     )
+
+    return _to_numpy(out)
 
 
 # ==========================================================
@@ -67,59 +118,34 @@ def adjust_contrast(
     factor=1.2,
     seed=None,
 ):
-    """
-    Localized adaptive contrast.
 
-    Deterministic:
-        factor
+    img = _to_tensor(image)
 
-    Random:
-        • regions
-        • region geometry
-        • mask softness
-        • slight contrast variation
-    """
+    _, _, h, w = img.shape
 
-    rng = create_rng(seed)
-
-    img = image.astype(np.float32)
-
-    mask = create_random_mask(
-        image.shape[:2],
-        rng=rng,
-        min_regions=3,
-        max_regions=8,
-        min_scale=0.10,
-        max_scale=0.30,
-        blur_choices=(31, 41, 51),
+    gray = kornia.color.rgb_to_grayscale(
+        img / 255.0
     )
 
-    gray = cv2.cvtColor(
-        image,
-        cv2.COLOR_BGR2GRAY,
-    ).astype(np.float32)
-
-    mean = cv2.GaussianBlur(
+    mean = KF.gaussian_blur2d(
         gray,
         (31, 31),
-        0,
+        (10.0, 10.0),
     )
 
-    mean = np.repeat(
-        mean[:, :, None],
-        3,
-        axis=2,
-    )
+    mean = mean.repeat(1, 3, 1, 1) * 255.0
 
-    local_factor = factor * rng.uniform(0.9, 1.1)
+    contrast = mean + float(factor) * (img - mean)
 
-    contrast = mean + local_factor * (img - mean)
+    mask = _random_mask(h, w)
 
-    return blend_images(
+    out = _blend(
         img,
         contrast,
         mask,
     )
+
+    return _to_numpy(out)
 
 
 # ==========================================================
@@ -131,23 +157,12 @@ def blur(
     k=11,
     seed=None,
 ):
-    """
-    Localized blur.
 
-    Deterministic:
-        kernel size
+    img = _to_tensor(image)
 
-    Random:
-        • Gaussian or motion blur
-        • motion direction
-        • affected regions
-    """
+    _, _, h, w = img.shape
 
-    rng = create_rng(seed)
-
-    img = image.astype(np.float32)
-
-    k = int(round(float(k)))
+    k = int(k)
 
     if k < 3:
         k = 3
@@ -155,42 +170,21 @@ def blur(
     if k % 2 == 0:
         k += 1
 
-    mask = create_random_mask(
-        image.shape[:2],
-        rng=rng,
-        min_regions=3,
-        max_regions=8,
-        min_scale=0.10,
-        max_scale=0.30,
-        blur_choices=(31, 41, 51),
+    blurred = KF.gaussian_blur2d(
+        img,
+        (k, k),
+        (2.0, 2.0),
     )
 
-    if rng.random() < 0.5:
+    mask = _random_mask(h, w)
 
-        blurred = cv2.GaussianBlur(
-            image,
-            (k, k),
-            0,
-        ).astype(np.float32)
-
-    else:
-
-        kernel = random_motion_kernel(
-            ksize=k,
-            rng=rng,
-        )
-
-        blurred = cv2.filter2D(
-            image,
-            -1,
-            kernel,
-        ).astype(np.float32)
-
-    return blend_images(
+    out = _blend(
         img,
         blurred,
         mask,
     )
+
+    return _to_numpy(out)
 
 # ==========================================================
 # Noise
@@ -202,83 +196,28 @@ def add_noise(
     seed=None,
 ):
     """
-    Localized stochastic sensor noise.
-
-    Deterministic
-    -------------
-    level
-
-    Random
-    ------
-    • Gaussian / Speckle / Salt & Pepper
-    • Region geometry
-    • Noise variance
-    • Region placement
+    GPU Gaussian noise.
     """
 
-    rng = create_rng(seed)
+    img = _to_tensor(image)
 
-    img = image.astype(np.float32)
+    _, _, h, w = img.shape
 
-    mask = create_random_mask(
-        image.shape[:2],
-        rng=rng,
-        min_regions=4,
-        max_regions=10,
-        min_scale=0.06,
-        max_scale=0.25,
-        blur_choices=(31, 41, 51, 61),
-    )
+    sigma = float(level)
 
-    mode = rng.choice([
-        "gaussian",
-        "speckle",
-        "saltpepper",
-    ])
+    noise = torch.randn_like(img) * sigma
 
-    if mode == "gaussian":
+    noisy = img + noise
 
-        sigma = level * rng.uniform(0.8, 1.4)
+    mask = _random_mask(h, w)
 
-        noisy = img + rng.normal(
-            0,
-            sigma,
-            img.shape,
-        )
-
-    elif mode == "speckle":
-
-        sigma = (level / 255.0) * rng.uniform(
-            0.5,
-            1.5,
-        )
-
-        noisy = img + img * rng.normal(
-            0,
-            sigma,
-            img.shape,
-        )
-
-    else:
-
-        noisy = img.copy()
-
-        amount = (level / 255.0) * rng.uniform(
-            0.5,
-            1.2,
-        )
-
-        salt = rng.random(image.shape[:2]) < amount / 2
-        pepper = rng.random(image.shape[:2]) < amount / 2
-
-        noisy[salt] = 255
-        noisy[pepper] = 0
-
-    return blend_images(
+    out = _blend(
         img,
         noisy,
         mask,
     )
+
+    return _to_numpy(out)
 
 
 # ==========================================================
@@ -291,82 +230,35 @@ def rotate_small(
     seed=None,
 ):
     """
-    Localized rotation with optional scaling.
+    GPU rotation.
     """
 
-    rng = create_rng(seed)
+    img = _to_tensor(image)
 
-    img = image.astype(np.float32)
-
-    h, w = image.shape[:2]
-
-    patch = create_random_patch(
-        (h, w),
-        rng,
-        min_scale=0.18,
-        max_scale=0.40,
+    theta = torch.tensor(
+        [float(angle)],
+        device=DEVICE,
     )
 
-    x, y, pw, ph = patch
-
-    roi = img[
-        y:y + ph,
-        x:x + pw,
-    ].copy()
-
-    theta = angle * rng.uniform(
-        -1.0,
-        1.0,
-    )
-
-    scale = rng.uniform(
-        0.97,
-        1.03,
-    )
-
-    angle = float(angle)
-
-    theta = float(angle) * rng.uniform(-1.0, 1.0)
-    scale = float(rng.uniform(0.97, 1.03))
-
-    M = cv2.getRotationMatrix2D(
-        (pw / 2.0, ph / 2.0),
+    rotated = KGT.rotate(
+        img,
         theta,
-        scale,
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
     )
 
-    rotated = cv2.warpAffine(
-        roi,
-        M,
-        (pw, ph),
-        flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REFLECT101,
-    )
+    _, _, h, w = img.shape
 
-    mask = create_random_mask(
-        (ph, pw),
-        rng=rng,
-        min_regions=1,
-        max_regions=2,
-        min_scale=0.7,
-        max_scale=1.0,
-        blur_choices=(31, 41),
-    )
+    mask = _random_mask(h, w)
 
-    img[
-        y:y + ph,
-        x:x + pw,
-    ] = blend_images(
-        roi,
+    out = _blend(
+        img,
         rotated,
         mask,
     )
 
-    return np.clip(
-        img,
-        0,
-        255,
-    ).astype(np.uint8)
+    return _to_numpy(out)
 
 
 # ==========================================================
@@ -379,74 +271,40 @@ def shift_right(
     seed=None,
 ):
     """
-    Localized translation.
+    GPU translation.
     """
 
-    rng = create_rng(seed)
+    img = _to_tensor(image)
 
-    img = image.astype(np.float32)
+    tx = float(np.random.randint(-pixels, pixels + 1))
+    ty = float(np.random.randint(-pixels, pixels + 1))
 
-    h, w = image.shape[:2]
-
-    x, y, pw, ph = create_random_patch(
-        (h, w),
-        rng,
-        min_scale=0.18,
-        max_scale=0.40,
+    transform = torch.tensor(
+        [[[1.0, 0.0, tx],
+          [0.0, 1.0, ty]]],
+        device=DEVICE,
     )
 
-    roi = img[
-        y:y + ph,
-        x:x + pw,
-    ].copy()
-
-    dx = rng.integers(
-        -pixels,
-        pixels + 1,
+    translated = KGT.warp_affine(
+        img,
+        transform,
+        dsize=(img.shape[2], img.shape[3]),
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
     )
 
-    dy = rng.integers(
-        -pixels,
-        pixels + 1,
-    )
+    _, _, h, w = img.shape
 
-    M = np.float32([
-        [1, 0, dx],
-        [0, 1, dy],
-    ])
+    mask = _random_mask(h, w)
 
-    translated = cv2.warpAffine(
-        roi,
-        M,
-        (pw, ph),
-        flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REFLECT101,
-    )
-
-    mask = create_random_mask(
-        (ph, pw),
-        rng=rng,
-        min_regions=1,
-        max_regions=2,
-        min_scale=0.7,
-        max_scale=1.0,
-        blur_choices=(31, 41),
-    )
-
-    img[
-        y:y + ph,
-        x:x + pw,
-    ] = blend_images(
-        roi,
+    out = _blend(
+        img,
         translated,
         mask,
     )
 
-    return np.clip(
-        img,
-        0,
-        255,
-    ).astype(np.uint8)
+    return _to_numpy(out)
 
 
 # ==========================================================
@@ -458,10 +316,275 @@ def mirror_image(
     *_,
 ):
     """
-    Horizontal mirror.
+    GPU horizontal flip.
     """
 
-    return cv2.flip(
-        image,
-        1,
+    img = _to_tensor(image)
+
+    flipped = torch.flip(
+        img,
+        dims=[3],
     )
+
+    return _to_numpy(flipped)
+
+# ==========================================================
+# Batch Versions
+# ==========================================================
+
+def increase_brightness_batch(
+    images,
+    factor=1.2,
+):
+    """
+    Batch GPU brightness.
+    images : (N,C,H,W)
+    """
+
+    images = images.float().to(DEVICE)
+
+    bright = images * float(factor)
+
+    return bright.clamp(0, 255)
+
+
+def adjust_contrast_batch(
+    images,
+    factor=1.2,
+):
+    """
+    Batch GPU contrast.
+    """
+
+    images = images.float().to(DEVICE)
+
+    gray = kornia.color.rgb_to_grayscale(
+        images / 255.0
+    )
+
+    mean = KF.gaussian_blur2d(
+        gray,
+        (31, 31),
+        (10.0, 10.0),
+    )
+
+    mean = mean.repeat(1, 3, 1, 1) * 255.0
+
+    contrast = mean + float(factor) * (images - mean)
+
+    return contrast.clamp(0, 255)
+
+
+def blur_batch(
+    images,
+    k=11,
+):
+    """
+    Batch GPU blur.
+    """
+
+    images = images.float().to(DEVICE)
+
+    k = int(k)
+
+    if k < 3:
+        k = 3
+
+    if k % 2 == 0:
+        k += 1
+
+    return KF.gaussian_blur2d(
+        images,
+        (k, k),
+        (2.0, 2.0),
+    ).clamp(0, 255)
+
+
+def add_noise_batch(
+    images,
+    level=15,
+):
+    """
+    Batch GPU noise.
+    """
+
+    images = images.float().to(DEVICE)
+
+    noise = torch.randn_like(images) * float(level)
+
+    return (images + noise).clamp(0, 255)
+
+
+def rotate_batch(
+    images,
+    angle=5,
+):
+    """
+    Batch GPU rotation.
+    """
+
+    images = images.float().to(DEVICE)
+
+    angles = torch.full(
+        (images.shape[0],),
+        float(angle),
+        device=DEVICE,
+    )
+
+    return KGT.rotate(
+        images,
+        angles,
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
+    ).clamp(0, 255)
+
+
+def translate_batch(
+    images,
+    pixels=10,
+):
+    """
+    Batch GPU translation.
+    """
+
+    images = images.float().to(DEVICE)
+
+    n = images.shape[0]
+
+    transforms = torch.zeros(
+        (n, 2, 3),
+        device=DEVICE,
+    )
+
+    transforms[:, 0, 0] = 1
+    transforms[:, 1, 1] = 1
+
+    transforms[:, 0, 2] = float(pixels)
+    transforms[:, 1, 2] = 0.0
+
+    return KGT.warp_affine(
+        images,
+        transforms,
+        dsize=(images.shape[2], images.shape[3]),
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
+    ).clamp(0, 255)
+
+
+def mirror_batch(
+    images,
+):
+    """
+    Batch GPU mirror.
+    """
+
+    return torch.flip(
+        images.to(DEVICE),
+        dims=[3],
+    )
+
+# ==========================================================
+# Batch Utilities
+# ==========================================================
+
+def numpy_to_batch(images):
+    """
+    List[np.ndarray] -> Torch Batch
+    """
+
+    tensors = []
+
+    for img in images:
+        x = torch.from_numpy(img)
+        x = x.permute(2, 0, 1)
+        tensors.append(x)
+
+    return torch.stack(
+        tensors,
+        dim=0,
+    ).float().to(DEVICE)
+
+
+def batch_to_numpy(batch):
+    """
+    Torch Batch -> List[np.ndarray]
+    """
+
+    batch = batch.clamp(
+        0,
+        255,
+    ).byte().cpu()
+
+    outputs = []
+
+    for img in batch:
+
+        outputs.append(
+            img.permute(
+                1,
+                2,
+                0,
+            ).numpy()
+        )
+
+    return outputs
+
+
+# ==========================================================
+# Generic GPU Dispatcher
+# ==========================================================
+
+GPU_TRANSFORMS = {
+    "brightness": increase_brightness_batch,
+    "contrast": adjust_contrast_batch,
+    "blur": blur_batch,
+    "noise": add_noise_batch,
+    "rotation": rotate_batch,
+    "translation": translate_batch,
+    "mirror": mirror_batch,
+}
+
+
+def apply_batch(
+    name,
+    images,
+    parameter,
+):
+    """
+    Apply one transformation to an entire batch.
+    """
+
+    batch = numpy_to_batch(images)
+
+    fn = GPU_TRANSFORMS[name]
+
+    result = fn(
+        batch,
+        parameter,
+    )
+
+    return batch_to_numpy(result)
+
+
+# ==========================================================
+# GPU Availability
+# ==========================================================
+
+def gpu_available():
+    return torch.cuda.is_available()
+
+
+def current_device():
+    return DEVICE
+
+
+def synchronize():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
+def empty_cache():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()

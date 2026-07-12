@@ -1,5 +1,7 @@
 import numpy as np
+import torch
 
+from .backend import DEVICE
 from .utils import create_rng
 
 
@@ -9,10 +11,25 @@ from .utils import create_rng
 
 def identity_sequence(sequence):
     """
-    Returns the original sequence unchanged.
-    Used as the temporal baseline.
+    GPU-compatible identity sequence.
     """
-    return list(sequence)
+
+    output = []
+
+    for frame in sequence:
+
+        if isinstance(frame, np.ndarray):
+
+            frame = (
+                torch.from_numpy(frame)
+                .permute(2, 0, 1)
+                .float()
+                .to(DEVICE)
+            )
+
+        output.append(frame)
+
+    return output
 
 
 # ==========================================================
@@ -25,30 +42,40 @@ def sample_sequence(
     seed=None,
 ):
     """
-    Randomly samples a contiguous temporal window.
-
-    Controlled parameter
-    --------------------
-    length : sequence length
-
-    Randomized
-    ----------
-    • starting frame
+    GPU-compatible temporal window.
     """
 
     rng = create_rng(seed)
 
     if len(dataset) <= length:
-        return list(dataset)
 
-    start = rng.integers(
-        0,
-        len(dataset) - length + 1,
-    )
+        seq = dataset
 
-    return list(
-        dataset[start:start + length]
-    )
+    else:
+
+        start = rng.integers(
+            0,
+            len(dataset) - length + 1,
+        )
+
+        seq = dataset[start:start + length]
+
+    output = []
+
+    for frame in seq:
+
+        if isinstance(frame, np.ndarray):
+
+            frame = (
+                torch.from_numpy(frame)
+                .permute(2, 0, 1)
+                .float()
+                .to(DEVICE)
+            )
+
+        output.append(frame)
+
+    return output
 
 
 # ==========================================================
@@ -59,9 +86,6 @@ def next_frame_pair(
     dataset,
     idx,
 ):
-    """
-    Returns two consecutive frames.
-    """
 
     idx = int(idx)
 
@@ -71,10 +95,30 @@ def next_frame_pair(
     if idx >= len(dataset) - 1:
         return None
 
+    f1 = dataset[idx]
+    f2 = dataset[idx + 1]
+
+    if isinstance(f1, np.ndarray):
+        f1 = (
+            torch.from_numpy(f1)
+            .permute(2, 0, 1)
+            .float()
+            .to(DEVICE)
+        )
+
+    if isinstance(f2, np.ndarray):
+        f2 = (
+            torch.from_numpy(f2)
+            .permute(2, 0, 1)
+            .float()
+            .to(DEVICE)
+        )
+
     return (
-        dataset[idx],
-        dataset[idx + 1],
+        f1,
+        f2,
     )
+
 
 # ==========================================================
 # Random Temporal Pair
@@ -85,18 +129,6 @@ def temporal_pair(
     max_gap=5,
     seed=None,
 ):
-    """
-    Returns two temporally nearby frames.
-
-    Controlled parameter
-    --------------------
-    max_gap : maximum temporal distance
-
-    Randomized
-    ----------
-    • starting frame
-    • temporal gap
-    """
 
     rng = create_rng(seed)
 
@@ -120,9 +152,28 @@ def temporal_pair(
         len(dataset) - 1,
     )
 
+    f1 = dataset[start]
+    f2 = dataset[end]
+
+    if isinstance(f1, np.ndarray):
+        f1 = (
+            torch.from_numpy(f1)
+            .permute(2, 0, 1)
+            .float()
+            .to(DEVICE)
+        )
+
+    if isinstance(f2, np.ndarray):
+        f2 = (
+            torch.from_numpy(f2)
+            .permute(2, 0, 1)
+            .float()
+            .to(DEVICE)
+        )
+
     return (
-        dataset[start],
-        dataset[end],
+        f1,
+        f2,
     )
 
 
@@ -134,22 +185,28 @@ def skip_sequence(
     dataset,
     step=2,
 ):
-    """
-    Samples frames using a fixed interval.
-
-    Controlled parameter
-    --------------------
-    step : frame interval
-    """
 
     step = max(
         1,
         int(step),
     )
 
-    return list(
-        dataset[::step]
-    )
+    output = []
+
+    for frame in dataset[::step]:
+
+        if isinstance(frame, np.ndarray):
+
+            frame = (
+                torch.from_numpy(frame)
+                .permute(2, 0, 1)
+                .float()
+                .to(DEVICE)
+            )
+
+        output.append(frame)
+
+    return output
 
 
 # ==========================================================
@@ -161,17 +218,6 @@ def jitter_sequence(
     max_offset=2,
     seed=None,
 ):
-    """
-    Creates a sequence with small random temporal jitter.
-
-    Controlled parameter
-    --------------------
-    max_offset : maximum frame displacement
-
-    Randomized
-    ----------
-    • frame offsets
-    """
 
     rng = create_rng(seed)
 
@@ -200,8 +246,17 @@ def jitter_sequence(
             len(dataset) - 1,
         )
 
-        output.append(
-            dataset[idx]
-        )
+        frame = dataset[idx]
+
+        if isinstance(frame, np.ndarray):
+
+            frame = (
+                torch.from_numpy(frame)
+                .permute(2, 0, 1)
+                .float()
+                .to(DEVICE)
+            )
+
+        output.append(frame)
 
     return output
