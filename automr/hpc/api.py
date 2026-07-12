@@ -80,6 +80,8 @@ class HighPerformanceAutoMR(AutoMR):
         standard AutoMR implementation.
         """
 
+        kwargs.setdefault("prediction_cache", self.cache)
+
         return self.executor.run_dataset(
             dataset=dataset,
             **kwargs,

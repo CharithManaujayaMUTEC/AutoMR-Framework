@@ -475,9 +475,13 @@ class AutoMR:
 
         if include_temporal:
             try:
+                # Only use a small subset instead of loading the
+                # entire dataset into memory.
+                temporal_limit = min(300, total_images)
+
                 temporal_data = [
                     dataset[i]
-                    for i in range(total_images)
+                    for i in range(temporal_limit)
                 ]
 
                 df_temp, _ = self.run_mr(
@@ -486,7 +490,8 @@ class AutoMR:
                     samples=samples_per_mr,
                 )
 
-            except Exception:
+            except Exception as e:
+                print(f"Temporal MR skipped: {e}")
                 df_temp = None
 
         # -------------------------------------------------------

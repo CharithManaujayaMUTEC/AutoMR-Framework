@@ -1,4 +1,5 @@
 import numpy as np
+import time
 class RangeTester:
 
     def generate_range(self, start, end, num_samples):

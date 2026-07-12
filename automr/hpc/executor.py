@@ -17,6 +17,7 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import pandas as pd
+from tqdm import tqdm
 
 
 class HPCExecutor:
@@ -70,17 +71,12 @@ class HPCExecutor:
 
         return chunks
 
-    # -------------------------------------------------
-    # Worker
-    # -------------------------------------------------
-
-    @staticmethod
-    def _worker(
-        automr,
+    def _run_chunk(
+        self,
         dataset,
         start,
         end,
-        kwargs,
+        worker_args,
     ):
         """
         Execute AutoMR on one dataset chunk.
@@ -92,13 +88,13 @@ class HPCExecutor:
 
             sample = dataset[idx]
 
-            df = automr._process_single_sample(
+            df = self.automr._process_single_sample(
                 (
                     idx,
                     sample,
-                    kwargs["samples_per_mr"],
-                    kwargs["df_temp"],
-                    kwargs["prediction_cache"],
+                    worker_args["samples_per_mr"],
+                    worker_args["df_temp"],
+                    worker_args["prediction_cache"],
                 )
             )
 
@@ -131,18 +127,38 @@ class HPCExecutor:
         """
 
         if max_samples is not None:
-            dataset = dataset[:max_samples]
 
-        # Temporal MR executed once
+            class DatasetView:
+                def __init__(self, dataset, limit):
+                    self.dataset = dataset
+                    self.limit = limit
+
+                def __len__(self):
+                    return self.limit
+
+                def __getitem__(self, idx):
+                    return self.dataset[idx]
+
+            dataset = DatasetView(
+                dataset,
+                min(max_samples, len(dataset)),
+            )
+
+        # -----------------------------
+        # Temporal MR
+        # -----------------------------
+
         df_temp = None
 
         if include_temporal:
 
             try:
 
+                temporal_limit = min(300, len(dataset))
+
                 temporal_data = [
                     dataset[i]
-                    for i in range(len(dataset))
+                    for i in range(temporal_limit)
                 ]
 
                 df_temp, _ = self.automr.run_mr(
@@ -151,13 +167,11 @@ class HPCExecutor:
                     samples=samples_per_mr,
                 )
 
-            except Exception:
+            except Exception as e:
+
+                print("Temporal MR skipped:", e)
 
                 df_temp = None
-
-        chunks = self.split_dataset(dataset)
-
-        results = []
 
         worker_args = {
             "samples_per_mr": samples_per_mr,
@@ -165,47 +179,29 @@ class HPCExecutor:
             "prediction_cache": prediction_cache,
         }
 
-        with ProcessPoolExecutor(
-            max_workers=self.num_workers,
-            mp_context=mp.get_context("spawn"),
-        ) as executor:
+        chunks = self.split_dataset(dataset)
 
-            futures = []
+        results = []
 
-            for start, end in chunks:
+        iterator = chunks
 
-                futures.append(
+        if show_progress:
+            iterator = tqdm(
+                chunks,
+                desc="Processing dataset",
+            )
 
-                    executor.submit(
-                        HPCExecutor._worker,
-                        self.automr,
-                        dataset,
-                        start,
-                        end,
-                        worker_args,
-                    )
+        for start, end in iterator:
 
-                )
+            df = self._run_chunk(
+                dataset,
+                start,
+                end,
+                worker_args,
+            )
 
-            if show_progress:
-
-                from tqdm import tqdm
-
-                iterator = tqdm(
-                    as_completed(futures),
-                    total=len(futures),
-                    desc="Processing dataset",
-                )
-
-            else:
-
-                iterator = as_completed(futures)
-
-            for future in iterator:
-
-                results.append(
-                    future.result()
-                )
+            if not df.empty:
+                results.append(df)
 
         if len(results) == 0:
             return pd.DataFrame()
