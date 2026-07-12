@@ -1,21 +1,10 @@
-"""
-backend.py
-
-Automatic backend selection for AutoMR.
-
-Responsibilities
-----------------
-- Detect CUDA availability
-- Select execution device
-- Convert NumPy <-> Torch
-- Helper utilities shared by GPU transforms
-"""
-
-import numpy as np
 import torch
+import kornia
+import kornia.filters as KF
+import kornia.geometry.transform as KG
 
 # ==========================================================
-# Backend Detection
+# Backend Selection
 # ==========================================================
 
 USE_CUDA = torch.cuda.is_available()
@@ -24,122 +13,111 @@ DEVICE = torch.device(
     "cuda" if USE_CUDA else "cpu"
 )
 
-
-def gpu_available():
-    """
-    Return True if CUDA is available.
-    """
-    return USE_CUDA
-
-
-def get_device():
-    """
-    Return execution device.
-    """
-    return DEVICE
-
-
-# ==========================================================
-# Conversion Helpers
-# ==========================================================
-
-def numpy_to_tensor(image):
-    """
-    Convert HWC uint8/float NumPy image
-    to BCHW float32 tensor.
-    """
-
-    if torch.is_tensor(image):
-
-        if image.ndim == 3:
-            image = image.unsqueeze(0)
-
-        return image.to(DEVICE)
-
-    tensor = (
-        torch.from_numpy(image)
-        .permute(2, 0, 1)
-        .unsqueeze(0)
-        .float()
-    )
-
-    return tensor.to(DEVICE)
-
-
-def tensor_to_numpy(tensor):
-    """
-    Convert BCHW tensor
-    back to HWC NumPy image.
-    """
-
-    if tensor.ndim == 4:
-        tensor = tensor.squeeze(0)
-
-    image = (
-        tensor
-        .detach()
-        .permute(1, 2, 0)
-        .cpu()
-        .numpy()
-    )
-
-    return image
-
-
-# ==========================================================
-# Utility
-# ==========================================================
-
-def ensure_numpy(image):
-    """
-    Ensure output is NumPy.
-    """
-
-    if torch.is_tensor(image):
-        return tensor_to_numpy(image)
-
-    return image
-
-
-def ensure_tensor(image):
-    """
-    Ensure output is Torch tensor.
-    """
-
-    if torch.is_tensor(image):
-        return image.to(DEVICE)
-
-    return numpy_to_tensor(image)
-
-
 # ==========================================================
 # Information
 # ==========================================================
 
 def backend_name():
-    """
-    Return backend name.
-    """
-
-    return "CUDA" if USE_CUDA else "CPU"
+    return DEVICE.type
 
 
-def print_backend():
-    """
-    Print active backend.
-    """
+def is_cuda():
+    return USE_CUDA
 
-    print("=" * 40)
-    print("AutoMR Backend")
-    print("=" * 40)
-    print(f"Backend : {backend_name()}")
-    print(f"Device  : {DEVICE}")
 
-    if USE_CUDA:
-        print(f"GPU     : {torch.cuda.get_device_name(0)}")
-        print(
-            f"Memory  : "
-            f"{torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB"
+# ==========================================================
+# Tensor Helpers
+# ==========================================================
+
+def to_device(x):
+
+    if isinstance(x, torch.Tensor):
+        return x.to(
+            DEVICE,
+            non_blocking=True,
         )
 
-    print("=" * 40)
+    return (
+        torch.from_numpy(x)
+        .to(
+            DEVICE,
+            non_blocking=True,
+        )
+    )
+
+
+def synchronize():
+
+    if USE_CUDA:
+        torch.cuda.synchronize()
+
+
+# ==========================================================
+# GPU Memory
+# ==========================================================
+
+def clear_cache():
+
+    if USE_CUDA:
+        torch.cuda.empty_cache()
+
+
+# ==========================================================
+# Batch Helpers
+# ==========================================================
+
+def stack(images):
+
+    tensors = []
+
+    for img in images:
+
+        if not isinstance(img, torch.Tensor):
+
+            img = (
+                torch.from_numpy(img)
+                .permute(2, 0, 1)
+                .float()
+            )
+
+        tensors.append(img)
+
+    return torch.stack(
+        tensors,
+        dim=0,
+    ).to(
+        DEVICE,
+        non_blocking=True,
+    )
+
+
+def unstack(batch):
+
+    return [
+        img
+        .clamp(0, 255)
+        .permute(1, 2, 0)
+        .byte()
+        .cpu()
+        .numpy()
+        for img in batch
+    ]
+
+
+# ==========================================================
+# Exports
+# ==========================================================
+
+__all__ = [
+    "DEVICE",
+    "USE_CUDA",
+    "KF",
+    "KG",
+    "backend_name",
+    "is_cuda",
+    "to_device",
+    "stack",
+    "unstack",
+    "clear_cache",
+    "synchronize",
+]
