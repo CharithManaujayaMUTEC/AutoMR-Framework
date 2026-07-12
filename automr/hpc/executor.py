@@ -14,7 +14,8 @@ Responsibilities
 
 import math
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import torch
 
 import pandas as pd
 from tqdm import tqdm
@@ -43,8 +44,8 @@ class HPCExecutor:
     def __init__(
         self,
         automr,
-        num_workers=8,
-        batch_size=64,
+        num_workers=32,
+        batch_size=512,
         cache=None,
     ):
 
@@ -79,28 +80,42 @@ class HPCExecutor:
         worker_args,
     ):
         """
-        Execute AutoMR on one dataset chunk.
+        Execute one chunk using multiple threads.
         """
 
         dfs = []
 
-        for idx in range(start, end):
+        with ThreadPoolExecutor(
+            max_workers=self.num_workers,
+        ) as executor:
 
-            sample = dataset[idx]
+            futures = []
 
-            df = self.automr._process_single_sample(
-                (
-                    idx,
-                    sample,
-                    worker_args["samples_per_mr"],
-                    worker_args["df_temp"],
-                    worker_args["prediction_cache"],
+            for idx in range(start, end):
+
+                sample = dataset[idx]
+
+                futures.append(
+                    executor.submit(
+                        self.automr._process_single_sample,
+                        (
+                            idx,
+                            sample,
+                            worker_args["samples_per_mr"],
+                            worker_args["df_temp"],
+                            worker_args["prediction_cache"],
+                        ),
+                    )
                 )
-            )
 
-            dfs.append(df)
+            for future in as_completed(futures):
 
-        if len(dfs) == 0:
+                df = future.result()
+
+                if df is not None and not df.empty:
+                    dfs.append(df)
+
+        if not dfs:
             return pd.DataFrame()
 
         return pd.concat(
@@ -183,25 +198,41 @@ class HPCExecutor:
 
         results = []
 
-        iterator = chunks
-
-        if show_progress:
-            iterator = tqdm(
-                chunks,
-                desc="Processing dataset",
+        with ThreadPoolExecutor(
+            max_workers=min(
+                len(chunks),
+                self.num_workers,
             )
+        ) as executor:
 
-        for start, end in iterator:
+            futures = {
 
-            df = self._run_chunk(
-                dataset,
-                start,
-                end,
-                worker_args,
-            )
+                executor.submit(
+                    self._run_chunk,
+                    dataset,
+                    start,
+                    end,
+                    worker_args,
+                ): (start, end)
 
-            if not df.empty:
-                results.append(df)
+                for start, end in chunks
+            }
+
+            iterator = as_completed(futures)
+
+            if show_progress:
+                iterator = tqdm(
+                    iterator,
+                    total=len(futures),
+                    desc="Processing dataset",
+                )
+
+            for future in iterator:
+
+                df = future.result()
+
+                if df is not None and not df.empty:
+                    results.append(df)
 
         if len(results) == 0:
             return pd.DataFrame()

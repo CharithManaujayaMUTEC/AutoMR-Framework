@@ -42,8 +42,8 @@ class HighPerformanceAutoMR(AutoMR):
         input_type="image",
         epsilon=0.05,
         range_threshold=5.0,
-        num_workers=8,
-        batch_size=64,
+        num_workers=32,
+        batch_size=512,
     ):
         super().__init__(
             model=model,
@@ -63,8 +63,8 @@ class HighPerformanceAutoMR(AutoMR):
         # HPC execution engine
         self.executor = HPCExecutor(
             automr=self,
-            num_workers=num_workers,
-            batch_size=batch_size,
+            num_workers=self.num_workers,
+            batch_size=self.batch_size,
             cache=self.cache,
         )
 
@@ -75,12 +75,17 @@ class HighPerformanceAutoMR(AutoMR):
     ):
         """
         High-performance dataset execution.
-
-        Uses the HPC executor instead of the
-        standard AutoMR implementation.
         """
 
-        kwargs.setdefault("prediction_cache", self.cache)
+        kwargs.setdefault(
+            "prediction_cache",
+            self.cache,
+        )
+
+        kwargs.setdefault(
+            "show_progress",
+            True,
+        )
 
         return self.executor.run_dataset(
             dataset=dataset,

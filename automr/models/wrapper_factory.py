@@ -4,6 +4,7 @@ import torch.nn as nn
 from .tensorflow_wrapper import TensorFlowWrapper
 from .pytorch_wrapper import PyTorchWrapper
 from .sklearn_wrapper import SklearnWrapper
+from .xgboost_wrapper import XGBoostWrapper
 from .custom_wrapper import CustomWrapper
 from .onnx_wrapper import ONNXWrapper
 from .remote_wrapper import RemoteWrapper
@@ -33,7 +34,7 @@ def get_wrapper(model):
     if "tensorflow" in module or "keras" in module:
         return TensorFlowWrapper(model)
 
-    # PyTorch (most reliable check)
+    # PyTorch
     if isinstance(model, nn.Module):
         preprocess = getattr(model, "_automr_preprocess", None)
         decoder = getattr(model, "_automr_decoder", None)
@@ -43,6 +44,10 @@ def get_wrapper(model):
             preprocess=preprocess,
             decoder=decoder,
         )
+
+    # XGBoost
+    if "xgboost" in module:
+        return XGBoostWrapper(model)
 
     # scikit-learn
     if "sklearn" in module:

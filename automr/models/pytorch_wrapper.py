@@ -14,8 +14,10 @@ class PyTorchWrapper(BaseModel):
     - Optional decoder hook
     - Single prediction
     - Batch prediction
-    - Supports tensor, dict, tuple and list outputs
-    - Optimized for inference
+    - AMP support
+    - torch.compile support
+    - TF32 support
+    - Pinned memory transfers
     """
 
     def __init__(
@@ -27,25 +29,35 @@ class PyTorchWrapper(BaseModel):
     ):
         self.model = model.eval()
 
+        if hasattr(torch, "compile"):
+            try:
+                self.model = torch.compile(self.model)
+            except Exception:
+                pass
+
         if device is None:
-            device = next(model.parameters()).device
+            device = next(self.model.parameters()).device
 
         self.device = device
         self.preprocess = preprocess
         self.decoder = decoder
 
-        # Enable cuDNN autotuner for fixed-size inputs
         if self.device.type == "cuda":
+
             torch.backends.cudnn.benchmark = True
+
+            if hasattr(torch.backends.cuda.matmul, "allow_tf32"):
+                torch.backends.cuda.matmul.allow_tf32 = True
+
+            if hasattr(torch.backends.cudnn, "allow_tf32"):
+                torch.backends.cudnn.allow_tf32 = True
 
     # ==================================================
     # Single Prediction
     # ==================================================
+
     def predict(self, x):
 
-        # -----------------------------------------
-        # Optional preprocessing
-        # -----------------------------------------
         if self.preprocess is not None:
             x = self.preprocess(x)
 
@@ -53,63 +65,53 @@ class PyTorchWrapper(BaseModel):
             np.asarray(x, dtype=np.float32)
         )
 
-        # HWC -> CHW
         if x.ndim == 3:
             x = np.transpose(x, (2, 0, 1))
             x = np.expand_dims(x, 0)
 
-        x = torch.from_numpy(x).to(
+        tensor = torch.from_numpy(x)
+
+        if self.device.type == "cuda":
+            tensor = tensor.pin_memory()
+
+        tensor = tensor.to(
             self.device,
             non_blocking=True,
         )
 
-        # -----------------------------------------
-        # Inference
-        # -----------------------------------------
         with torch.inference_mode():
-            pred = self.model(x)
 
-        # -----------------------------------------
-        # Optional decoder
-        # -----------------------------------------
+            with torch.autocast(
+                device_type=self.device.type,
+                enabled=self.device.type == "cuda",
+            ):
+
+                pred = self.model(tensor)
+
         if self.decoder is not None:
             return self.decoder(pred)
 
-        # -----------------------------------------
-        # Tensor output
-        # -----------------------------------------
         if torch.is_tensor(pred):
+
             return float(
                 pred.detach()
-                .cpu()
                 .reshape(-1)[0]
+                .cpu()
                 .item()
             )
 
-        # -----------------------------------------
-        # Generic outputs
-        # -----------------------------------------
-        if isinstance(pred, (dict, list, tuple)):
+        if isinstance(pred, (list, tuple, dict)):
             return pred
 
-        raise TypeError(
-            f"Unsupported PyTorch output: {type(pred)}"
-        )
-
+        return float(pred)
+    
     # ==================================================
     # Batch Prediction
     # ==================================================
+
     def predict_batch(self, xs):
         """
-        Predict a batch of inputs.
-
-        Optimizations
-        -------------
-        - Batched preprocessing
-        - Contiguous NumPy arrays
-        - Single GPU transfer
-        - torch.inference_mode()
-        - Supports decoder outputs
+        Optimized batch prediction.
         """
 
         if len(xs) == 0:
@@ -120,12 +122,12 @@ class PyTorchWrapper(BaseModel):
         # -----------------------------------------
         if self.preprocess is not None:
             xs = [
-                self.preprocess(img)
-                for img in xs
+                self.preprocess(x)
+                for x in xs
             ]
 
         # -----------------------------------------
-        # Create contiguous batch
+        # Create contiguous NumPy batch
         # -----------------------------------------
         batch = np.ascontiguousarray(
             np.asarray(xs, dtype=np.float32)
@@ -138,20 +140,28 @@ class PyTorchWrapper(BaseModel):
                 (0, 3, 1, 2),
             )
 
-        batch = (
-            torch.from_numpy(batch)
-            .contiguous()
-            .to(
-                self.device,
-                non_blocking=True,
-            )
+        tensor = torch.from_numpy(batch)
+
+        # Faster GPU transfer
+        if self.device.type == "cuda":
+            tensor = tensor.pin_memory()
+
+        tensor = tensor.to(
+            self.device,
+            non_blocking=True,
         )
 
         # -----------------------------------------
         # Forward pass
         # -----------------------------------------
         with torch.inference_mode():
-            preds = self.model(batch)
+
+            with torch.autocast(
+                device_type=self.device.type,
+                enabled=self.device.type == "cuda",
+            ):
+
+                preds = self.model(tensor)
 
         # -----------------------------------------
         # Decoder
@@ -160,10 +170,10 @@ class PyTorchWrapper(BaseModel):
 
             outputs = []
 
-            # Model returns dictionary
+            # Dictionary output
             if isinstance(preds, dict):
 
-                batch_size = batch.shape[0]
+                batch_size = tensor.shape[0]
 
                 for i in range(batch_size):
 
@@ -182,10 +192,11 @@ class PyTorchWrapper(BaseModel):
 
                 return outputs
 
-            # Model returns tensor
+            # Tensor output
             if torch.is_tensor(preds):
 
-                for i in range(batch.shape[0]):
+                for i in range(tensor.shape[0]):
+
                     outputs.append(
                         self.decoder(
                             preds[i:i + 1]
@@ -194,10 +205,11 @@ class PyTorchWrapper(BaseModel):
 
                 return outputs
 
-            # Decoder for tuple/list outputs
+            # Tuple/List output
             if isinstance(preds, (list, tuple)):
 
                 for pred in preds:
+
                     outputs.append(
                         self.decoder(pred)
                     )
@@ -211,8 +223,10 @@ class PyTorchWrapper(BaseModel):
 
             return (
                 preds.detach()
+                .flatten()
                 .cpu()
                 .numpy()
+                .astype(float)
                 .tolist()
             )
 
@@ -220,12 +234,47 @@ class PyTorchWrapper(BaseModel):
         # List / Tuple output
         # -----------------------------------------
         if isinstance(preds, (list, tuple)):
-            return list(preds)
+
+            return [
+                float(p.detach().cpu().item())
+                if torch.is_tensor(p)
+                else float(p)
+                for p in preds
+            ]
 
         # -----------------------------------------
         # Dictionary output
         # -----------------------------------------
         if isinstance(preds, dict):
-            return preds
+
+            outputs = []
+
+            batch_size = tensor.shape[0]
+
+            for i in range(batch_size):
+
+                value = None
+
+                for _, v in preds.items():
+
+                    if torch.is_tensor(v):
+                        value = float(
+                            v[i]
+                            .detach()
+                            .cpu()
+                            .reshape(-1)[0]
+                            .item()
+                        )
+                        break
+
+                outputs.append(value)
+
+            return outputs
+        
+        # -----------------------------------------
+        # Scalar output
+        # -----------------------------------------
+        if np.isscalar(preds):
+            return [float(preds)] * len(xs)
 
         return preds

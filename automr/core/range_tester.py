@@ -97,12 +97,14 @@ class RangeTester:
                 original_prediction
             )
 
+        # -----------------------------------------
+        # Generate transformations
+        # Supports CPU (NumPy) and GPU (Torch)
+        # -----------------------------------------
+
         transformed_images = []
         cache_keys = []
 
-        # -----------------------------------------
-        # Generate transformations
-        # -----------------------------------------
         for v in values:
 
             transformed = transform_fn(
@@ -110,9 +112,7 @@ class RangeTester:
                 v,
             )
 
-            transformed_images.append(
-                transformed
-            )
+            transformed_images.append(transformed)
 
             cache_keys.append(
                 (
@@ -121,20 +121,21 @@ class RangeTester:
                 )
             )
 
-            if image_saver is not None:
-
+            # Save preview images only when data is on CPU
+            if (
+                image_saver is not None
+                and isinstance(transformed, np.ndarray)
+            ):
                 try:
-
                     image_saver.save(
                         mr_name=relation.__class__.__name__,
                         param=float(v),
                         original=input_data,
                         transformed=transformed,
                     )
-
                 except Exception:
                     pass
-
+        
         # -----------------------------------------
         # Prediction cache
         # -----------------------------------------
@@ -167,9 +168,22 @@ class RangeTester:
         # -----------------------------------------
         if missing:
 
-            preds = model.predict_batch(
-                missing
-            )
+            # GPU backend
+            if isinstance(missing[0], torch.Tensor):
+
+                batch = torch.stack(
+                    missing,
+                    dim=0,
+                )
+
+                preds = model.predict_batch(batch)
+
+            # CPU backend
+            else:
+
+                preds = model.predict_batch(
+                    missing
+                )
 
             for idx, pred in zip(
                 missing_idx,
