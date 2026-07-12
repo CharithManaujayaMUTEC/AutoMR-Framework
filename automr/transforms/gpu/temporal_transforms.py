@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from .backend import DEVICE
+from ..backend import DEVICE
 from .utils import create_rng
 
 

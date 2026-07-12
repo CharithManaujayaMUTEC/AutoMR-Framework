@@ -1,7 +1,7 @@
 import torch
 import kornia.geometry.transform as K
 
-from .backend import DEVICE
+from ..backend import DEVICE
 
 
 # ==========================================================
