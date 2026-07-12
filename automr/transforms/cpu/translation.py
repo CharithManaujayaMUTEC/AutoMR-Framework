@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from .utils import (
+from ..utils import (
     create_rng,
     create_random_patch,
     create_random_mask,
