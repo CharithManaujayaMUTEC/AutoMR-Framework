@@ -5,11 +5,13 @@ import os
 import multiprocessing
 import time
 from concurrent.futures import ThreadPoolExecutor
+
 from automr.core.range_tester import RangeTester
 from automr.analysis import Analyzer
 from automr.models import get_wrapper
 from automr.comparators import get_comparator
 from automr.input_handlers import get_handler
+
 from automr.registry import (
     TransformationRegistry,
     RelationRegistry,
@@ -40,7 +42,19 @@ from automr.epsilon.summary import (
     EpsilonSummary,
 )
 
+
 class AutoMR:
+    """
+    Main API of the AutoMR framework.
+
+    AutoMR provides an end-to-end interface for automated
+    metamorphic testing of machine learning models. It
+    manages model wrapping, transformation registration,
+    metamorphic relation execution, dataset testing,
+    epsilon sensitivity analysis, result analysis,
+    logging, and persistence.
+    """
+
     def __init__(
         self,
         model,
@@ -53,6 +67,8 @@ class AutoMR:
         # --------------------------------------------------
         # Core Components
         # --------------------------------------------------
+        # Initialize all major framework components used
+        # throughout the testing workflow.
 
         self.image_saver = TransformationSaver()
         self.logger = AutoMRLogger()
@@ -61,99 +77,108 @@ class AutoMR:
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
 
+        # Store framework configuration.
         self.task = task
         self.range_threshold = range_threshold
 
         # --------------------------------------------------
         # Registries
         # --------------------------------------------------
+        # Maintain collections of available transformations
+        # and metamorphic relations.
 
         self.transform_registry = TransformationRegistry()
         self.relation_registry = RelationRegistry()
 
-        # MR parameter ranges
+        # Parameter search ranges for every MR.
         self.mr_ranges = {}
 
-        # Comparator
+        # Initialize the comparator used to determine
+        # whether transformed outputs satisfy the MR.
         self.comparator = get_comparator(
             task=task,
             epsilon=epsilon,
         )
 
-        # Register built-in transformations and relations
+        # Register all built-in metamorphic relations.
         self._register_default_mrs(epsilon)
 
     def _register_default_mrs(self, epsilon):
-            """
-            Register all built-in transformations,
-            relations and their parameter ranges.
-            """
+        """
+        Register the built-in transformations,
+        corresponding metamorphic relations, and
+        their default parameter ranges.
+        """
 
-            # Register built-in transformations
-            register_default_transforms(
-                self.transform_registry
-            )
+        # Register built-in transformations.
+        register_default_transforms(
+            self.transform_registry
+        )
 
-            # Register built-in relations
-            register_default_relations(
-                self.relation_registry,
-                epsilon
-            )
+        # Register built-in metamorphic relations.
+        register_default_relations(
+            self.relation_registry,
+            epsilon
+        )
 
-            # Default parameter ranges for each MR
-            self.mr_ranges = {
+        # Default parameter ranges explored for
+        # each supported metamorphic relation.
+        self.mr_ranges = {
 
-                # -------------------------------------------------
-                # Image
-                # -------------------------------------------------
-                "brightness": (0.1, 3.0),
-                "rotation": (-60, 60),
-                "translation": (0, 80),
-                "noise": (0, 150),
-                "blur": (1, 31),
-                "contrast": (0.1, 4.0),
-                "composite": (0.1, 1.5),
+            # -------------------------------------------------
+            # Image transformations
+            # -------------------------------------------------
 
-                # -------------------------------------------------
-                # Weather
-                # -------------------------------------------------
-                "rain": (0.0, 1.5),
-                "snow": (0.0, 1.5),
-                "fog": (0.0, 1.5),
-                "sandstorm": (0.0, 1.5),
-                "dust": (0.0, 1.5),
-                "haze": (0.0, 1.5),
-                "smoke": (0.0, 1.5),
+            # Brightness scaling factor.
+            "brightness": (0.1, 3.0),
 
-                # -------------------------------------------------
-                # Behavioral
-                # -------------------------------------------------
-                "visibility": (0.05, 1.5),
-                "darkness": (0.05, 1.5),
+            # Rotation angle (degrees).
+            "rotation": (-60, 60),
 
-                # -------------------------------------------------
-                # Temporal
-                # -------------------------------------------------
-                "temporal": (0, 150),
-            }
+            # Horizontal translation (pixels).
+            "translation": (0, 80),
 
-    # ---------- MODEL WRAPPER ----------
-    #def _wrap_if_needed(self, model):
+            # Noise intensity.
+            "noise": (0, 150),
 
-    #    if hasattr(model, "predict"):
-    #        return model
+            # Gaussian blur kernel size.
+            "blur": (1, 31),
 
-    #    import torch
+            # Contrast scaling factor.
+            "contrast": (0.1, 4.0),
 
-    #    class TorchWrapper:
-    #        def __init__(self, model):
-    #            self.model = model
+            # Composite transformation strength.
+            "composite": (0.1, 1.5),
 
-    #        def predict(self, x):
-    #            x = torch.tensor(x).permute(2, 0, 1).float().unsqueeze(0)
-    #            with torch.no_grad():
-    #                output = self.model(x)
-    #            return float(output.max().item())    
+            # -------------------------------------------------
+            # Weather transformations
+            # -------------------------------------------------
+
+            "rain": (0.0, 1.5),
+            "snow": (0.0, 1.5),
+            "fog": (0.0, 1.5),
+            "sandstorm": (0.0, 1.5),
+            "dust": (0.0, 1.5),
+            "haze": (0.0, 1.5),
+            "smoke": (0.0, 1.5),
+
+            # -------------------------------------------------
+            # Behavioral transformations
+            # -------------------------------------------------
+
+            # Visibility reduction intensity.
+            "visibility": (0.05, 1.5),
+
+            # Darkness intensity.
+            "darkness": (0.05, 1.5),
+
+            # -------------------------------------------------
+            # Temporal transformations
+            # -------------------------------------------------
+
+            # Consecutive frame offset.
+            "temporal": (0, 150),
+        }
 
     # ==================================================
     # Plugin API
@@ -167,8 +192,11 @@ class AutoMR:
         param_range,
     ):
         """
-        Register a custom transformation and its
-        corresponding metamorphic relation.
+        Register a custom transformation together with its
+        corresponding metamorphic relation and parameter range.
+
+        Once registered, the new MR becomes available to the
+        complete AutoMR testing pipeline.
         """
 
         self.transform_registry.register(
@@ -183,9 +211,11 @@ class AutoMR:
 
         self.mr_ranges[name] = param_range
 
+
     def unregister_transform(self, name):
         """
-        Remove a registered transformation.
+        Remove a previously registered transformation,
+        relation and its associated parameter range.
         """
 
         if name in self.transform_registry.transforms:
@@ -197,43 +227,58 @@ class AutoMR:
         if name in self.mr_ranges:
             del self.mr_ranges[name]
 
+
     def has_transform(self, name):
         """
-        Check whether a transformation exists.
+        Check whether a transformation is currently
+        registered within AutoMR.
         """
 
         return name in self.transform_registry.transforms
 
+
     def get_transform(self, name):
         """
-        Return a registered transformation.
+        Retrieve a registered transformation by name.
         """
 
         return self.transform_registry.get(name)
 
+
     def get_relation(self, name):
         """
-        Return the relation associated with a transformation.
+        Retrieve the metamorphic relation associated
+        with a registered transformation.
         """
 
         return self.relation_registry.get(name)
 
+
     def list_transforms(self):
         """
-        List all registered transformations.
+        Return all registered transformation names
+        in alphabetical order.
         """
 
         return sorted(self.transform_registry.list())
 
+
     def list_relations(self):
         """
-        List all registered relations.
+        Return all registered relation names in
+        alphabetical order.
         """
 
         return sorted(self.relation_registry.list())
-          
+
+
     # ---------- EXPECTED ----------
+
     def get_expected(self, relation_name):
+        """
+        Retrieve the human-readable expected behavior
+        defined by a registered metamorphic relation.
+        """
 
         for name in self.relation_registry.list():
 
@@ -245,6 +290,7 @@ class AutoMR:
                     return relation.expected()
 
         return "Invariant or monotonic behavior expected"
+
 
     # ==================================================
     # Run a Single Metamorphic Relation
@@ -259,11 +305,11 @@ class AutoMR:
         prediction_cache=None,
     ):
         """
-        Execute a single metamorphic relation.
+        Execute a single metamorphic relation over one input.
 
-        Optimization:
-        - Original prediction is computed only once.
-        - Reused across every MR.
+        The original prediction is computed only once and
+        reused across all sampled transformation parameters
+        for improved execution efficiency.
         """
 
         if not self.has_transform(mr_name):
@@ -271,11 +317,14 @@ class AutoMR:
                 f"Unknown metamorphic relation: '{mr_name}'"
             )
 
+        # Retrieve the transformation and its relation.
         transform = self.get_transform(mr_name)
         relation = self.get_relation(mr_name)
 
+        # Retrieve the parameter search range.
         start, end = self.mr_ranges[mr_name]
 
+        # Execute parameter range testing.
         results = self.range_tester.run_range(
             model=self.model,
             input_data=input_data,
@@ -291,6 +340,7 @@ class AutoMR:
             prediction_cache=prediction_cache,
         )
 
+        # Record severity and write execution logs.
         for result in results:
 
             result["severity"] = abs(result["difference"])
@@ -304,11 +354,14 @@ class AutoMR:
                 f"pass={result['passed']}"
             )
 
+        # Convert raw results into a DataFrame.
         df = self.analyzer.to_dataframe(results)
 
+        # Generate summary statistics.
         summary = self.analyzer.summary(df)
 
         return df, summary
+
 
     # ==================================================
     # Run All Metamorphic Relations
@@ -323,17 +376,15 @@ class AutoMR:
         prediction_cache=None,
     ):
         """
-        Execute all registered metamorphic relations.
-
-        Optimized:
-        - Compute original prediction once.
-        - Keep MR execution sequential.
-        - Each MR already performs batched inference internally.
+        Execute every registered metamorphic relation for a
+        single input sample and combine the results into one
+        DataFrame.
         """
 
         if exclude is None:
             exclude = ["temporal"]
 
+        # Compute the original prediction only once.
         if original_prediction is None:
             original_prediction = float(
                 self.model.predict(input_data)
@@ -341,6 +392,7 @@ class AutoMR:
 
         dfs = []
 
+        # Execute each registered MR.
         for mr_name in self.list_transforms():
 
             if mr_name in exclude:
@@ -356,28 +408,30 @@ class AutoMR:
 
             dfs.append(df)
 
+        # Merge every MR result into a single DataFrame.
         return pd.concat(
             dfs,
             ignore_index=True,
         )
-
+    
     def _process_single_sample(self, args):
         """
-        Process one sample.
+        Execute the complete AutoMR workflow for a single
+        dataset sample.
 
-        Optimized:
-        - Original prediction computed only once.
-        - Reused across every MR.
+        The original prediction is generated once and reused
+        across all metamorphic relations to minimize repeated
+        model inference.
         """
 
         sample_id, sample, samples_per_mr, df_temp, prediction_cache = args
 
-        # Compute original prediction once
+        # Compute the original model prediction once.
         original_prediction = float(
             self.model.predict(sample)
         )
 
-        # Run all image MRs
+        # Execute all image-based metamorphic relations.
         df_img = self.run_all_mrs(
             input_data=sample,
             samples=samples_per_mr,
@@ -385,23 +439,28 @@ class AutoMR:
             prediction_cache=prediction_cache,
         )
 
-        # Merge temporal results if available
+        # Merge temporal MR results if available.
         if df_temp is not None and not df_temp.empty:
+
             df = pd.concat(
                 [df_img, df_temp],
                 ignore_index=True,
                 copy=False,
             )
+
         else:
             df = df_img
 
+        # Record the dataset sample identifier.
         df["sample_id"] = sample_id
 
+        # Store the expected behavior for each relation.
         df["expected_behavior"] = [
             self.get_expected(mr)
             for mr in df["mr"]
         ]
 
+        # Convert the pass/fail outcome into a readable label.
         df["actual_behavior"] = np.where(
             df["status"] == "PASS",
             "Consistent",
@@ -410,10 +469,19 @@ class AutoMR:
 
         return df
 
-    #for dashboard
+
+    # --------------------------------------------------
+    # Epsilon Configuration
+    # --------------------------------------------------
+
     def set_epsilon(self, epsilon):
         """
-        Update the comparator and every registered MR with a new epsilon.
+        Update the framework tolerance.
+
+        The supplied epsilon value is propagated to every
+        registered metamorphic relation and to the output
+        comparator so subsequent executions use the same
+        tolerance.
         """
 
         apply_epsilon_to_relations(
@@ -425,6 +493,7 @@ class AutoMR:
             task=self.task,
             epsilon=epsilon
         )
+
 
     # ==================================================
     # Run Dataset
@@ -438,30 +507,33 @@ class AutoMR:
         include_temporal=True,
         show_progress=False,
         epsilon=None,
-        prediction_cache=None,   # NEW
+        prediction_cache=None,
     ):
         """
-        Run AutoMR over an entire dataset.
+        Execute AutoMR over an entire dataset.
 
-        Optimizations:
-        - Faster dataset limiting
-        - Progress bar with IPS
-        - Background image pre-loading
-        - Timing statistics
-        - No architecture changes
+        Features
+        --------
+        - Optional dataset size limiting.
+        - Automatic epsilon update.
+        - Shared prediction cache.
+        - Parallel image loading.
+        - Parallel sample execution.
+        - Optional temporal MR execution.
+        - Progress monitoring with timing statistics.
         """
 
         import time
         from concurrent.futures import ThreadPoolExecutor
 
         # -------------------------------------------------------
-        # Update epsilon if requested
+        # Update epsilon if requested.
         # -------------------------------------------------------
         if epsilon is not None:
             self.set_epsilon(epsilon)
 
         # -------------------------------------------------------
-        # Limit dataset
+        # Determine the number of samples to process.
         # -------------------------------------------------------
         if max_samples is not None:
             total_images = min(max_samples, len(dataset))
@@ -469,14 +541,15 @@ class AutoMR:
             total_images = len(dataset)
 
         # -------------------------------------------------------
-        # Temporal MR (run only once)
+        # Execute the temporal MR once for the dataset.
         # -------------------------------------------------------
         df_temp = None
 
         if include_temporal:
+
             try:
-                # Only use a small subset instead of loading the
-                # entire dataset into memory.
+                # Only use a subset of the dataset to reduce
+                # memory consumption during temporal testing.
                 temporal_limit = min(300, total_images)
 
                 temporal_data = [
@@ -491,11 +564,12 @@ class AutoMR:
                 )
 
             except Exception as e:
+
                 print(f"Temporal MR skipped: {e}")
                 df_temp = None
 
         # -------------------------------------------------------
-        # Timing
+        # Initialize timing statistics.
         # -------------------------------------------------------
         start_time = time.time()
 
@@ -504,14 +578,14 @@ class AutoMR:
 
         all_results = []
 
-        # ---------------------------------------
-        # Shared cache (reuse predictions)
-        # ---------------------------------------
+        # -------------------------------------------------------
+        # Shared prediction cache reused across all samples.
+        # -------------------------------------------------------
         if prediction_cache is None:
             prediction_cache = {}
 
         # -------------------------------------------------------
-        # Progress bar
+        # Create dataset iterator.
         # -------------------------------------------------------
         if show_progress:
 
@@ -528,16 +602,19 @@ class AutoMR:
 
             iterator = range(total_images)
 
-        # ---------------------------------------
-        # Parallel image loading
-        # ---------------------------------------
+        # -------------------------------------------------------
+        # Background image loader.
+        # -------------------------------------------------------
         loader = ThreadPoolExecutor(max_workers=2)
 
-        future = loader.submit(dataset.__getitem__, 0)
+        future = loader.submit(
+            dataset.__getitem__,
+            0
+        )
 
-        # ---------------------------------------
-        # Parallel MR execution
-        # ---------------------------------------
+        # -------------------------------------------------------
+        # Parallel execution pool.
+        # -------------------------------------------------------
         workers = max(
             1,
             min(
@@ -546,35 +623,38 @@ class AutoMR:
             ),
         )
 
-        executor = ThreadPoolExecutor(max_workers=workers)
+        executor = ThreadPoolExecutor(
+            max_workers=workers
+        )
 
         pending = []
 
+        # -------------------------------------------------------
+        # Process every dataset sample.
+        # -------------------------------------------------------
         for idx in iterator:
 
             try:
 
-                # ---------------------------------------------
-                # Load image
-                # ---------------------------------------------
+                # Measure image loading time.
                 t0 = time.perf_counter()
 
                 sample = future.result()
 
-                load_time += time.perf_counter() - t0
+                load_time += (
+                    time.perf_counter() - t0
+                )
 
-                # ---------------------------------------------
-                # Preload next image
-                # ---------------------------------------------
+                # Begin loading the next sample while the
+                # current one is being processed.
                 if idx + 1 < total_images:
+
                     future = executor.submit(
                         dataset.__getitem__,
                         idx + 1,
                     )
 
-                # ---------------------------------------------
-                # Execute all MRs
-                # ---------------------------------------------
+                # Measure scheduling overhead.
                 t0 = time.perf_counter()
 
                 future_df = executor.submit(
@@ -590,11 +670,11 @@ class AutoMR:
 
                 pending.append(future_df)
 
-                process_time += time.perf_counter() - t0
+                process_time += (
+                    time.perf_counter() - t0
+                )
 
-                # ---------------------------------------------
-                # Update progress
-                # ---------------------------------------------
+                # Update the progress display.
                 if show_progress:
 
                     elapsed = time.time() - start_time
@@ -637,9 +717,9 @@ class AutoMR:
 
                 raise
 
-        # ---------------------------------------
-        # Collect completed jobs
-        # ---------------------------------------
+        # -------------------------------------------------------
+        # Collect all completed sample executions.
+        # -------------------------------------------------------
         for future in pending:
 
             df = future.result()
@@ -647,17 +727,18 @@ class AutoMR:
             if df is not None:
                 all_results.append(df)
 
+        # Cleanly shut down background workers.
         loader.shutdown(wait=True)
         executor.shutdown(wait=True)
 
         # -------------------------------------------------------
-        # Nothing generated
+        # Return an empty DataFrame if no results were produced.
         # -------------------------------------------------------
         if not all_results:
             return pd.DataFrame()
 
         # -------------------------------------------------------
-        # Merge results once (much faster than repeated concat)
+        # Merge all sample results into a single DataFrame.
         # -------------------------------------------------------
         result_df = pd.concat(
             all_results,
@@ -666,20 +747,35 @@ class AutoMR:
 
         total_time = time.time() - start_time
 
+        # -------------------------------------------------------
+        # Display execution statistics.
+        # -------------------------------------------------------
         print("\n========================================")
         print("Dataset processing completed")
         print("========================================")
         print(f"Images processed : {total_images}")
         print(f"Total time       : {total_time:.2f} sec")
-        print(f"Average IPS      : {total_images/total_time:.2f}")
+        print(f"Average IPS      : {total_images / total_time:.2f}")
         print(f"Image loading    : {load_time:.2f} sec")
         print(f"MR processing    : {process_time:.2f} sec")
         print("========================================")
 
         return result_df
 
-    # ---------- ANALYSIS ----------
+
+    # ==================================================
+    # Analysis
+    # ==================================================
+
     def analyze(self, df):
+        """
+        Perform post-processing analysis on AutoMR results.
+
+        Generates failure statistics, severity summaries,
+        parameter range analysis, prediction traces, and
+        identifies the most significant failures.
+        """
+
         from automr.core.failure_analysis import FailureAnalyzer
 
         analyzer = FailureAnalyzer()
@@ -691,33 +787,85 @@ class AutoMR:
             "regions": analyzer.failure_regions(df),
             "range_summary": analyzer.range_summary(df),
             "range_analysis": analyzer.range_analysis(df),
-            "prediction_trace": self.analyzer.prediction_trace(df)
+            "prediction_trace": self.analyzer.prediction_trace(df),
         }
 
 
-    # ---------- SAVE ----------
+    # ==================================================
+    # Save Results
+    # ==================================================
+
     def save_results(self, df, results, output_dir="results"):
-        
+        """
+        Persist all generated AutoMR outputs to disk.
+
+        Depending on the executed workflow, this may include
+        epsilon sensitivity reports in addition to the standard
+        failure analysis outputs.
+        """
+
         os.makedirs(output_dir, exist_ok=True)
 
-        df.to_csv(f"{output_dir}/automr_results.csv", index=False)
-        results["failure_summary"].to_csv(f"{output_dir}/failure_summary.csv", index=False)
-        results["severity_summary"].to_csv(f"{output_dir}/severity_summary.csv")
-        results["worst_cases"].to_csv(f"{output_dir}/worst_cases.csv", index=False)
-        results["range_summary"].to_csv(f"{output_dir}/range_summary.csv",index=False)
-        results["range_analysis"].to_csv(f"{output_dir}/range_analysis.csv",index=False)
-        results["prediction_trace"].to_csv(f"{output_dir}/prediction_trace.csv",index=False)
+        # Main AutoMR output.
+        df.to_csv(
+            f"{output_dir}/automr_results.csv",
+            index=False,
+        )
+
+        # Analysis summaries.
+        results["failure_summary"].to_csv(
+            f"{output_dir}/failure_summary.csv",
+            index=False,
+        )
+
+        results["severity_summary"].to_csv(
+            f"{output_dir}/severity_summary.csv"
+        )
+
+        results["worst_cases"].to_csv(
+            f"{output_dir}/worst_cases.csv",
+            index=False,
+        )
+
+        results["range_summary"].to_csv(
+            f"{output_dir}/range_summary.csv",
+            index=False,
+        )
+
+        results["range_analysis"].to_csv(
+            f"{output_dir}/range_analysis.csv",
+            index=False,
+        )
+
+        results["prediction_trace"].to_csv(
+            f"{output_dir}/prediction_trace.csv",
+            index=False,
+        )
+
+        # Save epsilon sensitivity outputs when available.
         if "epsilon_summary" in results:
+
             results["epsilon_summary"].to_csv(
                 f"{output_dir}/epsilon_summary.csv",
-                index=False
+                index=False,
             )
+
         if "epsilon_report" in results:
-            with open(f"{output_dir}/epsilon_report.txt", "w") as f:
+
+            with open(
+                f"{output_dir}/epsilon_report.txt",
+                "w",
+            ) as f:
+
                 for k, v in results["epsilon_report"].items():
                     f.write(f"{k}: {v}\n")
 
-        with open(f"{output_dir}/failure_regions.txt", "w") as f:
+        # Save detected failure regions.
+        with open(
+            f"{output_dir}/failure_regions.txt",
+            "w",
+        ) as f:
+
             for k, v in results["regions"].items():
                 f.write(f"{k}: {v}\n")
 
@@ -728,17 +876,26 @@ class AutoMR:
         labels=None,
         reuse_existing=True,
     ):
+        """
+        Generate and store baseline model predictions.
+
+        Existing cached predictions can be reused when they
+        match the supplied dataset size. Basic prediction
+        statistics and optional regression metrics are also
+        saved for later comparison.
+        """
 
         baseline = BaselineEvaluator(output_dir)
 
         # --------------------------------------------------
-        # Reuse existing predictions if available
+        # Reuse cached predictions whenever possible.
         # --------------------------------------------------
         if reuse_existing and baseline.baseline_exists():
 
             cached = baseline.load_predictions()
 
             if len(cached) == len(dataset):
+
                 print("\nUsing cached baseline predictions...")
                 return cached
 
@@ -746,7 +903,7 @@ class AutoMR:
             print("Regenerating baseline predictions...")
 
         # --------------------------------------------------
-        # Generate baseline predictions
+        # Store dataset information.
         # --------------------------------------------------
         baseline.save_dataset_info(dataset)
 
@@ -767,6 +924,9 @@ class AutoMR:
             unit="image",
         )
 
+        # --------------------------------------------------
+        # Generate predictions for every dataset sample.
+        # --------------------------------------------------
         for idx, sample in iterator:
 
             try:
@@ -780,6 +940,8 @@ class AutoMR:
                     "prediction": pred
                 })
 
+                # Collect labels if regression metrics
+                # should be computed.
                 if labels is not None:
 
                     y_true.append(float(labels[idx]))
@@ -787,7 +949,11 @@ class AutoMR:
 
                 elapsed = time.time() - start
 
-                ips = (idx + 1) / elapsed if elapsed > 0 else 0
+                ips = (
+                    (idx + 1) / elapsed
+                    if elapsed > 0
+                    else 0
+                )
 
                 iterator.set_postfix({
                     "IPS": f"{ips:.2f}",
@@ -795,12 +961,13 @@ class AutoMR:
                 })
 
             except Exception as e:
+
                 print(f"\nBaseline failed: {idx}")
                 print(type(e).__name__, e)
                 raise
 
         # --------------------------------------------------
-        # Save predictions
+        # Save generated predictions.
         # --------------------------------------------------
         baseline.save_predictions(predictions)
 
@@ -809,10 +976,14 @@ class AutoMR:
             for p in predictions
         ]
 
+        # Save basic prediction statistics.
         baseline.save_basic_metrics(
             prediction_values
         )
 
+        # --------------------------------------------------
+        # Compute regression metrics if labels exist.
+        # --------------------------------------------------
         if labels is not None:
 
             mse = np.mean(
@@ -839,10 +1010,18 @@ class AutoMR:
 
         return prediction_values
 
+
     def save_model_summary(
         self,
         output_dir="results"
     ):
+        """
+        Save a textual summary of the wrapped model.
+
+        TensorFlow/Keras models provide a detailed summary,
+        while unsupported models fall back to storing their
+        wrapper type.
+        """
 
         try:
 
@@ -871,7 +1050,10 @@ class AutoMR:
             text
         )
 
-    # ---------- FULL PIPELINE ----------
+    # ==================================================
+    # Full AutoMR Pipeline
+    # ==================================================
+
     def run_full_test(
         self,
         dataset,
@@ -885,55 +1067,87 @@ class AutoMR:
         epsilon_max=None,
         epsilon_count=None,
     ):
+        """
+        Execute the complete AutoMR evaluation pipeline.
 
+        Pipeline
+        --------
+        1. Save model information.
+        2. Generate or reuse baseline predictions.
+        3. Run either standard AutoMR or epsilon sensitivity.
+        4. Analyze generated results.
+        5. Save reports.
+        6. Optionally print summaries.
+
+        Returns
+        -------
+        tuple
+            (results_dataframe, analysis_dictionary)
+        """
+
+        # --------------------------------------------------
+        # Save model information.
+        # --------------------------------------------------
         self.save_model_summary(
             output_dir
         )
 
+        # --------------------------------------------------
+        # Generate or reuse baseline predictions.
+        # --------------------------------------------------
         baseline_predictions = self.save_baseline(
             dataset=dataset,
             output_dir=output_dir,
             reuse_existing=True,
         )
 
-        # --------------------------------------------
-        # Standard AutoMR
-        # --------------------------------------------
-
+        # --------------------------------------------------
+        # Standard AutoMR execution.
+        # --------------------------------------------------
         if epsilon_min is None:
 
             df = self.run_dataset(
                 dataset,
                 max_samples=max_samples,
                 samples_per_mr=samples_per_mr,
-                show_progress=show_progress
+                show_progress=show_progress,
             )
 
             results = self.analyze(df)
 
-        # --------------------------------------------
-        # Epsilon Sensitivity Analysis
-        # --------------------------------------------
+        # --------------------------------------------------
+        # Epsilon sensitivity analysis.
+        # --------------------------------------------------
         else:
 
             if epsilon_max is None:
-                raise ValueError("epsilon_max must be provided.")
+                raise ValueError(
+                    "epsilon_max must be provided."
+                )
 
             if epsilon_count is None:
-                raise ValueError("epsilon_count must be provided.")
+                raise ValueError(
+                    "epsilon_count must be provided."
+                )
 
             if epsilon_min >= epsilon_max:
-                raise ValueError("epsilon_min must be smaller than epsilon_max.")
+                raise ValueError(
+                    "epsilon_min must be smaller than epsilon_max."
+                )
 
             if epsilon_count < 2:
-                raise ValueError("epsilon_count must be at least 2.")
+                raise ValueError(
+                    "epsilon_count must be at least 2."
+                )
 
+            # Generate epsilon values.
             epsilon_values = generate_epsilon_values(
                 epsilon_min,
                 epsilon_max,
                 epsilon_count,
             )
 
+            # Execute sensitivity analysis.
             sensitivity = EpsilonSensitivity(self)
 
             dfs = sensitivity.run(
@@ -945,33 +1159,47 @@ class AutoMR:
                 output_dir=output_dir,
             )
 
+            # Summarize epsilon results.
             summary = EpsilonSummary()
 
             summary_df, report = summary.summarize(dfs)
 
             summary.print_report(report)
 
-            df = pd.concat(dfs, ignore_index=True)
+            # Merge all epsilon runs.
+            df = pd.concat(
+                dfs,
+                ignore_index=True,
+            )
 
             results = self.analyze(df)
 
             results["epsilon_summary"] = summary_df
             results["epsilon_report"] = report
 
+        # --------------------------------------------------
+        # Save analysis outputs.
+        # --------------------------------------------------
         if save and results:
+
             self.save_results(
                 df,
                 results,
-                output_dir
+                output_dir,
             )
 
+        # --------------------------------------------------
+        # Print concise summaries.
+        # --------------------------------------------------
         if verbose:
 
             print("\n=== AutoMR Results ===")
+
             if "failure_summary" in results:
                 print(results["failure_summary"])
 
             print("\n--- Severity ---")
+
             if "severity_summary" in results:
                 print(results["severity_summary"])
 
