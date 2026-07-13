@@ -1,9 +1,26 @@
+"""
+Range testing module.
+
+This module evaluates metamorphic relations across a range of
+transformation parameter values. It supports both CPU and GPU
+execution, prediction caching, batched inference, and temporal
+metamorphic relations.
+"""
+
 import numpy as np
 import time
 import torch
+
+
 class RangeTester:
+    """
+    Executes range-based metamorphic testing for a single relation.
+    """
 
     def generate_range(self, start, end, num_samples):
+        """
+        Generate evenly spaced parameter values for range testing.
+        """
         return np.linspace(start, end, num_samples)
 
     def run_range(
@@ -31,17 +48,21 @@ class RangeTester:
         - Cache transformed predictions
         """
 
+        # Generate parameter values for the current transformation.
         values = self.generate_range(
             start,
             end,
             num_samples,
         )
 
+        # Store all test results.
         results = []
 
         # -----------------------------------------
         # Temporal MR
         # -----------------------------------------
+        # Handle temporal relations separately since they
+        # operate on pairs of sequential inputs.
         if (
             hasattr(relation, "type")
             and relation.type() == "temporal"
@@ -49,6 +70,7 @@ class RangeTester:
 
             for v in values:
 
+                # Generate a pair of temporal inputs.
                 pair = transform_fn(
                     input_data,
                     int(v),
@@ -62,16 +84,20 @@ class RangeTester:
                 if x1 is None or x2 is None:
                     continue
 
+                # Predict both temporal samples.
                 y1 = float(model.predict(x1))
                 y2 = float(model.predict(x2))
 
+                # Compute prediction difference.
                 diff = abs(y1 - y2)
 
+                # Verify the temporal relation.
                 passed = relation.check(
                     y1,
                     y2,
                 )
 
+                # Store the result.
                 results.append({
 
                     "mr": relation.__class__.__name__,
@@ -89,6 +115,8 @@ class RangeTester:
         # -----------------------------------------
         # Original prediction (reuse if available)
         # -----------------------------------------
+        # Avoid repeated inference by reusing the
+        # original prediction whenever possible.
         if original_prediction is None:
             original = float(
                 model.predict(input_data)
@@ -108,6 +136,7 @@ class RangeTester:
 
         for v in values:
 
+            # Generate transformed input.
             transformed = transform_fn(
                 input_data,
                 v,
@@ -115,6 +144,7 @@ class RangeTester:
 
             transformed_images.append(transformed)
 
+            # Create a cache key for this transformation.
             cache_keys.append(
                 (
                     relation.__class__.__name__,
@@ -122,7 +152,7 @@ class RangeTester:
                 )
             )
 
-            # Save preview images only when data is on CPU
+            # Save preview images only when data is on CPU.
             if (
                 image_saver is not None
                 and isinstance(transformed, np.ndarray)
@@ -135,11 +165,13 @@ class RangeTester:
                         transformed=transformed,
                     )
                 except Exception:
+                    # Ignore preview saving failures.
                     pass
         
         # -----------------------------------------
         # Prediction cache
         # -----------------------------------------
+        # Reuse predictions across epsilon runs.
         outputs = [None] * len(values)
 
         missing = []
@@ -149,6 +181,7 @@ class RangeTester:
 
             for i, key in enumerate(cache_keys):
 
+                # Use cached prediction when available.
                 if key in prediction_cache:
                     outputs[i] = prediction_cache[key]
                 else:
@@ -159,6 +192,7 @@ class RangeTester:
 
         else:
 
+            # Cache disabled; predict every sample.
             missing = transformed_images
             missing_idx = list(
                 range(len(values))
@@ -172,6 +206,7 @@ class RangeTester:
             # GPU backend
             if isinstance(missing[0], torch.Tensor):
 
+                # Stack tensors into a single batch.
                 batch = torch.stack(
                     missing,
                     dim=0,
@@ -186,6 +221,7 @@ class RangeTester:
                     missing
                 )
 
+            # Store predictions and update cache.
             for idx, pred in zip(
                 missing_idx,
                 preds,
@@ -200,14 +236,17 @@ class RangeTester:
                         cache_keys[idx]
                     ] = pred
 
+        # Convert predictions to a NumPy array.
         outputs = np.asarray(
             outputs,
             dtype=np.float32,
         )
 
+        # Nothing to analyze.
         if outputs.size == 0:
             return results
 
+        # Compute range statistics.
         min_output = float(outputs.min())
         max_output = float(outputs.max())
 
@@ -236,11 +275,13 @@ class RangeTester:
 
             output = float(output)
 
+            # Evaluate the metamorphic relation.
             base_pass = relation.check(
                 original,
                 output,
             )
 
+            # Retrieve the configured tolerance.
             tolerance = getattr(
                 relation,
                 "tolerance",
@@ -251,6 +292,7 @@ class RangeTester:
                 ),
             )
 
+            # Final pass/fail decision.
             passed = (
                 base_pass
                 and
@@ -258,6 +300,7 @@ class RangeTester:
                 <= tolerance
             )
 
+            # Compute prediction difference.
             if comparator:
                 diff, _ = comparator.compare(
                     original,
@@ -266,12 +309,14 @@ class RangeTester:
             else:
                 diff = output - original
 
+            # Compute percentage change.
             pct = (
                 diff
                 /
                 (abs(original) + 1e-6)
             ) * 100.0
 
+            # Record the result.
             results.append({
 
                 "mr": relation.__class__.__name__,
@@ -288,14 +333,15 @@ class RangeTester:
             })
 
         return results
-  
-#    def generate_range(self, start, end, num_samples):
-#        return np.linspace(start, end, num_samples)
 
-#    def run_range(self, model, input_data, transform_fn, relation,
-#                  start, end, num_samples, comparator):
+# Legacy implementation retained below for reference.
+# def generate_range(self, start, end, num_samples):
+#     return np.linspace(start, end, num_samples)
 
-        #  FIX: everything below must be indented
+# def run_range(self, model, input_data, transform_fn, relation,
+#               start, end, num_samples, comparator):
+
+#     FIX: everything below must be indented
 """         values = self.generate_range(start, end, num_samples)
         results = []
 
@@ -340,7 +386,7 @@ class RangeTester:
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            #  dynamic strictness
+            # dynamic strictness
             severity_weight = 1 + (abs(v) / (end + 1e-6))
 
             base_pass = relation.check(original, output)
@@ -350,7 +396,7 @@ class RangeTester:
             else:
                 passed = base_pass
 
-            #  FIX 3: HARD FAIL (ADD THIS BLOCK HERE)
+            # HARD FAIL
             if abs(output - original) > 0.01:
                 passed = False
 
@@ -372,4 +418,5 @@ class RangeTester:
                 "passed": bool(passed)
             })
 
-        return results """
+        return results
+"""

@@ -1,3 +1,10 @@
+"""
+Default relation registration.
+
+This module registers the built-in metamorphic relations provided
+by AutoMR into a relation registry instance.
+"""
+
 from automr.relations.image_relations import *
 from automr.relations.weather_relations import *
 from automr.relations.behavioral_relations import *
@@ -5,7 +12,18 @@ from automr.relations.temporal_relations import *
 
 
 def register_default_relations(registry, epsilon):
+    """
+    Register all built-in metamorphic relations.
 
+    Parameters
+    ----------
+    registry : RelationRegistry
+        Registry used to store relation instances.
+    epsilon : float
+        Tolerance value passed to supported relations.
+    """
+
+    # Image relations.
     registry.register(
         "brightness",
         BrightnessRelation(epsilon)
@@ -41,6 +59,7 @@ def register_default_relations(registry, epsilon):
         CompositeRelation(epsilon)
     )
 
+    # Weather relations.
     registry.register(
         "rain",
         RainRelation(epsilon)
@@ -86,6 +105,7 @@ def register_default_relations(registry, epsilon):
         DarkVisibilityRelation(epsilon)
     )
 
+    # Temporal relations.
     registry.register(
         "temporal",
         TemporalSmoothnessRelation(epsilon)

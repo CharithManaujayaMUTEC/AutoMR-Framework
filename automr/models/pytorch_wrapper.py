@@ -1,3 +1,12 @@
+"""
+PyTorch model wrapper.
+
+This wrapper provides a standardized interface between AutoMR and
+PyTorch models. It supports single and batch inference, optional
+preprocessing and decoding hooks, GPU acceleration, automatic mixed
+precision (AMP), and optional model compilation.
+"""
+
 import platform
 import torch
 import numpy as np
@@ -29,6 +38,22 @@ class PyTorchWrapper(BaseModel):
         decoder=None,
         enable_compile=False,   # default OFF
     ):
+        """
+        Initialize the PyTorch wrapper.
+
+        Parameters
+        ----------
+        model : torch.nn.Module
+            PyTorch model.
+        device : torch.device, optional
+            Target execution device.
+        preprocess : callable, optional
+            Input preprocessing function.
+        decoder : callable, optional
+            Output decoding function.
+        enable_compile : bool, default=False
+            Enable torch.compile when supported.
+        """
         self.model = model.eval()
 
         # -------------------------------------------------
@@ -49,6 +74,7 @@ class PyTorchWrapper(BaseModel):
             except Exception as e:
                 print(f"torch.compile disabled: {e}")
 
+        # Automatically detect the execution device if not provided.
         if device is None:
             device = next(self.model.parameters()).device
 
@@ -56,6 +82,7 @@ class PyTorchWrapper(BaseModel):
         self.preprocess = preprocess
         self.decoder = decoder
 
+        # Configure CUDA-specific performance optimizations.
         if self.device.type == "cuda":
 
             torch.backends.cudnn.benchmark = True
@@ -71,28 +98,38 @@ class PyTorchWrapper(BaseModel):
     # ==================================================
 
     def predict(self, x):
+        """
+        Generate a prediction for a single input sample.
+        """
 
+        # Apply optional preprocessing.
         if self.preprocess is not None:
             x = self.preprocess(x)
 
+        # Convert input to contiguous float32 NumPy format.
         x = np.ascontiguousarray(
             np.asarray(x, dtype=np.float32)
         )
 
+        # Convert NHWC images to NCHW format.
         if x.ndim == 3:
             x = np.transpose(x, (2, 0, 1))
             x = np.expand_dims(x, 0)
 
+        # Create a PyTorch tensor.
         tensor = torch.from_numpy(x)
 
+        # Use pinned memory for faster GPU transfer.
         if self.device.type == "cuda":
             tensor = tensor.pin_memory()
 
+        # Transfer the tensor to the execution device.
         tensor = tensor.to(
             self.device,
             non_blocking=True,
         ).contiguous()
 
+        # Execute model inference.
         with torch.inference_mode():
 
             with torch.autocast(
@@ -102,9 +139,11 @@ class PyTorchWrapper(BaseModel):
 
                 pred = self.model(tensor)
 
+        # Decode model output if a decoder is provided.
         if self.decoder is not None:
             return self.decoder(pred)
 
+        # Handle tensor outputs.
         if torch.is_tensor(pred):
 
             return float(
@@ -114,11 +153,13 @@ class PyTorchWrapper(BaseModel):
                 .item()
             )
 
+        # Return complex outputs unchanged.
         if isinstance(pred, (list, tuple, dict)):
             return pred
 
+        # Handle scalar outputs.
         return float(pred)
-    
+
     # ==================================================
     # Batch Prediction
     # ==================================================
@@ -128,12 +169,14 @@ class PyTorchWrapper(BaseModel):
         Optimized batch prediction.
         """
 
+        # Return immediately for empty batches.
         if len(xs) == 0:
             return []
 
         # -----------------------------------------
         # Optional preprocessing
         # -----------------------------------------
+        # Apply preprocessing to every sample.
         if self.preprocess is not None:
             xs = [
                 self.preprocess(x)
@@ -154,12 +197,14 @@ class PyTorchWrapper(BaseModel):
                 (0, 3, 1, 2),
             )
 
+        # Create a PyTorch tensor.
         tensor = torch.from_numpy(batch)
 
-        # Faster GPU transfer
+        # Faster GPU transfer.
         if self.device.type == "cuda":
             tensor = tensor.pin_memory()
 
+        # Move the batch to the target device.
         tensor = tensor.to(
             self.device,
             non_blocking=True,
@@ -180,6 +225,7 @@ class PyTorchWrapper(BaseModel):
         # -----------------------------------------
         # Decoder
         # -----------------------------------------
+        # Decode predictions when a custom decoder is available.
         if self.decoder is not None:
 
             outputs = []
@@ -233,6 +279,7 @@ class PyTorchWrapper(BaseModel):
         # -----------------------------------------
         # Tensor output
         # -----------------------------------------
+        # Convert tensor predictions to a Python list.
         if torch.is_tensor(preds):
 
             return (
@@ -247,6 +294,7 @@ class PyTorchWrapper(BaseModel):
         # -----------------------------------------
         # List / Tuple output
         # -----------------------------------------
+        # Convert each prediction to float.
         if isinstance(preds, (list, tuple)):
 
             return [
@@ -259,6 +307,7 @@ class PyTorchWrapper(BaseModel):
         # -----------------------------------------
         # Dictionary output
         # -----------------------------------------
+        # Extract one prediction value from each dictionary output.
         if isinstance(preds, dict):
 
             outputs = []
@@ -284,11 +333,13 @@ class PyTorchWrapper(BaseModel):
                 outputs.append(value)
 
             return outputs
-        
+
         # -----------------------------------------
         # Scalar output
         # -----------------------------------------
+        # Replicate scalar predictions across the batch.
         if np.isscalar(preds):
             return [float(preds)] * len(xs)
 
+        # Return unsupported output formats unchanged.
         return preds
