@@ -9,7 +9,7 @@ import sys
 def _get_version() -> str:
     try:
         pyproject = (
-            Path(__file__).resolve().parents[2] / "pyproject.toml"
+            Path(__file__).resolve().parents[1] / "pyproject.toml"
         )
         with open(pyproject, "rb") as f:
             data = tomllib.load(f)
@@ -143,7 +143,7 @@ def print_banner() -> None:
     lines.append(BLUE(empty))
 
     # Tagline
-    tag = "  Automated Metamorphic Testing Framework for Regression-Based AI/ML Models"
+    tag = "  Automated Metamorphic Testing Framework for Autonomous Moving Regression-Based AI/ML Models"
     lines.append(BLUE(box_row(WHITE(BOLD(tag)))))
 
     lines.append(BLUE(empty))
