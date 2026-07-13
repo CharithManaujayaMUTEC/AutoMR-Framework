@@ -11,6 +11,7 @@ from automr.analysis import Analyzer
 from automr.models import get_wrapper
 from automr.comparators import get_comparator
 from automr.input_handlers import get_handler
+from automr.banner import print_banner
 
 from automr.registry import (
     TransformationRegistry,
@@ -69,6 +70,9 @@ class AutoMR:
         # --------------------------------------------------
         # Initialize all major framework components used
         # throughout the testing workflow.
+
+        # Display startup banner once
+        print_banner()
 
         self.image_saver = TransformationSaver()
         self.logger = AutoMRLogger()
