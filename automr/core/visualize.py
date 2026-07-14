@@ -37,7 +37,7 @@ with open(CSV_FILE, newline="", encoding="utf-8") as f:
 total        = len(rows)
 pass_count   = sum(1 for r in rows if r["status"] == "PASS")
 fail_count   = total - pass_count
-unique_samples = len(set(r["sample_id"] for r in rows))
+unique_samples = len(set(r["frame_id"] for r in rows))
 
 print(f"[✓] Loaded {total:,} rows  |  {pass_count:,} PASS  |  {fail_count:,} FAIL")
 
@@ -48,7 +48,7 @@ mr_diffs    = defaultdict(list)
 
 for r in rows:
     mr   = r["mr"]
-    param = r["param"]
+    param = r["parameter"]
     mr_status[mr][r["status"]] += 1
     mr_param[mr][param]["total"] += 1
     if r["status"] == "PASS":

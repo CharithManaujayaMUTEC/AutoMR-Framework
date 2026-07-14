@@ -35,6 +35,9 @@ class DashboardConfig:
 
         self.frame_skip = 30
 
+        # Live preview intensity (0-100%)
+        self.live_intensity = 50
+
         self.save_results = True
 
         self.save_violations = True

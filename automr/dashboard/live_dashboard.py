@@ -353,6 +353,13 @@ class LiveDashboard:
             "AutoMR Live Dashboard"
         )
 
+        intensity = cv2.getTrackbarPos(
+            "Intensity %",
+            "AutoMR Live Dashboard"
+        )
+
+        self.config.live_intensity = intensity
+
         mr_index = cv2.getTrackbarPos(
             "MR Index",
             "AutoMR Live Dashboard"
@@ -406,6 +413,12 @@ class LiveDashboard:
             start +
             ((end - start) *
             range_scale / 100.0)
+        )
+
+        self.live_parameter = (
+            start +
+            (scaled_end - start) *
+            (self.config.live_intensity / 100.0)
         )
 
         self.config.mr_ranges[
@@ -499,98 +512,67 @@ class LiveDashboard:
                         .get(mr_name)
                     )
 
-                    parameters = (
-                        self.get_test_parameters(
-                            mr_name
-                        )
+                    param = self.live_parameter
+
+                    transformed = transform(
+                        frame.copy(),
+                        float(param)
                     )
 
-                    best_tile   = None
-                    best_status = None
-                    best_pred   = None
-                    worst_diff  = -1
+                    transformed_pred = float(
+                        self.model.predict(transformed)
+                    )
 
-                    for param in parameters:
+                    diff, pct = calculate_percent_change(
+                        original_pred,
+                        transformed_pred
+                    )
 
-                        transformed = transform(
-                            frame.copy(),
-                            float(param)
-                        )
+                    status = evaluate_mr(
+                        self.automr,
+                        mr_name,
+                        original_pred,
+                        transformed_pred
+                    )
 
-                        transformed_pred = float(
-                            self.model.predict(
-                                transformed
-                            )
-                        )
+                    severity = get_severity(diff)
 
-                        diff, pct = (
-                            calculate_percent_change(
-                                original_pred,
-                                transformed_pred
-                            )
-                        )
+                    self.total_tests += 1
 
-                        status = evaluate_mr(
-                            self.automr,
-                            mr_name,
-                            original_pred,
-                            transformed_pred
-                        )
+                    if status == "FAIL":
+                        self.total_failures += 1
 
-                        severity = get_severity(diff)
+                    tile = transformed.copy()
 
-                        self.total_tests += 1
+                    _style_tile(
+                        tile,
+                        mr_name,
+                        transformed_pred,
+                        is_original=False,
+                        status=status
+                    )
 
-                        if status == "FAIL":
+                    self._tile_cache[mr_name] = {
+                        "tile": tile,
+                        "status": status,
+                        "pred": transformed_pred,
+                        "ttl": self.HOLD_FRAMES,
+                        "ttl_max": self.HOLD_FRAMES,
+                    }
 
-                            self.total_failures += 1
-
-                            if self.save_violations:
-
-                                save_violation_image(
-                                    self.output_dir,
-                                    mr_name,
-                                    frame_id,
-                                    transformed
-                                )
-
-                        self.results.append({
-                            "timestamp":             datetime.now(),
-                            "frame_id":              frame_id,
-                            "mr":                    mr_name,
-                            "parameter":             float(param),
-                            "original_prediction":   original_pred,
-                            "transformed_prediction": transformed_pred,
-                            "difference":            diff,
-                            "percent_change":        pct,
-                            "status":                status,
-                            "severity":              severity,
-                            "epsilon":               self.current_epsilon,
-                        })
-
-                        if diff > worst_diff:
-                            worst_diff  = diff
-                            best_tile   = transformed
-                            best_status = status
-                            best_pred   = transformed_pred
-
-                    # ── Store result in hold cache ─────────────────────────────
-                    if best_tile is not None:
-                        styled = best_tile.copy()
-                        _style_tile(
-                            styled,
-                            mr_name,
-                            best_pred,
-                            is_original=False,
-                            status=best_status
-                        )
-                        self._tile_cache[mr_name] = {
-                            "tile":    styled,
-                            "status":  best_status,
-                            "pred":    best_pred,
-                            "ttl":     self.HOLD_FRAMES,
-                            "ttl_max": self.HOLD_FRAMES,
-                        }
+                    self.results.append({
+                        "timestamp": datetime.now(),
+                        "frame_id": frame_id,
+                        "mr": mr_name,
+                        "parameter": float(param),
+                        "original_prediction": original_pred,
+                        "transformed_prediction": transformed_pred,
+                        "difference": diff,
+                        "percent_change": pct,
+                        "status": status,
+                        "severity": severity,
+                        "epsilon": self.current_epsilon,
+                    })
 
                 except Exception as e:
 
@@ -758,6 +740,14 @@ class LiveDashboard:
             "Range %",
             "AutoMR Live Dashboard",
             50, 100,
+            lambda x: None
+        )
+
+        cv2.createTrackbar(
+            "Intensity %",
+            "AutoMR Live Dashboard",
+            50,
+            100,
             lambda x: None
         )
 
