@@ -758,12 +758,23 @@ class LiveDashboard:
 
         # Sync range + tests for current MR
         current = self.config.current_mr
+
         if current in self.config.mr_ranges:
-            start, end = self.automr.mr_ranges[current]
+
+            cfg = self.automr.mr_ranges[current]
+
+            start = cfg["start"]
+            end = cfg["end"]
+
             scaled_end = start + (end - start) * ctrl.range_pct / 100.0
-            self.live_parameter = start + (scaled_end - start) * ctrl.intensity / 100.0
+
+            self.live_parameter = (
+                start +
+                (scaled_end - start) * ctrl.intensity / 100.0
+            )
+
             self.config.mr_ranges[current]["start"] = start
-            self.config.mr_ranges[current]["end"]   = scaled_end
+            self.config.mr_ranges[current]["end"] = scaled_end
             self.config.mr_ranges[current]["tests"] = ctrl.tests
 
     def handle_keys(self, key):

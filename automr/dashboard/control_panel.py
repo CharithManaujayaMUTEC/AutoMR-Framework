@@ -21,9 +21,13 @@ class DashboardConfig:
 
         for mr in self.selected_mrs:
 
-            start, end = (
-                automr.mr_ranges[mr]
-            )
+            cfg = automr.mr_ranges[mr]
+
+            if isinstance(cfg, dict):
+                start = cfg["start"]
+                end = cfg["end"]
+            else:
+                start, end = cfg
 
             self.mr_ranges[mr] = {
                 "start": start,
