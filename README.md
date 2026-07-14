@@ -586,20 +586,29 @@ AutoMR automatically computes the following after each test run:
 
 ## Live Dashboard
 
-AutoMR includes a real-time dashboard for evaluating metamorphic relations on webcam or video streams.
+AutoMR includes a real-time interactive dashboard for evaluating metamorphic relations on live camera streams, IP cameras, RTSP streams, or video files.
+
+Unlike offline testing, the Live Dashboard evaluates **one transformation parameter per frame**, enabling smooth real-time visualization while maintaining responsive inference. A complete parameter sweep remains available through **Benchmark Mode**.
 
 **Features**
 
-- Live webcam/video inference
-- Adjustable epsilon threshold
-- Configurable metamorphic relations (per-MR enable/disable)
-- Per-MR result hold — result frames remain visible after each test cycle
-- Active MR focus — only the selected MR is tested each cycle; others served from cache
-- Interactive parameter range selection
-- Real-time failure detection with colour-coded tiles
+- Live inference from USB webcams, video files, Android IP Webcam, and RTSP streams
+- Interactive MR selection using the **MR Index** control
+- Enable or disable individual metamorphic relations during execution
+- Adjustable transformation intensity using the **Intensity** slider
+- Adjustable transformation range using the **Range** slider
+- Configurable epsilon threshold with real-time updates
+- One transformation intensity evaluated per frame for responsive live testing
+- Full benchmark mode (**R**) to execute the complete parameter sweep
+- Per-MR result caching with HOLD overlays for easier visualization
+- Active MR focus—only the selected MR is evaluated each test cycle while other MR tiles are served from cache
+- Real-time prediction display with colour-coded PASS/FAIL result tiles
+- Automatic metamorphic relation verification
 - Automatic violation image capture
-- Continuous CSV logging
-- Summary statistics panel during execution
+- Continuous CSV result logging
+- Live summary statistics panel showing tests, failures, and failure rate
+- Benchmark progress indicator during full parameter sweeps
+- Compatible with CPU and GPU inference
 
 **Launch**
 
