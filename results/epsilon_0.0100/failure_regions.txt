@@ -1,5 +1,1 @@
-BrightnessRelation: [(np.float64(2.275), np.float64(2.275)), (np.float64(3.0), np.float64(3.0))]
-CompositeRelation: [(np.float64(0.1), np.float64(0.1)), (np.float64(1.15), np.float64(1.15))]
-DarkVisibilityRelation: [(np.float64(0.775), np.float64(0.775)), (np.float64(1.1375), np.float64(1.1375)), (np.float64(1.5), np.float64(1.5))]
-RainRelation: [(np.float64(1.125), np.float64(1.125)), (np.float64(1.5), np.float64(1.5))]
-SmokeRelation: [(np.float64(1.125), np.float64(1.125)), (np.float64(1.5), np.float64(1.5))]
+BrightnessRelation: [(3.0, 3.0)]

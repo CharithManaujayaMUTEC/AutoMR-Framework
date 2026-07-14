@@ -1,4 +1,4 @@
-first_failure_epsilon: None
-recommended_epsilon: 0.07333333333333333
-stabilization_epsilon: 0.07333333333333333
-max_failure_rate: 0.0
+first_failure_epsilon: 0.01
+recommended_epsilon: 0.2
+stabilization_epsilon: 0.2
+max_failure_rate: 0.0020408163265306124
