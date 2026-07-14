@@ -121,3 +121,21 @@ list_relations()
 get_transform()
 get_relation()
 ```
+
+---
+
+# Live Dashboard
+
+AutoMR also provides an interactive Live Dashboard for real-time metamorphic testing.
+
+```python
+from automr.dashboard import run_live_dashboard
+
+run_live_dashboard(
+    automr=automr,
+    model=model,
+    video_source=0
+)
+```
+
+For complete dashboard documentation, see **Dashboard API**.

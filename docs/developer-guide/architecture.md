@@ -45,6 +45,40 @@ AutoMR is designed as a modular and extensible metamorphic testing framework for
 
 ---
 
+# Live Dashboard Architecture
+
+The interactive dashboard evaluates one transformation parameter per frame for responsive visualization. Full parameter sweeps remain available through Benchmark Mode.
+
+```
+Camera / Video
+       │
+       ▼
+CameraSource
+       │
+       ▼
+Frame Capture
+       │
+       ▼
+Current MR
+       │
+       ▼
+Current Intensity
+       │
+       ▼
+Transformation
+       │
+       ▼
+Prediction
+       │
+       ▼
+Relation Evaluation
+       │
+       ▼
+Dashboard Rendering
+```
+
+---
+
 # Core Components
 
 - AutoMR Engine

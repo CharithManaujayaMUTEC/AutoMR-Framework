@@ -6,6 +6,7 @@ automr/
 ├── analysis/
 ├── comparators/
 ├── core/
+├── dashboard/
 ├── epsilon/
 ├── evaluation/
 ├── hpc/
@@ -70,6 +71,10 @@ Transformation saving and verification.
 ## epsilon
 
 Sensitivity analysis.
+
+## dashboard
+
+Interactive real-time testing components.
 
 ---
 
