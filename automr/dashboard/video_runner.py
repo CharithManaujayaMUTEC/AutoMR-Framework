@@ -10,7 +10,6 @@ def run_live_dashboard(
     save_violations=True,
     output_dir="results/live_dashboard"
 ):
-
     dashboard = LiveDashboard(
         automr=automr,
         model=model,
@@ -19,5 +18,4 @@ def run_live_dashboard(
         save_violations=save_violations,
         output_dir=output_dir
     )
-
     dashboard.run(video_source)
