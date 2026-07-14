@@ -14,7 +14,11 @@ automr = AutoMR(
     task="regression",
     input_type="image",
     epsilon=0.05,
-    range_threshold=5.0
+    range_threshold=5.0,
+    transform_ranges={
+        "brightness": {"start": 0.2, "end": 2.5, "samples": 7},
+        "rotation": {"start": -45, "end": 45, "samples": 9},
+    }
 )
 ```
 
@@ -29,6 +33,16 @@ automr = AutoMR(
 | input_type | Input handler |
 | epsilon | Comparison tolerance |
 | range_threshold | Maximum acceptable deviation |
+| transform_ranges | Per-relation transformation range overrides |
+
+`transform_ranges` lets you customize the transformation sweep for each metamorphic relation. Use the registered relation name as the key and provide a dictionary with `start`, `end`, and optionally `samples`.
+
+```python
+transform_ranges={
+    "brightness": {"start": 0.2, "end": 2.5, "samples": 7},
+    "noise": {"start": 0, "end": 120, "samples": 5},
+}
+```
 
 ---
 

@@ -42,6 +42,9 @@ class HighPerformanceAutoMR(AutoMR):
         input_type="image",
         epsilon=0.05,
         range_threshold=5.0,
+        # Optional user-defined transformation ranges.
+        # If None, AutoMR's built-in defaults are used.
+        transform_ranges=None,
         num_workers=32,
         batch_size=512,
     ):
@@ -51,6 +54,10 @@ class HighPerformanceAutoMR(AutoMR):
             input_type=input_type,
             epsilon=epsilon,
             range_threshold=range_threshold,
+
+            # Pass optional custom transformation ranges
+            # to the parent AutoMR API.
+            transform_ranges=transform_ranges,
         )
 
         # HPC configuration

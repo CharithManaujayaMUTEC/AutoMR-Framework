@@ -63,6 +63,7 @@ class AutoMR:
         input_type="image",
         epsilon=0.05,
         range_threshold=5.0,
+        transform_ranges=None,
     ):
 
         # --------------------------------------------------
@@ -84,6 +85,9 @@ class AutoMR:
         # Store framework configuration.
         self.task = task
         self.range_threshold = range_threshold
+
+        # Optional user-defined transformation configuration
+        self.transform_ranges = transform_ranges
 
         # --------------------------------------------------
         # Registries
@@ -129,60 +133,121 @@ class AutoMR:
         # each supported metamorphic relation.
         self.mr_ranges = {
 
-            # -------------------------------------------------
-            # Image transformations
-            # -------------------------------------------------
+            "brightness": {
+                "start": 0.1,
+                "end": 3.0,
+                "samples": 5,
+            },
 
-            # Brightness scaling factor.
-            "brightness": (0.1, 3.0),
+            "rotation": {
+                "start": -60,
+                "end": 60,
+                "samples": 5,
+            },
 
-            # Rotation angle (degrees).
-            "rotation": (-60, 60),
+            "translation": {
+                "start": 0,
+                "end": 80,
+                "samples": 5,
+            },
 
-            # Horizontal translation (pixels).
-            "translation": (0, 80),
+            "noise": {
+                "start": 0,
+                "end": 150,
+                "samples": 5,
+            },
 
-            # Noise intensity.
-            "noise": (0, 150),
+            "blur": {
+                "start": 1,
+                "end": 31,
+                "samples": 5,
+            },
 
-            # Gaussian blur kernel size.
-            "blur": (1, 31),
+            "contrast": {
+                "start": 0.1,
+                "end": 4.0,
+                "samples": 5,
+            },
 
-            # Contrast scaling factor.
-            "contrast": (0.1, 4.0),
+            "composite": {
+                "start": 0.1,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # Composite transformation strength.
-            "composite": (0.1, 1.5),
+            "rain": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # -------------------------------------------------
-            # Weather transformations
-            # -------------------------------------------------
+            "snow": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            "rain": (0.0, 1.5),
-            "snow": (0.0, 1.5),
-            "fog": (0.0, 1.5),
-            "sandstorm": (0.0, 1.5),
-            "dust": (0.0, 1.5),
-            "haze": (0.0, 1.5),
-            "smoke": (0.0, 1.5),
+            "fog": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # -------------------------------------------------
-            # Behavioral transformations
-            # -------------------------------------------------
+            "sandstorm": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # Visibility reduction intensity.
-            "visibility": (0.05, 1.5),
+            "dust": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # Darkness intensity.
-            "darkness": (0.05, 1.5),
+            "haze": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # -------------------------------------------------
-            # Temporal transformations
-            # -------------------------------------------------
+            "smoke": {
+                "start": 0.0,
+                "end": 1.5,
+                "samples": 5,
+            },
 
-            # Consecutive frame offset.
-            "temporal": (0, 150),
+            "visibility": {
+                "start": 0.05,
+                "end": 1.5,
+                "samples": 5,
+            },
+
+            "darkness": {
+                "start": 0.05,
+                "end": 1.5,
+                "samples": 5,
+            },
+
+            "temporal": {
+                "start": 0,
+                "end": 150,
+                "samples": 5,
+            },
         }
+
+        # --------------------------------------------------
+        # Override defaults with user configuration
+        # --------------------------------------------------
+
+        if self.transform_ranges:
+
+            for mr_name, config in self.transform_ranges.items():
+
+                if mr_name not in self.mr_ranges:
+                    continue
+
+                self.mr_ranges[mr_name].update(config)
 
     # ==================================================
     # Plugin API
@@ -326,7 +391,13 @@ class AutoMR:
         relation = self.get_relation(mr_name)
 
         # Retrieve the parameter search range.
-        start, end = self.mr_ranges[mr_name]
+        cfg = self.mr_ranges[mr_name]
+
+        start = cfg["start"]
+        end = cfg["end"]
+
+        # Use MR-specific sample count unless caller overrides it
+        samples = cfg.get("samples", samples)
 
         # Execute parameter range testing.
         results = self.range_tester.run_range(

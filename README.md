@@ -169,7 +169,11 @@ automr = AutoMR(
     task="regression",
     input_type="image",
     epsilon=0.05,
-    range_threshold=5.0
+      range_threshold=5.0,
+      transform_ranges={
+            "brightness": {"start": 0.2, "end": 2.5, "samples": 7},
+            "rotation": {"start": -45, "end": 45, "samples": 9},
+      }
 )
 
 df, results = automr.run_full_test(
@@ -181,6 +185,8 @@ df, results = automr.run_full_test(
     epsilon_count=4
 )
 ```
+
+Use `transform_ranges` to override the default transformation range for any built-in metamorphic relation. The keys must match the registered relation names, and each entry can set `start`, `end`, and `samples`.
 
 ### High-Performance Engine (HPC)
 

@@ -28,6 +28,57 @@ INPUT_TYPE = "image"
 MAX_SAMPLES = None
 SAMPLES_PER_MR = 5
 
+# ==========================================================
+# OPTIONAL TRANSFORMATION RANGE OVERRIDES
+# ==========================================================
+# Leave as None to use AutoMR's built-in defaults.
+#
+# Each entry may override:
+#   start   -> minimum parameter value
+#   end     -> maximum parameter value
+#   samples -> number of values tested
+#
+# Only specify the transformations you want to customize.
+# All others continue using the framework defaults.
+# ==========================================================
+
+TRANSFORM_RANGES = {
+
+    "brightness": {
+        "start": 0.5,
+        "end": 2.0,
+        "samples": 8,
+    },
+
+    "rotation": {
+        "start": -25,
+        "end": 25,
+        "samples": 11,
+    },
+
+    "translation": {
+        "start": 0,
+        "end": 40,
+        "samples": 9,
+    },
+
+    "noise": {
+        "start": 0,
+        "end": 60,
+        "samples": 7,
+    },
+
+    "fog": {
+        "start": 0.0,
+        "end": 0.8,
+        "samples": 6,
+    },
+
+}
+
+# To use AutoMR defaults instead:
+# TRANSFORM_RANGES = None
+
 # MR
 EPSILON = 0.05
 RANGE_THRESHOLD = 5.0
@@ -195,6 +246,8 @@ if __name__ == "__main__":
 
         range_threshold=RANGE_THRESHOLD,
 
+        transform_ranges=TRANSFORM_RANGES,
+
     )
 
     print("\nRegistered Transformations")
@@ -213,6 +266,20 @@ if __name__ == "__main__":
     print(f"Samples Per MR     : {SAMPLES_PER_MR}")
     print(f"Epsilon            : {EPSILON}")
     print(f"Range Threshold    : {RANGE_THRESHOLD}")
+
+    if TRANSFORM_RANGES is None:
+        print("Custom Ranges      : Disabled (using AutoMR defaults)")
+    else:
+        print("Custom Ranges      : Enabled")
+
+        for name, cfg in TRANSFORM_RANGES.items():
+
+            print(
+                f"  {name:<15}"
+                f"start={cfg.get('start','default')}, "
+                f"end={cfg.get('end','default')}, "
+                f"samples={cfg.get('samples','default')}"
+            )
 
     if ENABLE_EPSILON_ANALYSIS:
 
