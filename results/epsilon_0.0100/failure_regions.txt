@@ -1,1 +1,1 @@
-BrightnessRelation: [(2.275, 2.275)]
+BrightnessRelation: [(2.275, 2.275), (3.0, 3.0)]
