@@ -44,25 +44,43 @@ class FailureAnalyzer:
 
     def severity_per_mr(self, df):
         """
-        Calculate the average violation severity for each MR.
+        Calculate the average severity of failed test cases.
 
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            DataFrame containing AutoMR execution results.
-
-        Returns
-        -------
-        pandas.Series
-            Mean severity for each MR.
+        Severity measures how serious the violations are, not how
+        frequently they occur. Only failed test cases contribute
+        to the severity score.
         """
 
-        # Create the severity column if it does not already exist.
+        # Create severity column if necessary
         if "severity" not in df.columns:
             df["severity"] = df["difference"].abs()
 
-        # Compute the average severity for each MR.
-        return df.groupby("mr")["severity"].mean().sort_values(ascending=False)
+        # Only failed test cases
+        failed = df[df["passed"] == False]
+
+        # If there are no failures, return all MRs with zero severity
+        if failed.empty:
+            return (
+                pd.Series(
+                    0.0,
+                    index=sorted(df["mr"].unique()),
+                    name="severity",
+                )
+            )
+
+        # Average severity of failed cases
+        severity = (
+            failed.groupby("mr")["severity"]
+            .mean()
+        )
+
+        # Include MRs with no failures as zero
+        severity = severity.reindex(
+            sorted(df["mr"].unique()),
+            fill_value=0.0,
+        )
+
+        return severity.sort_values(ascending=False)
 
     def worst_cases(self, df, top_k=10):
         """
