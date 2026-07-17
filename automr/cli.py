@@ -24,7 +24,7 @@ r"""
      ██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║ ╚═╝ ██║██║  ██║
      ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝
 
-        Automated Metamorphic Testing Framework
+Automated Metamorphic Testing Framework Autonomous Regression-based AI/ML Models
 ================================================================================
 """)
 
