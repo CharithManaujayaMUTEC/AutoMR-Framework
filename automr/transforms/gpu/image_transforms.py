@@ -607,3 +607,218 @@ def synchronize():
 def empty_cache():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+
+# ==========================================================
+# Global Brightness
+# ==========================================================
+
+def global_brightness(
+    image,
+    factor=1.2,
+    seed=None,
+):
+    """
+    GPU global brightness.
+    """
+
+    img = _to_tensor(image)
+
+    bright = img * float(factor)
+
+    return _to_numpy(
+        bright.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Darkness
+# ==========================================================
+
+def global_darkness(
+    image,
+    factor=0.75,
+    seed=None,
+):
+    """
+    GPU global darkness.
+    """
+
+    img = _to_tensor(image)
+
+    dark = img * float(factor)
+
+    return _to_numpy(
+        dark.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Contrast
+# ==========================================================
+
+def global_contrast(
+    image,
+    factor=1.2,
+    seed=None,
+):
+    """
+    GPU global contrast.
+    """
+
+    img = _to_tensor(image)
+
+    gray = kornia.color.rgb_to_grayscale(
+        img / 255.0
+    )
+
+    mean = gray.mean(
+        dim=(2, 3),
+        keepdim=True,
+    ) * 255.0
+
+    mean = mean.repeat(
+        1,
+        3,
+        1,
+        1,
+    )
+
+    contrast = mean + float(factor) * (
+        img - mean
+    )
+
+    return _to_numpy(
+        contrast.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Blur
+# ==========================================================
+
+def global_blur(
+    image,
+    k=11,
+    seed=None,
+):
+    """
+    GPU global blur.
+    """
+
+    img = _to_tensor(image)
+
+    k = int(k)
+
+    if k < 3:
+        k = 3
+
+    if k % 2 == 0:
+        k += 1
+
+    blurred = KF.gaussian_blur2d(
+        img,
+        (k, k),
+        (2.0, 2.0),
+    )
+
+    return _to_numpy(
+        blurred.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Noise
+# ==========================================================
+
+def global_noise(
+    image,
+    level=15,
+    seed=None,
+):
+    """
+    GPU global Gaussian noise.
+    """
+
+    img = _to_tensor(image)
+
+    noise = (
+        torch.randn_like(img)
+        * float(level)
+    )
+
+    noisy = img + noise
+
+    return _to_numpy(
+        noisy.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Rotation
+# ==========================================================
+
+def global_rotation(
+    image,
+    angle=5,
+    seed=None,
+):
+    """
+    GPU global rotation.
+    """
+
+    img = _to_tensor(image)
+
+    theta = torch.tensor(
+        [float(angle)],
+        device=DEVICE,
+    )
+
+    rotated = KGT.rotate(
+        img,
+        theta,
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
+    )
+
+    return _to_numpy(
+        rotated.clamp(0, 255)
+    )
+
+
+# ==========================================================
+# Global Translation
+# ==========================================================
+
+def global_translation(
+    image,
+    pixels=10,
+    seed=None,
+):
+    """
+    GPU global translation.
+    """
+
+    img = _to_tensor(image)
+
+    transform = torch.tensor(
+        [[[1.0, 0.0, float(pixels)],
+          [0.0, 1.0, 0.0]]],
+        device=DEVICE,
+    )
+
+    translated = KGT.warp_affine(
+        img,
+        transform,
+        dsize=(
+            img.shape[2],
+            img.shape[3],
+        ),
+        mode="bilinear",
+        padding_mode="reflection",
+        align_corners=False,
+    )
+
+    return _to_numpy(
+        translated.clamp(0, 255)
+    )

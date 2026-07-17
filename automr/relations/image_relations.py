@@ -138,3 +138,79 @@ class FlipRelation:
 
     def check(self, y1, y2):
         return abs(y2 + y1) / (abs(y1) + 1e-6) < self.epsilon
+    
+# ==========================================================
+# Global Brightness
+# ==========================================================
+
+class GlobalBrightnessRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.03):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under global brightness change."
+        )
+
+# ==========================================================
+# Global Contrast
+# ==========================================================
+
+class GlobalContrastRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.03):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under global contrast adjustment."
+        )
+
+
+# ==========================================================
+# Global Blur
+# ==========================================================
+
+class GlobalBlurRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.04):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under global blur."
+        )
+
+
+# ==========================================================
+# Global Noise
+# ==========================================================
+
+class GlobalNoiseRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.04):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under global sensor noise."
+        )
+
+
+# ==========================================================
+# Global Rotation
+# ==========================================================
+
+class GlobalRotationRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.05):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under small global rotation."
+        )
+
+
+# ==========================================================
+# Global Translation
+# ==========================================================
+
+class GlobalTranslationRelation(InvarianceRelation):
+
+    def __init__(self, epsilon=0.05):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Output should remain approximately invariant under small global translation."
+        )

@@ -4,6 +4,8 @@
 
 Transformations generate follow-up inputs for metamorphic testing.
 
+AutoMR ships with 23 built-in transformations spanning image, global image, weather, behavioral, composite, and temporal categories.
+
 ---
 
 # Required Interface
@@ -37,8 +39,10 @@ automr.register_transform(
 # Built-in Categories
 
 - Image
+- Global Image
 - Weather
-- Behaviour
+- Behavioral
+- Composite
 - Temporal
 
 ---

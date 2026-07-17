@@ -1,7 +1,7 @@
 mr,total,passed,failed,failure_rate
+BrightnessRelation,50,47,3,0.06
 RainRelation,50,49,1,0.02
 BlurRelation,50,50,0,0.0
-BrightnessRelation,50,50,0,0.0
 CompositeRelation,50,50,0,0.0
 ContrastRelation,50,50,0,0.0
 DarkVisibilityRelation,100,100,0,0.0

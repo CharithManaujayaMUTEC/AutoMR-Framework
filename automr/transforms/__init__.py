@@ -25,6 +25,12 @@ from .image_transforms import (
     add_noise,
     rotate_small,
     shift_right,
+    global_brightness,
+    global_contrast,
+    global_blur,
+    global_noise,
+    global_rotation,
+    global_translation,
 )
 
 # ==========================================================
@@ -88,6 +94,12 @@ __all__ = [
     "add_noise",
     "rotate_small",
     "shift_right",
+    "global_brightness",
+    "global_contrast",
+    "global_blur",
+    "global_noise",
+    "global_rotation",
+    "global_translation",
     "add_rain",
     "add_snow",
     "add_fog",

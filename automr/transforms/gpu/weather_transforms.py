@@ -117,6 +117,62 @@ def _color_cast(
     )
 
 
+# ----------------------------------------------------------
+# Ground-hugging bias
+# Stronger weight toward bottom of image (y=1 → ground)
+# ----------------------------------------------------------
+
+def _ground_bias(h, w, power=0.6):
+    """
+    Returns (1, 1, h, w) tensor.
+    Value 1.0 at bottom row, 0.0 at top row.
+    """
+
+    y = torch.linspace(
+        0.0,
+        1.0,
+        h,
+        device=DEVICE,
+    ).view(1, 1, h, 1)
+
+    return y.pow(power).expand(1, 1, h, w)
+
+
+# ----------------------------------------------------------
+# Upward-drift bias
+# Stronger weight toward bottom, fading toward top
+# (smoke/steam originates near ground and rises)
+# ----------------------------------------------------------
+
+def _rise_bias(h, w, power=0.5):
+    """
+    Returns (1, 1, h, w) tensor.
+    Value 1.0 at bottom row, tapering toward top.
+    """
+
+    y = torch.linspace(
+        1.0,
+        0.0,
+        h,
+        device=DEVICE,
+    ).view(1, 1, h, 1)
+
+    return y.pow(power).expand(1, 1, h, w)
+
+
+# ----------------------------------------------------------
+# Horizon-concentration bias
+# Far pixels (top) get higher weight — used for fog / haze
+# ----------------------------------------------------------
+
+def _horizon_bias(depth, power=0.6):
+    """
+    Returns (h, w) tensor.  Peaks at top (far/horizon).
+    """
+
+    return depth.pow(power)
+
+
 # ==========================================================
 # Lens Droplets
 # ==========================================================
@@ -166,47 +222,99 @@ def add_rain_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic dashcam rain.
+
+    Upgrades
+    --------
+    • Perspective streak layer  (near = longer/brighter, far = dim/short)
+    • Directional motion blur aligned to wind angle
+    • Wet-road darkening on lower third
+    • Cool blue-grey atmospheric tint
+    • Lens droplets + refraction
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    depth = _depth_map(h, w)
+    depth = _depth_map(h, w)      # (h, w)  1=far/top  0=near/bottom
 
-    out = images * (
-        1.0 - 0.15 * intensity
+    # near_factor: 0 at top (far), 1 at bottom (near)
+    near_f = (
+        1.0 - depth
+    ).unsqueeze(0).unsqueeze(0)   # (1,1,h,w)
+
+    # --------------------------------------------------
+    # Atmospheric darkening + cool-blue tint
+    # --------------------------------------------------
+
+    out = images * (1.0 - 0.18 * intensity)
+
+    # Lift blue channel (BGR: channel index 0)
+    out[:, 0] = (out[:, 0] + 6.0 * intensity).clamp(0, 255)
+
+    # --------------------------------------------------
+    # Wet-road darkening  —  lower 32 % of frame
+    # --------------------------------------------------
+
+    road_y = int(h * 0.68)
+
+    road = out[:, :, road_y:, :]
+
+    # Darken + desaturate
+    gray_road = road.mean(dim=1, keepdim=True)
+
+    road = (
+        road * (1.0 - 0.35 * intensity)
+        + gray_road * 0.15 * intensity
     )
+
+    # Subtle wet sheen
+    sheen = (road * 1.12).clamp(0, 255)
+
+    road = road * 0.80 + sheen * 0.20
+
+    out[:, :, road_y:, :] = road
+
+    # --------------------------------------------------
+    # Perspective streak layer
+    # --------------------------------------------------
 
     rain = torch.rand_like(out)
 
+    # Scale streaks: near rows → high value, far rows → low value
+    rain = rain * (0.40 + 0.60 * near_f)
+
+    # Directional motion blur simulating angled rainfall
     rain = KF.motion_blur(
         rain,
-        kernel_size=21,
-        angle=75.0,
-        direction=0.0,
+        kernel_size=max(3, int(17 + 18 * intensity)) | 1,
+        angle=80.0,        # close to vertical
+        direction=0.3,     # slight diagonal for wind effect
     )
 
-    rain = rain * (
-        255.0 * intensity
-    )
+    rain = rain * (255.0 * 0.35 * intensity)
 
-    out = out + rain * 0.35
+    # Perspective brightness: near streaks visibly brighter
+    rain = rain * (0.55 + 0.45 * near_f)
 
-    out = _apply_lens_droplets(
-        out,
-        intensity,
-    )
+    out = (out + rain).clamp(0, 255)
 
-    out = KF.gaussian_blur2d(
-        out,
-        (3, 3),
-        (1.2, 1.2),
-    )
+    # --------------------------------------------------
+    # Lens droplets
+    # --------------------------------------------------
 
-    return out.clamp(
-        0,
-        255,
-    )
+    out = _apply_lens_droplets(out, intensity)
+
+    # --------------------------------------------------
+    # Final soft pass
+    # --------------------------------------------------
+
+    out = KF.gaussian_blur2d(out, (3, 3), (1.2, 1.2))
+
+    return out.clamp(0, 255)
+
 
 # ==========================================================
 # Snow (Batch)
@@ -216,51 +324,98 @@ def add_snow_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Physically-inspired snowfall.
+
+    Upgrades
+    --------
+    • Three depth layers with per-layer bokeh blur
+    • Near flakes sharp, far flakes soft (out-of-focus)
+    • Perspective radius scaling
+    • Ground-accumulation brightening on bottom band
+    • Atmospheric scattering + contrast reduction
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    depth = _depth_map(h, w)
+    depth = _depth_map(h, w)       # (h, w)
 
-    density = _density_field(
-        images,
-        scale=120,
-    )
+    density = _density_field(images, scale=120)   # (n,1,h,w)
 
-    snow = torch.rand_like(images)
+    near_f = (
+        1.0 - depth
+    ).unsqueeze(0).unsqueeze(0)    # (1,1,h,w)
 
-    snow = (snow > (0.998 - intensity * 0.004)).float()
+    # --------------------------------------------------
+    # Three layered snow passes
+    # --------------------------------------------------
 
-    snow = KF.gaussian_blur2d(
-        snow,
-        (5, 5),
-        (1.5, 1.5),
-    )
+    snow = torch.zeros_like(images)
 
-    airlight = torch.full_like(
-        images,
-        245.0,
-    )
+    for layer in range(3):
+
+        threshold = 0.998 - intensity * (0.004 + layer * 0.003)
+
+        flakes = (
+            torch.rand(n, 1, h, w, device=DEVICE) > threshold
+        ).float()
+
+        # Perspective brightness + size proxy via blur sigma
+        flakes = flakes * (
+            210.0 + 45.0 * near_f
+        )
+
+        # Bokeh by layer: far=heavy blur, mid=light, near=sharp
+        if layer == 0:
+            # far — large soft circles
+            flakes = KF.gaussian_blur2d(flakes, (9, 9), (3.5, 3.5))
+        elif layer == 1:
+            # mid
+            flakes = KF.gaussian_blur2d(flakes, (5, 5), (1.8, 1.8))
+        else:
+            # near — tiny sharp Gaussian (just anti-alias)
+            flakes = KF.gaussian_blur2d(flakes, (3, 3), (0.8, 0.8))
+
+        snow = snow + flakes.expand_as(images)
+
+    # --------------------------------------------------
+    # Sparkle on near pixels  (channel-0 highlight lift)
+    # --------------------------------------------------
+
+    sparkle_mask = (near_f > 0.55).float()
+
+    snow[:, 0] = (snow[:, 0] + 30.0 * sparkle_mask.squeeze(1)).clamp(0, 255)
+
+    # --------------------------------------------------
+    # Ground accumulation  —  brighten bottom band
+    # --------------------------------------------------
+
+    accum_y = int(h * 0.80)
+
+    snow[:, :, accum_y:, :] = (
+        snow[:, :, accum_y:, :] + 28.0 * intensity
+    ).clamp(0, 255)
+
+    # --------------------------------------------------
+    # Atmospheric scattering
+    # --------------------------------------------------
+
+    airlight = torch.full_like(images, 245.0)
 
     scene = _atmospheric_scatter(
         images,
         airlight,
-        beta=0.22 * intensity,
+        beta=0.25 * intensity,
         depth=depth,
     )
 
-    scene = _reduce_contrast(
-        scene,
-        0.10 * intensity,
-    )
+    scene = _reduce_contrast(scene, 0.12 * intensity)
 
-    out = scene + snow * 255.0 * 0.65
+    out = (scene + snow * 0.70).clamp(0, 255)
 
-    return out.clamp(
-        0,
-        255,
-    )
+    return out.clamp(0, 255)
 
 
 # ==========================================================
@@ -271,43 +426,40 @@ def add_fog_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic atmospheric fog.
+
+    Upgrades
+    --------
+    • Horizon-concentrated density  (fog pools at distance)
+    • Distance-progressive edge blur  (detail loss at range)
+    • Cool-grey tint on distant regions
+    • Desaturation proportional to depth
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    depth = _depth_map(h, w)
+    depth = _depth_map(h, w)      # (h,w)
 
-    noise = torch.rand(
-        (n, 1, h, w),
-        device=DEVICE,
-    )
+    # Horizon bias: fog thickest near the top/horizon
+    h_bias = _horizon_bias(depth, power=0.6).unsqueeze(0).unsqueeze(0)  # (1,1,h,w)
 
-    noise = KF.gaussian_blur2d(
-        noise,
-        (101, 101),
-        (32.0, 32.0),
-    )
+    noise = torch.rand(n, 1, h, w, device=DEVICE)
 
-    noise = noise - noise.amin(
-        dim=(-2, -1),
-        keepdim=True,
-    )
+    noise = KF.gaussian_blur2d(noise, (101, 101), (32.0, 32.0))
 
-    noise = noise / (
-        noise.amax(
-            dim=(-2, -1),
-            keepdim=True,
-        )
-        + 1e-6
-    )
+    noise = noise - noise.amin(dim=(-2, -1), keepdim=True)
+    noise = noise / (noise.amax(dim=(-2, -1), keepdim=True) + 1e-6)
 
+    # Combine horizon bias with spatial noise
     density = (
-        0.5
-        + 0.5 * noise
-    )
+        0.55 * h_bias
+        + 0.45 * noise
+    ).clamp(0, 1)
 
-    beta = 1.4 * intensity
+    beta = 1.5 * intensity
 
     transmission = torch.exp(
         -beta
@@ -315,45 +467,48 @@ def add_fog_batch(
         * density
     )
 
-    atmosphere = torch.full_like(
-        images,
-        255.0,
-    )
+    atmosphere = torch.full_like(images, 255.0)
 
     out = (
         images * transmission
         + atmosphere * (1.0 - transmission)
     )
 
-    gray = out.mean(
-        dim=1,
-        keepdim=True,
-    )
+    # --------------------------------------------------
+    # Distance-progressive edge blur  (detail loss at range)
+    # --------------------------------------------------
 
-    out = (
-        out * (1.0 - 0.20 * intensity)
-        + gray * (0.20 * intensity)
-    )
+    far_mask = depth.unsqueeze(0).unsqueeze(0)   # strong at top
 
-    blur = KF.gaussian_blur2d(
+    blur_heavy = KF.gaussian_blur2d(
         out,
-        (17, 17),
-        (8.0, 8.0),
+        (21, 21),
+        (7.0 + 9.0 * intensity, 7.0 + 9.0 * intensity),
     )
-
-    far = (
-        1.0 - depth
-    ).unsqueeze(0).unsqueeze(0)
 
     out = (
-        out * (1.0 - far * 0.25 * intensity)
-        + blur * (far * 0.25 * intensity)
+        out        * (1.0 - far_mask * 0.55 * intensity)
+        + blur_heavy * (far_mask      * 0.55 * intensity)
     )
 
-    return out.clamp(
-        0,
-        255,
+    # --------------------------------------------------
+    # Desaturation + cool-grey tint
+    # --------------------------------------------------
+
+    gray = out.mean(dim=1, keepdim=True)
+
+    out = (
+        out  * (1.0 - 0.22 * intensity)
+        + gray *  0.22 * intensity
     )
+
+    # Cool tint: lift blue (channel 0) in far regions
+    out[:, 0] = (
+        out[:, 0] + 8.0 * intensity * depth.unsqueeze(0)
+    ).clamp(0, 255)
+
+    return out.clamp(0, 255)
+
 
 # ==========================================================
 # Haze (Batch)
@@ -363,88 +518,95 @@ def add_haze_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic atmospheric haze.
+
+    Upgrades
+    --------
+    • Chromatic scattering  (blue scattered more than red)
+    • Depth-weighted density  (haze thickens at distance)
+    • Distance-progressive blur
+    • Slight desaturation inside dense haze
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    noise = torch.rand(
-        (n, 1, h, w),
-        device=DEVICE,
-    )
+    depth = _depth_map(h, w)      # (h,w)
 
-    noise = KF.gaussian_blur2d(
-        noise,
-        (101, 101),
-        (40.0, 40.0),
-    )
+    depth_bias = depth.pow(0.5).unsqueeze(0).unsqueeze(0)   # (1,1,h,w)
 
-    noise = noise - noise.amin(
-        dim=(-2, -1),
-        keepdim=True,
-    )
+    noise = torch.rand(n, 1, h, w, device=DEVICE)
 
-    noise = noise / (
-        noise.amax(
-            dim=(-2, -1),
-            keepdim=True,
-        )
-        + 1e-6
-    )
+    noise = KF.gaussian_blur2d(noise, (101, 101), (40.0, 40.0))
 
+    noise = noise - noise.amin(dim=(-2, -1), keepdim=True)
+    noise = noise / (noise.amax(dim=(-2, -1), keepdim=True) + 1e-6)
+
+    # Blend depth-bias with spatial noise
     density = (
-        0.55
-        + 0.45 * noise
-    ) * intensity
+        0.50 * depth_bias
+        + 0.50 * noise
+    ).clamp(0, 1) * intensity
 
-    atmosphere = torch.tensor(
-        [235.0, 238.0, 245.0],
-        device=DEVICE,
-    ).view(1, 3, 1, 1)
+    # --------------------------------------------------
+    # Chromatic scattering  (Rayleigh: blue > green > red)
+    # --------------------------------------------------
 
-    out = (
-        images * (1.0 - density * 0.45)
-        + atmosphere * (density * 0.45)
-    )
+    atm_b = torch.full((n, 1, h, w), 245.0, device=DEVICE)
+    atm_g = torch.full((n, 1, h, w), 238.0, device=DEVICE)
+    atm_r = torch.full((n, 1, h, w), 228.0, device=DEVICE)
 
-    mean = KF.gaussian_blur2d(
-        out,
-        (51, 51),
-        (25.0, 25.0),
-    )
+    atmosphere = torch.cat([atm_b, atm_g, atm_r], dim=1)   # (n,3,h,w)
 
-    contrast = (
-        1.0
-        - 0.30 * intensity
-    )
+    alpha_b = (density * 0.52).clamp(0, 1)
+    alpha_g = (density * 0.44).clamp(0, 1)
+    alpha_r = (density * 0.36).clamp(0, 1)
+
+    alpha_bgr = torch.cat([alpha_b, alpha_g, alpha_r], dim=1)   # (n,3,h,w)
+
+    out = images * (1.0 - alpha_bgr) + atmosphere * alpha_bgr
+
+    # --------------------------------------------------
+    # Contrast reduction
+    # --------------------------------------------------
+
+    mean = KF.gaussian_blur2d(out, (51, 51), (25.0, 25.0))
+
+    contrast = 1.0 - 0.32 * intensity
 
     out = mean + contrast * (out - mean)
 
-    blur = KF.gaussian_blur2d(
+    # --------------------------------------------------
+    # Distance-progressive blur
+    # --------------------------------------------------
+
+    far_mask = depth.unsqueeze(0).unsqueeze(0)
+
+    blur_far = KF.gaussian_blur2d(
         out,
-        (9, 9),
-        (3.0, 3.0),
+        (15, 15),
+        (4.0 + 6.0 * intensity, 4.0 + 6.0 * intensity),
     )
 
     out = (
-        out * 0.8
-        + blur * 0.2
+        out      * (1.0 - far_mask * 0.50 * intensity)
+        + blur_far * (far_mask      * 0.50 * intensity)
     )
 
-    gray = out.mean(
-        dim=1,
-        keepdim=True,
-    )
+    # --------------------------------------------------
+    # Slight desaturation
+    # --------------------------------------------------
+
+    gray = out.mean(dim=1, keepdim=True)
 
     out = (
-        out * (1.0 - 0.12 * intensity)
-        + gray * (0.12 * intensity)
+        out  * (1.0 - 0.14 * intensity)
+        + gray *  0.14 * intensity
     )
 
-    return out.clamp(
-        0,
-        255,
-    )
+    return out.clamp(0, 255)
 
 
 # ==========================================================
@@ -455,59 +617,51 @@ def add_dust_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic airborne dust.
+
+    Upgrades
+    --------
+    • Ground-hugging density bias  (dust heaviest near ground)
+    • Depth-scaled particle size  (near = larger particles)
+    • Density-weighted sharpness reduction
+    • Warm brown tint
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    n1 = torch.rand(
-        (n, 1, h, w),
-        device=DEVICE,
-    )
+    depth = _depth_map(h, w)
 
+    near_f = (1.0 - depth).unsqueeze(0).unsqueeze(0)   # (1,1,h,w)
+
+    # Ground-hugging bias: dust settles near the ground (bottom of frame)
+    g_bias = _ground_bias(h, w, power=0.6)               # (1,1,h,w)
+
+    n1 = torch.rand(n, 1, h, w, device=DEVICE)
     n2 = torch.rand_like(n1)
     n3 = torch.rand_like(n1)
 
-    n1 = KF.gaussian_blur2d(
-        n1,
-        (101, 101),
-        (35.0, 35.0),
-    )
-
-    n2 = KF.gaussian_blur2d(
-        n2,
-        (51, 51),
-        (15.0, 15.0),
-    )
-
-    n3 = KF.gaussian_blur2d(
-        n3,
-        (21, 21),
-        (6.0, 6.0),
-    )
+    n1 = KF.gaussian_blur2d(n1, (101, 101), (35.0, 35.0))
+    n2 = KF.gaussian_blur2d(n2, (51,  51),  (15.0, 15.0))
+    n3 = KF.gaussian_blur2d(n3, (21,  21),  (6.0,  6.0))
 
     density = (
-        0.55 * n1
+        0.50 * n1
         + 0.30 * n2
-        + 0.15 * n3
+        + 0.20 * n3
     )
 
-    density = density - density.amin(
-        dim=(-2, -1),
-        keepdim=True,
-    )
+    density = density - density.amin(dim=(-2, -1), keepdim=True)
+    density = density / (density.amax(dim=(-2, -1), keepdim=True) + 1e-6)
+    density = density.pow(1.8)
 
-    density = density / (
-        density.amax(
-            dim=(-2, -1),
-            keepdim=True,
-        )
-        + 1e-6
-    )
-
+    # Combine noise density with ground-hugging bias
     density = (
-        density ** 1.8
-    ) * intensity
+        0.60 * density
+        + 0.40 * g_bias
+    ).clamp(0, 1) * intensity
 
     dust_color = torch.tensor(
         [175.0, 170.0, 145.0],
@@ -515,51 +669,61 @@ def add_dust_batch(
     ).view(1, 3, 1, 1)
 
     out = (
-        images * (1.0 - density * 0.45)
-        + dust_color * (density * 0.45)
+        images     * (1.0 - density * 0.50)
+        + dust_color * (density      * 0.50)
     )
 
-    particles = torch.rand_like(out)
+    # --------------------------------------------------
+    # Floating particles  (depth-scaled size via blur)
+    # --------------------------------------------------
 
     particles = (
-        particles > 0.998
+        torch.rand(n, 1, h, w, device=DEVICE) > 0.9975
     ).float() * 255.0
 
-    particles = KF.gaussian_blur2d(
-        particles,
-        (7, 7),
-        (2.0, 2.0),
-    )
+    # Near particles get a wider blur radius (appear larger)
+    particles_sharp = KF.gaussian_blur2d(particles, (5,  5), (1.5, 1.5))
+    particles_soft  = KF.gaussian_blur2d(particles, (11, 11), (4.0, 4.0))
 
-    out = out + particles * (
-        0.45 * intensity
-    )
+    particles_out = (
+        particles_sharp * near_f
+        + particles_soft  * (1.0 - near_f)
+    ).expand_as(images)
+
+    # Warm colour tint on particles (B < G < R shift)
+    p_tinted = torch.cat([
+        particles_out[:, 0:1] * 0.85,   # blue
+        particles_out[:, 1:2] * 0.92,   # green
+        particles_out[:, 2:3] * 1.00,   # red — warmest
+    ], dim=1)
+
+    out = out + p_tinted * (0.50 * intensity)
+
+    # --------------------------------------------------
+    # Density-weighted sharpness reduction
+    # --------------------------------------------------
 
     blur = KF.gaussian_blur2d(
         out,
-        (11, 11),
-        (4.0, 4.0),
+        (13, 13),
+        (3.0 + 5.0 * intensity, 3.0 + 5.0 * intensity),
     )
 
     out = (
-        out * 0.85
-        + blur * 0.15
+        out  * (1.0 - density * 0.45)
+        + blur * (density      * 0.45)
     )
 
-    mean = KF.gaussian_blur2d(
-        out,
-        (51, 51),
-        (25.0, 25.0),
-    )
+    # --------------------------------------------------
+    # Slight contrast reduction
+    # --------------------------------------------------
 
-    out = mean + (
-        1.0 - 0.25 * intensity
-    ) * (out - mean)
+    mean = KF.gaussian_blur2d(out, (51, 51), (25.0, 25.0))
 
-    return out.clamp(
-        0,
-        255,
-    )
+    out = mean + (1.0 - 0.28 * intensity) * (out - mean)
+
+    return out.clamp(0, 255)
+
 
 # ==========================================================
 # Sandstorm (Batch)
@@ -569,109 +733,118 @@ def add_sandstorm_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic sandstorm.
+
+    Upgrades
+    --------
+    • Ground-level density bias  (sand heaviest at bottom)
+    • Perspective streak scaling  (near = longer/brighter)
+    • Directional motion blur along true wind angle
+    • Warm orange-yellow atmospheric tint
+    • Density-weighted visibility reduction
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    n1 = torch.rand(
-        (n, 1, h, w),
-        device=DEVICE,
-    )
+    depth = _depth_map(h, w)
 
+    near_f = (1.0 - depth).unsqueeze(0).unsqueeze(0)   # (1,1,h,w)
+
+    # Ground-level bias: sand rolls along the ground
+    g_bias = _ground_bias(h, w, power=0.5)              # (1,1,h,w)
+
+    n1 = torch.rand(n, 1, h, w, device=DEVICE)
     n2 = torch.rand_like(n1)
     n3 = torch.rand_like(n1)
 
-    n1 = KF.gaussian_blur2d(
-        n1,
-        (101, 101),
-        (40.0, 40.0),
-    )
-
-    n2 = KF.gaussian_blur2d(
-        n2,
-        (51, 51),
-        (15.0, 15.0),
-    )
-
-    n3 = KF.gaussian_blur2d(
-        n3,
-        (21, 21),
-        (6.0, 6.0),
-    )
+    n1 = KF.gaussian_blur2d(n1, (101, 101), (40.0, 40.0))
+    n2 = KF.gaussian_blur2d(n2, (51,  51),  (15.0, 15.0))
+    n3 = KF.gaussian_blur2d(n3, (21,  21),  (6.0,  6.0))
 
     density = (
-        0.55 * n1 +
-        0.30 * n2 +
-        0.15 * n3
+        0.55 * n1
+        + 0.30 * n2
+        + 0.15 * n3
     )
 
-    density = density - density.amin(
-        dim=(-2, -1),
-        keepdim=True,
-    )
+    density = density - density.amin(dim=(-2, -1), keepdim=True)
+    density = density / (density.amax(dim=(-2, -1), keepdim=True) + 1e-6)
+    density = density.pow(1.7)
 
-    density = density / (
-        density.amax(
-            dim=(-2, -1),
-            keepdim=True,
-        ) + 1e-6
-    )
-
+    # Combine noise with ground-hugging bias
     density = (
-        density ** 1.7
-    ) * intensity
+        0.55 * density
+        + 0.45 * g_bias
+    ).clamp(0, 1) * intensity
 
     sand_color = torch.tensor(
-        [175.0, 165.0, 125.0],
+        [45.0, 80.0, 162.0],
         device=DEVICE,
     ).view(1, 3, 1, 1)
 
     out = (
-        images * (1.0 - density * 0.55)
-        + sand_color * (density * 0.55)
+        images     * (1.0 - density * 0.60)
+        + sand_color * (density      * 0.60)
     )
+
+    # --------------------------------------------------
+    # Perspective streak layer
+    # Near rows → long/bright streaks; far rows → dim/short
+    # --------------------------------------------------
 
     streaks = torch.rand_like(out)
 
+    # Scale streak intensity by proximity
+    streaks = streaks * (0.35 + 0.65 * near_f)
+
+    # Directional blur at wind angle (slight diagonal)
+    wind_angle = 20.0
+
     streaks = KF.motion_blur(
         streaks,
-        kernel_size=25,
-        angle=20.0,
-        direction=0.0,
+        kernel_size=max(3, int(21 + 16 * intensity)) | 1,
+        angle=wind_angle,
+        direction=0.4,
     )
 
-    streaks *= (
-        255.0 * intensity
-    )
+    streaks = streaks * (255.0 * intensity)
 
-    out += streaks * 0.45
+    # Near sand is warmer (redder) than far
+    streaks_tinted = torch.cat([
+        streaks[:, 0:1] * 0.28,   # blue  — heavily suppressed
+        streaks[:, 1:2] * 0.52,   # green — mid
+        streaks[:, 2:3] * 1.00,   # red   — dominant
+    ], dim=1)
+
+    out = out + streaks_tinted * 0.50
+
+    # --------------------------------------------------
+    # Density-weighted visibility reduction
+    # --------------------------------------------------
 
     blur = KF.gaussian_blur2d(
         out,
-        (11, 11),
-        (5.0, 5.0),
+        (13, 13),
+        (4.0 + 6.0 * intensity, 4.0 + 6.0 * intensity),
     )
 
     out = (
-        out * 0.82
-        + blur * 0.18
+        out  * (1.0 - density * 0.40)
+        + blur * (density      * 0.40)
     )
 
-    mean = KF.gaussian_blur2d(
-        out,
-        (61, 61),
-        (30.0, 30.0),
-    )
+    # --------------------------------------------------
+    # Contrast reduction
+    # --------------------------------------------------
 
-    out = mean + (
-        1.0 - 0.30 * intensity
-    ) * (out - mean)
+    mean = KF.gaussian_blur2d(out, (61, 61), (30.0, 30.0))
 
-    return out.clamp(
-        0,
-        255,
-    )
+    out = mean + (1.0 - 0.32 * intensity) * (out - mean)
+
+    return out.clamp(0, 255)
 
 
 # ==========================================================
@@ -682,100 +855,103 @@ def add_smoke_batch(
     images,
     intensity=0.5,
 ):
+    """
+    Realistic turbulent smoke.
+
+    Upgrades
+    --------
+    • Upward-drift density bias  (smoke rises from below)
+    • Near-depth density bias  (closer smoke denser)
+    • Multi-scale turbulence with depth blending
+    • Cool blue-grey tint
+    • Density-weighted local contrast reduction
+    • Density-weighted desaturation
+    """
 
     images = images.float().to(DEVICE)
 
     n, c, h, w = images.shape
 
-    noise1 = torch.rand(
-        (n, 1, h, w),
-        device=DEVICE,
-    )
+    depth = _depth_map(h, w)
 
+    near_f = (1.0 - depth).unsqueeze(0).unsqueeze(0)   # (1,1,h,w)
+
+    # Upward-drift: smoke rises from bottom (near) toward top
+    r_bias = _rise_bias(h, w, power=0.5)                # (1,1,h,w)
+
+    noise1 = torch.rand(n, 1, h, w, device=DEVICE)
     noise2 = torch.rand_like(noise1)
     noise3 = torch.rand_like(noise1)
 
-    noise1 = KF.gaussian_blur2d(
-        noise1,
-        (101, 101),
-        (40.0, 40.0),
-    )
-
-    noise2 = KF.gaussian_blur2d(
-        noise2,
-        (51, 51),
-        (15.0, 15.0),
-    )
-
-    noise3 = KF.gaussian_blur2d(
-        noise3,
-        (21, 21),
-        (6.0, 6.0),
-    )
+    noise1 = KF.gaussian_blur2d(noise1, (101, 101), (40.0, 40.0))
+    noise2 = KF.gaussian_blur2d(noise2, (51,  51),  (15.0, 15.0))
+    noise3 = KF.gaussian_blur2d(noise3, (21,  21),  (6.0,  6.0))
 
     smoke = (
-        0.55 * noise1 +
-        0.30 * noise2 +
-        0.15 * noise3
+        0.55 * noise1
+        + 0.30 * noise2
+        + 0.15 * noise3
     )
 
-    smoke = smoke - smoke.amin(
-        dim=(-2, -1),
-        keepdim=True,
-    )
+    smoke = smoke - smoke.amin(dim=(-2, -1), keepdim=True)
+    smoke = smoke / (smoke.amax(dim=(-2, -1), keepdim=True) + 1e-6)
+    smoke = smoke.pow(1.8)
 
-    smoke = smoke / (
-        smoke.amax(
-            dim=(-2, -1),
-            keepdim=True,
-        ) + 1e-6
-    )
-
+    # Blend turbulence with upward-drift and near-depth bias
     smoke = (
-        smoke ** 1.8
-    ) * intensity
+        0.50 * smoke
+        + 0.30 * r_bias
+        + 0.20 * near_f
+    ).clamp(0, 1) * intensity
+
+    # --------------------------------------------------
+    # Smoke colour  (cool blue-grey, slightly differentiated channels)
+    # --------------------------------------------------
 
     color = torch.tensor(
-        [180.0, 182.0, 186.0],
+        [188.0, 185.0, 181.0],
         device=DEVICE,
     ).view(1, 3, 1, 1)
 
     out = (
-        images * (1.0 - smoke * 0.55)
-        + color * (smoke * 0.55)
+        images * (1.0 - smoke * 0.58)
+        + color  * (smoke      * 0.58)
     )
 
-    blur = KF.gaussian_blur2d(
-        out,
-        (21, 21),
-        (10.0, 10.0),
-    )
+    # --------------------------------------------------
+    # Density-weighted local contrast reduction inside plumes
+    # --------------------------------------------------
 
-    out = (
-        out * (1.0 - smoke * 0.35)
-        + blur * (smoke * 0.35)
-    )
-
-    gray = out.mean(
-        dim=1,
-        keepdim=True,
-    )
+    blur = KF.gaussian_blur2d(out, (21, 21), (10.0, 10.0))
 
     out = (
-        out * (1.0 - smoke * 0.20)
-        + gray * (smoke * 0.20)
+        out  * (1.0 - smoke * 0.38)
+        + blur * (smoke      * 0.38)
     )
+
+    # --------------------------------------------------
+    # Density-weighted desaturation
+    # --------------------------------------------------
+
+    gray = out.mean(dim=1, keepdim=True)
+
+    out = (
+        out  * (1.0 - smoke * 0.22)
+        + gray * (smoke      * 0.22)
+    )
+
+    # --------------------------------------------------
+    # Soft atmospheric blur
+    # --------------------------------------------------
 
     out = KF.gaussian_blur2d(
         out,
         (9, 9),
-        (4.0, 4.0),
+        (1.0 + 3.5 * intensity, 1.0 + 3.5 * intensity),
     )
 
-    return out.clamp(
-        0,
-        255,
-    )
+    return out.clamp(0, 255)
+
 
 # ==========================================================
 # Single-image wrappers

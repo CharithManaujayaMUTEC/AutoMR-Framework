@@ -59,6 +59,36 @@ def register_default_relations(registry, epsilon):
         CompositeRelation(epsilon)
     )
 
+    registry.register(
+        "global_brightness",
+        GlobalBrightnessRelation(epsilon)
+    )
+
+    registry.register(
+        "global_contrast",
+        GlobalContrastRelation(epsilon)
+    )
+
+    registry.register(
+        "global_blur",
+        GlobalBlurRelation(epsilon)
+    )
+
+    registry.register(
+        "global_noise",
+        GlobalNoiseRelation(epsilon)
+    )
+
+    registry.register(
+        "global_rotation",
+        GlobalRotationRelation(epsilon)
+    )
+
+    registry.register(
+        "global_translation",
+        GlobalTranslationRelation(epsilon)
+    )
+
     # Weather relations.
     registry.register(
         "rain",

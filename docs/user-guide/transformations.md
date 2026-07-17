@@ -4,44 +4,54 @@
 
 Transformations modify input data while preserving expected model behavior according to a corresponding metamorphic relation.
 
-AutoMR includes a collection of built-in image transformations and allows developers to register custom transformations.
+AutoMR includes 23 built-in transformations across image, global image, weather, behavioral, composite, and temporal categories, and also allows developers to register custom transformations.
 
 ---
 
 # Built-in Transformations
 
-## Image Processing
+The registered names below match `automr.list_transforms()`.
 
-- Brightness
-- Contrast
-- Blur
-- Rotation
-- Translation
-- Noise
-- Composite
+## Image
 
----
+- `brightness`
+- `contrast`
+- `blur`
+- `rotation`
+- `translation`
+- `noise`
 
-## Weather Effects
+## Global Image
 
-- Rain
-- Snow
-- Fog
-- Haze
-- Smoke
-- Dust
-- Sandstorm
+- `global_brightness`
+- `global_contrast`
+- `global_blur`
+- `global_noise`
+- `global_rotation`
+- `global_translation`
 
----
+## Composite
 
-## Visibility
+- `composite`
 
-- Darkness
-- Visibility reduction
+## Weather
 
----
+- `rain`
+- `snow`
+- `fog`
+- `haze`
+- `smoke`
+- `dust`
+- `sandstorm`
+
+## Behavioral
+
+- `darkness`
+- `visibility`
 
 ## Temporal
+
+- `temporal`
 
 Temporal transformations evaluate consistency across sequences of related inputs.
 

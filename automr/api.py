@@ -175,6 +175,42 @@ class AutoMR:
                 "samples": 5,
             },
 
+            "global_brightness": {
+                "start": 0.1,
+                "end": 3.0,
+                "samples": 5,
+            },
+
+            "global_contrast": {
+                "start": 0.1,
+                "end": 4.0,
+                "samples": 5,
+            },
+
+            "global_blur": {
+                "start": 1,
+                "end": 31,
+                "samples": 5,
+            },
+
+            "global_noise": {
+                "start": 0,
+                "end": 150,
+                "samples": 5,
+            },
+
+            "global_rotation": {
+                "start": -60,
+                "end": 60,
+                "samples": 5,
+            },
+
+            "global_translation": {
+                "start": 0,
+                "end": 80,
+                "samples": 5,
+            },
+
             "rain": {
                 "start": 0.0,
                 "end": 1.5,

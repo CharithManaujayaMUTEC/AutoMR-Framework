@@ -60,7 +60,7 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Input-Agnostic Architecture** — supports images, time-series, sequential, and tabular data
 - **Output-Agnostic Validation** — handles regression, continuous, and numerical outputs
 - **Built-in Metamorphic Relations** — 16 ready-to-use relations covering geometric, photometric, weather, behavioral, composite, and temporal transformations
-- **Automated Transformation Pipeline** — 17 built-in transformations with configurable parameter ranges
+- **Automated Transformation Pipeline** — 23 built-in transformations with configurable parameter ranges
 - **CPU/GPU Transformation Backend** — automatically switches between CPU and GPU implementations or allows manual backend selection
 - **GPU-Accelerated Transformations** — OpenCV CUDA acceleration for supported image transformations
 - **Backend-Agnostic Architecture** — identical API regardless of execution backend
@@ -400,16 +400,22 @@ Export Results
 | `rotation` | Rotate the image |
 | `translation` | Translate the image horizontally or vertically |
 | `noise` | Inject Gaussian noise |
+| `global_brightness` | Apply brightness adjustment across the full frame |
+| `global_contrast` | Apply contrast adjustment across the full frame |
+| `global_blur` | Apply blur across the full frame |
+| `global_noise` | Apply noise across the full frame |
+| `global_rotation` | Apply rotation across the full frame |
+| `global_translation` | Apply translation across the full frame |
 | `composite` | Apply multiple transformations simultaneously |
 | `rain` | Simulate rainy weather |
 | `snow` | Simulate snowy weather |
 | `fog` | Simulate foggy conditions |
-| `sandstorm` | Simulate sandstorm conditions |
-| `dust` | Simulate dusty environments |
 | `haze` | Simulate haze |
 | `smoke` | Simulate smoke |
+| `dust` | Simulate dusty environments |
+| `sandstorm` | Simulate sandstorm conditions |
+| `darkness` | Simulate low-light or night-time conditions |
 | `visibility` | Reduce scene visibility |
-| `darkness` | Simulate low-light / night-time conditions |
 | `temporal` | Generate temporal frame pairs for sequence consistency testing |
 
 ---

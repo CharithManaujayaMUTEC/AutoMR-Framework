@@ -148,6 +148,37 @@ def _color_cast(
         + color * strength
     )
 
+
+# ----------------------------------------------------------
+# Directional motion blur kernel
+# ----------------------------------------------------------
+
+def _motion_blur_kernel(length, angle_deg):
+    """
+    Build a 1-D motion blur kernel of given length
+    at the given angle (degrees from vertical).
+    """
+
+    size = int(length) | 1          # ensure odd
+    size = max(3, size)
+    kernel = np.zeros((size, size), np.float32)
+    kernel[size // 2, :] = 1.0
+
+    M = cv2.getRotationMatrix2D(
+        (size / 2 - 0.5, size / 2 - 0.5),
+        angle_deg,
+        1.0,
+    )
+
+    kernel = cv2.warpAffine(kernel, M, (size, size))
+    total  = kernel.sum()
+
+    if total > 0:
+        kernel /= total
+
+    return kernel
+
+
 # ==========================================================
 # Camera Lens Effects
 # ==========================================================
@@ -156,7 +187,7 @@ def _apply_lens_droplets(
     image,
     rng,
     intensity,
-    tint=(255,255,255),
+    tint=(255, 255, 255),
 ):
     """
     Realistic camera-lens droplets.
@@ -173,38 +204,32 @@ def _apply_lens_droplets(
 
     h, w = img.shape[:2]
 
-    alpha = np.zeros((h,w), np.float32)
+    alpha = np.zeros((h, w), np.float32)
 
     blurred = cv2.GaussianBlur(
         img,
-        (0,0),
+        (0, 0),
         sigmaX=8,
     )
 
     out = img.copy()
 
     droplets = int(
-        rng.uniform(
-            10,
-            80
-        ) * intensity
+        rng.uniform(10, 80) * intensity
     )
 
     for _ in range(droplets):
 
-        cx = int(rng.integers(0,w))
-        cy = int(rng.integers(0,h))
+        cx = int(rng.integers(0, w))
+        cy = int(rng.integers(0, h))
 
-        r = rng.uniform(
-            6,
-            35
-        ) * (0.5 + intensity)
+        r = rng.uniform(6, 35) * (0.5 + intensity)
 
-        mask = np.zeros((h,w), np.float32)
+        mask = np.zeros((h, w), np.float32)
 
         cv2.circle(
             mask,
-            (cx,cy),
+            (cx, cy),
             int(r),
             1,
             -1,
@@ -212,34 +237,30 @@ def _apply_lens_droplets(
 
         mask = cv2.GaussianBlur(
             mask,
-            (0,0),
-            sigmaX=r*0.25,
+            (0, 0),
+            sigmaX=r * 0.25,
         )
 
-        alpha = np.maximum(
-            alpha,
-            mask*0.55,
-        )
+        alpha = np.maximum(alpha, mask * 0.55)
 
-        # highlight
-
-        hx = int(cx-r*0.3)
-        hy = int(cy-r*0.3)
+        hx = int(cx - r * 0.3)
+        hy = int(cy - r * 0.3)
 
         cv2.circle(
             out,
-            (hx,hy),
-            max(1,int(r*0.18)),
+            (hx, hy),
+            max(1, int(r * 0.18)),
             tint,
             -1,
         )
 
     out = (
-        out*(1-alpha[:,:,None])
-        + blurred*alpha[:,:,None]
+        out * (1 - alpha[:, :, None])
+        + blurred * alpha[:, :, None]
     )
 
     return out
+
 
 # ==========================================================
 # Rain
@@ -255,71 +276,92 @@ def add_rain(
 
     Features
     --------
-    • Perspective rain
-    • Wind variation
-    • Lens droplets
-    • Slight refraction
-    • Atmospheric darkening
+    • Perspective rain  (far streaks shorter + thinner)
+    • Depth-weighted streak brightness
+    • Directional motion blur on the streak layer
+    • Lens droplets with refraction warp
+    • Wet-road darkening on the bottom third
+    • Atmospheric darkening + slight blue-cool tint
     """
 
     intensity = float(intensity)
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
 
     depth = _depth_map(h, w)
 
     # --------------------------------------------------
-    # Slight rainy atmosphere
+    # Atmospheric darkening + cool-blue tint
     # --------------------------------------------------
 
-    out = img * (1.0 - 0.15 * intensity)
+    out = img * (1.0 - 0.18 * intensity)
+
+    out[:, :, 0] = np.clip(
+        out[:, :, 0] + 6 * intensity, 0, 255
+    )   # slight blue push (BGR channel 0)
 
     # --------------------------------------------------
-    # Rain streak layer
+    # Wet-road effect  —  darken + desaturate lower third
     # --------------------------------------------------
 
-    rain = np.zeros_like(out)
+    road_y = int(h * 0.68)
 
-    wind = rng.uniform(-18, 18)
+    road_region = out[road_y:, :].copy()
 
-    n = int(
-        h * w * (0.0008 + 0.0025 * intensity)
+    gray_road = cv2.cvtColor(
+        road_region.astype(np.uint8),
+        cv2.COLOR_BGR2GRAY,
+    ).astype(np.float32)[:, :, None]
+
+    road_region = (
+        road_region * (1.0 - 0.35 * intensity)
+        + gray_road  *  0.15 * intensity
     )
+
+    # subtle wet sheen: blend a slightly brightened version
+    sheen = np.clip(road_region * 1.12, 0, 255)
+
+    road_region = cv2.addWeighted(
+        road_region, 0.80,
+        sheen,        0.20,
+        0,
+        dtype=cv2.CV_32F,
+    )
+
+    out[road_y:] = road_region
+
+    # --------------------------------------------------
+    # Rain streak layer  (perspective-scaled)
+    # --------------------------------------------------
+
+    rain  = np.zeros_like(out)
+    wind  = rng.uniform(-20, 20)          # degrees from vertical
+
+    n = int(h * w * (0.0010 + 0.0030 * intensity))
 
     for _ in range(n):
 
         x = int(rng.integers(0, w))
         y = int(rng.integers(0, h))
 
-        d = depth[y, x]
+        d      = depth[y, x]
+        near_f = 1.0 - d              # 0 at horizon, 1 at bottom
 
-        length = int(
-            rng.uniform(8, 28)
-            * (1.8 - d)
-        )
+        # perspective: near streaks longer + thicker
+        length    = int(rng.uniform(6, 14) + near_f * 28 * intensity)
+        thickness = max(1, int(rng.uniform(1, 2) + near_f * 1.5))
 
-        thickness = max(
-            1,
-            int(
-                rng.uniform(1, 3)
-                * (1.8 - d)
-            ),
-        )
-
-        angle = wind + rng.normal(0, 5)
-
-        dx = np.sin(np.deg2rad(angle))
-        dy = np.cos(np.deg2rad(angle))
+        angle = wind + rng.normal(0, 4)
+        dx    = np.sin(np.deg2rad(angle))
+        dy    = np.cos(np.deg2rad(angle))
 
         x2 = int(x + dx * length)
         y2 = int(y + dy * length)
 
-        b = int(
-            rng.uniform(170, 255)
-        )
+        # far streaks dimmer
+        b = int(rng.uniform(140, 220) * (0.55 + 0.45 * near_f))
 
         cv2.line(
             rain,
@@ -330,17 +372,19 @@ def add_rain(
             cv2.LINE_AA,
         )
 
-    rain = cv2.GaussianBlur(
-        rain,
-        (3, 3),
-        0,
-    )
+    # Directional motion blur aligned to wind angle
+    blur_len = max(3, int(8 + 14 * intensity))
+    mk       = _motion_blur_kernel(blur_len, angle_deg=wind)
+    rain     = cv2.filter2D(rain, -1, mk)
+
+    # Soft Gaussian on top for natural look
+    rain = cv2.GaussianBlur(rain, (3, 3), 0)
 
     out = cv2.addWeighted(
         out,
         1.0,
         rain,
-        0.35 * intensity,
+        0.40 * intensity,
         0,
         dtype=cv2.CV_32F,
     )
@@ -349,113 +393,55 @@ def add_rain(
     # Lens droplets
     # --------------------------------------------------
 
-    droplets = int(
-        20 + intensity * 120
-    )
+    droplets = int(20 + intensity * 120)
 
     for _ in range(droplets):
 
         cx = int(rng.integers(0, w))
         cy = int(rng.integers(0, h))
 
-        r = int(
-            rng.uniform(
-                3,
-                18 + 30 * intensity,
-            )
-        )
+        r = int(rng.uniform(3, 18 + 30 * intensity))
 
-        mask = np.zeros(
-            (h, w),
-            np.uint8,
-        )
+        mask = np.zeros((h, w), np.uint8)
 
-        cv2.circle(
-            mask,
-            (cx, cy),
-            r,
-            255,
-            -1,
-            cv2.LINE_AA,
-        )
+        cv2.circle(mask, (cx, cy), r, 255, -1, cv2.LINE_AA)
 
-        blur = max(
-            9,
-            int(r * 2 + 1),
-        )
+        blur = max(9, int(r * 2 + 1))
 
         if blur % 2 == 0:
             blur += 1
 
-        mask = cv2.GaussianBlur(
-            mask,
-            (blur, blur),
-            0,
-        )
+        mask = cv2.GaussianBlur(mask, (blur, blur), 0)
 
         alpha = (
-            mask.astype(np.float32)
-            / 255.0
-        )
+            mask.astype(np.float32) / 255.0
+        ) * rng.uniform(0.18, 0.50) * intensity
 
-        alpha *= rng.uniform(
-            0.15,
-            0.45,
-        ) * intensity
+        scale = rng.uniform(1.01, 1.06)
 
-        # slight magnification
-        scale = rng.uniform(
-            1.01,
-            1.05,
-        )
-
-        M = cv2.getRotationMatrix2D(
-            (cx, cy),
-            0,
-            scale,
-        )
+        M = cv2.getRotationMatrix2D((cx, cy), 0, scale)
 
         warped = cv2.warpAffine(
-            out,
-            M,
-            (w, h),
+            out, M, (w, h),
             flags=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REFLECT101,
         )
 
         out = (
-            out * (1 - alpha[:, :, None])
+            out    * (1 - alpha[:, :, None])
             + warped * alpha[:, :, None]
         )
 
-        cv2.circle(
-            out,
-            (cx, cy),
-            r,
-            (
-                255,
-                255,
-                255,
-            ),
-            1,
-            cv2.LINE_AA,
-        )
+        cv2.circle(out, (cx, cy), r, (255, 255, 255), 1, cv2.LINE_AA)
 
     # --------------------------------------------------
-    # Final blur
+    # Final soft pass
     # --------------------------------------------------
 
-    out = cv2.GaussianBlur(
-        out,
-        (3, 3),
-        0,
-    )
+    out = cv2.GaussianBlur(out, (3, 3), 0)
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 
 # ==========================================================
 # Snow
@@ -471,29 +457,23 @@ def add_snow(
 
     Characteristics
     ---------------
-    • Whole-image snowfall
-    • Multi-layer flakes
-    • Perspective scaling
-    • Atmospheric whitening
+    • Whole-image snowfall across multiple depth layers
+    • Perspective scaling (near flakes large + bright)
+    • Bokeh-blur on far flakes (out-of-focus look)
+    • Sparkle highlight on near flakes
+    • Ground accumulation brightening on bottom band
+    • Atmospheric whitening via Koschmieder scattering
     """
 
     intensity = float(intensity)
-
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
 
     depth = _depth_map(h, w)
 
-    density = _density_field(
-        h,
-        w,
-        rng,
-        scale=120,
-        blur=101,
-    )
+    density = _density_field(h, w, rng, scale=120, blur=101)
 
     snow = np.zeros_like(img)
 
@@ -502,8 +482,8 @@ def add_snow(
     for layer in range(layers):
 
         count = int(
-            h * w * intensity *
-            (0.0005 + layer * 0.00035)
+            h * w * intensity
+            * (0.0006 + layer * 0.00045)
         )
 
         xs = rng.integers(0, w, count)
@@ -514,71 +494,89 @@ def add_snow(
             if rng.random() > density[y, x]:
                 continue
 
-            d = depth[y, x]
+            d      = depth[y, x]
+            near_f = 1.0 - d           # 0 = far, 1 = near
 
+            # perspective radius
             radius = max(
                 1,
-                int(
-                    1
-                    + (1.0 - d) * (2 + layer)
-                ),
+                int(1 + near_f * (3 + layer * 1.5)),
             )
 
-            brightness = int(
-                rng.uniform(220, 255)
-            )
+            brightness = int(rng.uniform(210, 255))
 
             cv2.circle(
                 snow,
                 (int(x), int(y)),
                 radius,
-                (
-                    brightness,
-                    brightness,
-                    brightness,
-                ),
+                (brightness, brightness, brightness),
                 -1,
                 lineType=cv2.LINE_AA,
             )
 
-    snow = cv2.GaussianBlur(
-        snow,
-        (5, 5),
+            # sparkle highlight on near, large flakes
+            if near_f > 0.55 and radius >= 3:
+                cv2.circle(
+                    snow,
+                    (int(x) - max(1, radius // 3),
+                     int(y) - max(1, radius // 3)),
+                    max(1, radius // 3),
+                    (255, 255, 255),
+                    -1,
+                    cv2.LINE_AA,
+                )
+
+        # Far flakes get a bokeh blur (larger sigma for more distant layer)
+        if layer == 0:
+            snow = cv2.GaussianBlur(snow, (0, 0), sigmaX=2.5)
+        elif layer == 1:
+            snow = cv2.GaussianBlur(snow, (0, 0), sigmaX=1.2)
+        # near layer (layer == 2): no blur — sharp flakes in foreground
+
+    # --------------------------------------------------
+    # Ground accumulation  —  brighten bottom band
+    # --------------------------------------------------
+
+    accum_y = int(h * 0.80)
+    band    = out_band = snow[accum_y:].copy()
+
+    accum_white = np.full_like(band, 240, dtype=np.float32)
+
+    snow[accum_y:] = cv2.addWeighted(
+        band.astype(np.float32),
+        1.0,
+        accum_white,
+        0.12 * intensity,
         0,
+        dtype=cv2.CV_32F,
     )
 
-    airlight = np.full_like(
-        img,
-        245,
-        dtype=np.float32,
-    )
+    # --------------------------------------------------
+    # Atmospheric scattering (whitening at distance)
+    # --------------------------------------------------
+
+    airlight = np.full_like(img, 245, dtype=np.float32)
 
     scene = _atmospheric_scatter(
         img,
         airlight,
-        beta=0.22 * intensity,
+        beta=0.25 * intensity,
         depth=depth,
     )
 
-    scene = _reduce_contrast(
-        scene,
-        0.10 * intensity,
-    )
+    scene = _reduce_contrast(scene, 0.12 * intensity)
 
     out = cv2.addWeighted(
         scene,
         1.0,
         snow,
-        0.65,
+        0.70,
         0,
         dtype=cv2.CV_32F,
     )
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 
 # ==========================================================
 # Fog
@@ -594,107 +592,87 @@ def add_fog(
 
     Features
     --------
-    • Depth-aware scattering
-    • Patchy density
-    • Soft turbulence
-    • Contrast reduction
+    • Depth-aware Koschmieder scattering
+    • Horizon-concentrated density (fog pools in distance)
+    • Patchy turbulence layer for natural variation
+    • Soft distant blur (loss of edge sharpness at range)
+    • Contrast reduction proportional to depth
+    • Slight cool-grey desaturation
     """
 
     intensity = float(intensity)
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
 
     depth = _depth_map(h, w)
 
-    # ---------------------------------------------
-    # Large smooth fog density
-    # ---------------------------------------------
+    # --------------------------------------------------
+    # Horizon density bias
+    # Far pixels (high depth value) get more fog density
+    # --------------------------------------------------
 
-    noise = rng.normal(
-        0,
-        1,
-        (h, w),
-    ).astype(np.float32)
+    horizon_bias = np.power(depth, 0.6)       # stronger near horizon
 
-    noise = cv2.GaussianBlur(
-        noise,
-        (0, 0),
-        sigmaX=max(h, w) / 12,
-    )
-
+    noise = rng.normal(0, 1, (h, w)).astype(np.float32)
+    noise = cv2.GaussianBlur(noise, (0, 0), sigmaX=max(h, w) / 10)
     noise -= noise.min()
     noise /= noise.max() + 1e-6
 
+    # Combine spatial noise with horizon bias
     density = (
-        0.5
-        + 0.5 * noise
+        0.55 * horizon_bias
+        + 0.45 * noise
     )
 
-    beta = (
-        1.4
-        + rng.uniform(-0.2, 0.2)
-    ) * intensity
+    density = np.clip(density, 0, 1)
 
-    transmission = np.exp(
-        -beta * depth * density
-    )
+    beta = (1.5 + rng.uniform(-0.2, 0.2)) * intensity
 
+    transmission = np.exp(-beta * depth * density)
     transmission = transmission[:, :, None]
 
-    atmosphere = np.full_like(
-        img,
-        255,
-        dtype=np.float32,
-    )
+    atmosphere = np.full_like(img, 255, dtype=np.float32)
 
     out = (
-        img * transmission
+        img        * transmission
         + atmosphere * (1.0 - transmission)
     )
 
-    # ---------------------------------------------
-    # Slight desaturation
-    # ---------------------------------------------
+    # --------------------------------------------------
+    # Soft distant-edge blur  (fog erases fine detail at range)
+    # --------------------------------------------------
+
+    far_mask = depth[:, :, None]              # strong at top/horizon
+
+    blur_heavy = cv2.GaussianBlur(out, (0, 0), sigmaX=6 + 10 * intensity)
+
+    out = (
+        out        * (1 - far_mask * 0.55 * intensity)
+        + blur_heavy * (far_mask  * 0.55 * intensity)
+    )
+
+    # --------------------------------------------------
+    # Desaturation + cool-grey cast
+    # --------------------------------------------------
 
     gray = cv2.cvtColor(
-        out.astype(np.uint8),
-        cv2.COLOR_BGR2GRAY,
-    ).astype(np.float32)
-
-    gray = gray[:, :, None]
+        out.astype(np.uint8), cv2.COLOR_BGR2GRAY
+    ).astype(np.float32)[:, :, None]
 
     out = (
-        out * (1 - 0.20 * intensity)
-        + gray * (0.20 * intensity)
+        out  * (1 - 0.22 * intensity)
+        + gray *  0.22 * intensity
     )
 
-    # ---------------------------------------------
-    # Reduce distant contrast
-    # ---------------------------------------------
-
-    blur = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=8,
+    # slight cool tint (blue channel lift in distant regions)
+    out[:, :, 0] = np.clip(
+        out[:, :, 0] + 8 * intensity * depth, 0, 255
     )
 
-    far = (
-        1.0 - depth
-    )[:, :, None]
+    return np.clip(out, 0, 255).astype(np.uint8)
 
-    out = (
-        out * (1 - far * 0.25 * intensity)
-        + blur * (far * 0.25 * intensity)
-    )
-
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
 
 # ==========================================================
 # Haze
@@ -710,124 +688,92 @@ def add_haze(
 
     Features
     --------
-    • Uneven atmospheric scattering
-    • Reduced contrast
-    • Slight bluish tint
-    • Large-scale density variation
+    • Uneven atmospheric scattering via depth-weighted density
+    • Chromatic haze shift  (blue channel slightly more scattered)
+    • Reduced contrast proportional to haze density
+    • Slight blue-white atmospheric tint
+    • Soft overall desaturation
+    • Distance-progressive blur
     """
 
     intensity = float(intensity)
-
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
+
+    depth = _depth_map(h, w)
 
     # --------------------------------------------------
     # Large-scale haze density
     # --------------------------------------------------
 
-    noise = rng.normal(
-        0,
-        1,
-        (h, w),
-    ).astype(np.float32)
-
-    noise = cv2.GaussianBlur(
-        noise,
-        (0, 0),
-        sigmaX=max(h, w) / 8,
-    )
-
+    noise = rng.normal(0, 1, (h, w)).astype(np.float32)
+    noise = cv2.GaussianBlur(noise, (0, 0), sigmaX=max(h, w) / 8)
     noise -= noise.min()
     noise /= noise.max() + 1e-6
 
-    density = (
-        0.55
-        + 0.45 * noise
-    )
+    # Weight density toward distant areas
+    depth_bias = np.power(depth, 0.5)
+    density    = 0.50 * depth_bias + 0.50 * noise
+    density    = np.clip(density, 0, 1) * intensity
 
-    density *= intensity
-
-    density = density[:, :, None]
+    density_3  = density[:, :, None]
 
     # --------------------------------------------------
-    # Slight blue-gray atmosphere
+    # Chromatic scattering  (blue scattered most, red least)
     # --------------------------------------------------
 
-    atmosphere = np.full_like(
-        img,
-        (
-            235,
-            238,
-            245,
-        ),
-        dtype=np.float32,
-    )
+    atm_b = np.full((h, w), 245, np.float32)   # blue-white sky
+    atm_g = np.full((h, w), 238, np.float32)
+    atm_r = np.full((h, w), 228, np.float32)
 
-    out = (
-        img * (1 - density * 0.45)
-        + atmosphere * (density * 0.45)
-    )
+    atmosphere = np.stack([atm_b, atm_g, atm_r], axis=2)
+
+    # Each channel has a slightly different scattering coefficient
+    alpha_b = np.clip(density * 0.52, 0, 1)[:, :, None]
+    alpha_g = np.clip(density * 0.44, 0, 1)[:, :, None]
+    alpha_r = np.clip(density * 0.36, 0, 1)[:, :, None]
+
+    alpha_bgr = np.concatenate([alpha_b, alpha_g, alpha_r], axis=2)
+
+    out = img * (1 - alpha_bgr) + atmosphere * alpha_bgr
 
     # --------------------------------------------------
-    # Reduce contrast
+    # Contrast reduction
     # --------------------------------------------------
 
-    mean = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=25,
-    )
-
-    contrast = (
-        1.0
-        - 0.30 * intensity
-    )
-
+    mean = cv2.GaussianBlur(out, (0, 0), sigmaX=25)
+    contrast = 1.0 - 0.32 * intensity
     out = mean + contrast * (out - mean)
 
     # --------------------------------------------------
-    # Soft atmospheric blur
+    # Distance-progressive blur
     # --------------------------------------------------
 
-    blur = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=2 + 4 * intensity,
-    )
+    far_mask    = depth[:, :, None]
+    blur_far    = cv2.GaussianBlur(out, (0, 0), sigmaX=3 + 6 * intensity)
 
-    out = cv2.addWeighted(
-        out,
-        0.8,
-        blur,
-        0.2,
-        0,
-        dtype=cv2.CV_32F,
+    out = (
+        out      * (1 - far_mask * 0.50 * intensity)
+        + blur_far * (far_mask  * 0.50 * intensity)
     )
 
     # --------------------------------------------------
-    # Slight desaturation
+    # Slight overall desaturation
     # --------------------------------------------------
 
     gray = cv2.cvtColor(
-        out.astype(np.uint8),
-        cv2.COLOR_BGR2GRAY,
-    ).astype(np.float32)
-
-    gray = gray[:, :, None]
+        out.astype(np.uint8), cv2.COLOR_BGR2GRAY
+    ).astype(np.float32)[:, :, None]
 
     out = (
-        out * (1 - 0.12 * intensity)
-        + gray * (0.12 * intensity)
+        out  * (1 - 0.14 * intensity)
+        + gray *  0.14 * intensity
     )
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 
 # ==========================================================
 # Dust
@@ -843,22 +789,29 @@ def add_dust(
 
     Features
     --------
-    • Fine suspended particles
-    • Multi-scale dust clouds
-    • Warm brown atmospheric tint
-    • Reduced visibility
-    • Slight lens softness
+    • Fine suspended particles with warm brown tint
+    • Multi-scale dust density  (ground-level density bias)
+    • Ground-hugging effect  (denser near bottom of frame)
+    • Floating particle layer with depth-scaled sizes
+    • Reduced sharpness proportional to density
+    • Slight warm contrast reduction
     """
 
     intensity = float(intensity)
-
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
 
     out = img.copy()
+
+    depth = _depth_map(h, w)
+
+    # Ground-hugging density bias
+    # Dust is heaviest near the ground  (bottom of image = near)
+    y_norm = np.linspace(0, 1, h, dtype=np.float32).reshape(h, 1)
+    ground_bias = np.power(y_norm, 0.6)           # stronger toward bottom
+    ground_bias = np.repeat(ground_bias, w, axis=1)
 
     # --------------------------------------------------
     # Multi-scale dust density
@@ -873,116 +826,92 @@ def add_dust(
     n3 = cv2.GaussianBlur(n3, (0, 0), sigmaX=max(h, w) / 30)
 
     density = (
-        0.55 * n1 +
-        0.30 * n2 +
-        0.15 * n3
+        0.50 * n1
+        + 0.30 * n2
+        + 0.20 * n3
     )
 
     density -= density.min()
     density /= density.max() + 1e-6
+    density  = np.power(density, 1.7)
 
-    density = np.power(density, 1.8)
-
-    density *= intensity
-
-    density = density[:, :, None]
+    # Combine noise density with ground-hugging bias
+    density = 0.60 * density + 0.40 * ground_bias
+    density  = np.clip(density, 0, 1) * intensity
+    density_3 = density[:, :, None]
 
     # --------------------------------------------------
     # Warm dust atmosphere
     # --------------------------------------------------
 
-    dust_color = np.full_like(
-        img,
-        (175, 170, 145),
-        dtype=np.float32,
-    )
+    dust_color = np.full_like(img, (175, 170, 145), dtype=np.float32)
 
     out = (
-        img * (1 - density * 0.45)
-        + dust_color * (density * 0.45)
+        img        * (1 - density_3 * 0.50)
+        + dust_color * (density_3  * 0.50)
     )
 
     # --------------------------------------------------
-    # Floating particles
+    # Floating particles (depth-scaled radius)
     # --------------------------------------------------
 
     particles = np.zeros_like(out)
 
-    count = int(
-        h * w * intensity * 0.002
-    )
+    count = int(h * w * intensity * 0.0025)
 
     for _ in range(count):
 
         x = int(rng.integers(0, w))
         y = int(rng.integers(0, h))
 
-        r = int(rng.uniform(1, 4))
+        d      = depth[y, x]
+        near_f = 1.0 - d
 
-        c = int(rng.uniform(170, 230))
+        r = max(1, int(rng.uniform(1, 3) + near_f * 3))
+
+        c = int(rng.uniform(165, 225))
 
         cv2.circle(
             particles,
             (x, y),
             r,
-            (c, c - 8, c - 25),
+            (c, c - 10, c - 28),
             -1,
             cv2.LINE_AA,
         )
 
-    particles = cv2.GaussianBlur(
-        particles,
-        (0, 0),
-        sigmaX=1.5,
-    )
+    particles = cv2.GaussianBlur(particles, (0, 0), sigmaX=1.5)
 
     out = cv2.addWeighted(
         out,
         1.0,
         particles,
-        0.45 * intensity,
+        0.50 * intensity,
         0,
         dtype=cv2.CV_32F,
     )
 
     # --------------------------------------------------
-    # Reduce sharpness
+    # Density-weighted sharpness reduction
     # --------------------------------------------------
 
-    blur = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=2 + 4 * intensity,
-    )
+    blur = cv2.GaussianBlur(out, (0, 0), sigmaX=2 + 5 * intensity)
 
-    out = cv2.addWeighted(
-        out,
-        0.85,
-        blur,
-        0.15,
-        0,
-        dtype=cv2.CV_32F,
+    out = (
+        out   * (1 - density_3 * 0.45)
+        + blur  *   (density_3 * 0.45)
     )
 
     # --------------------------------------------------
     # Slight contrast reduction
     # --------------------------------------------------
 
-    mean = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=25,
-    )
+    mean = cv2.GaussianBlur(out, (0, 0), sigmaX=25)
 
-    out = mean + (
-        1 - 0.25 * intensity
-    ) * (out - mean)
+    out = mean + (1 - 0.28 * intensity) * (out - mean)
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 
 # ==========================================================
 # Sandstorm
@@ -998,27 +927,33 @@ def add_sandstorm(
 
     Features
     --------
-    • Directional blowing sand
-    • Multi-scale dust density
-    • Warm atmospheric tint
-    • Flying sand particles
-    • Motion blur
+    • Directional blowing sand with wind angle
+    • Ground-level sand density  (densest at bottom, lifted upward)
+    • Multi-scale turbulent density field
+    • Flying sand streaks with directional motion blur
+    • Warm yellow-orange atmospheric tint
+    • Progressive visibility reduction with depth
     """
 
     intensity = float(intensity)
-
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
 
     out = img.copy()
 
+    depth = _depth_map(h, w)
+
     wind = rng.uniform(-25, 25)
 
+    # Ground-level density:  sand is denser near the ground (bottom of image)
+    y_norm = np.linspace(0, 1, h, dtype=np.float32).reshape(h, 1)
+    ground_bias = np.power(y_norm, 0.5)
+    ground_bias = np.repeat(ground_bias, w, axis=1)
+
     # --------------------------------------------------
-    # Large atmospheric dust
+    # Multi-scale turbulent density
     # --------------------------------------------------
 
     n1 = rng.normal(0, 1, (h, w)).astype(np.float32)
@@ -1030,29 +965,29 @@ def add_sandstorm(
     n3 = cv2.GaussianBlur(n3, (0, 0), sigmaX=max(h, w) / 28)
 
     density = (
-        0.55 * n1 +
-        0.30 * n2 +
-        0.15 * n3
+        0.55 * n1
+        + 0.30 * n2
+        + 0.15 * n3
     )
 
     density -= density.min()
     density /= density.max() + 1e-6
+    density  = np.power(density, 1.7)
 
-    density = np.power(density, 1.7)
+    # Bias toward the ground
+    density = 0.55 * density + 0.45 * ground_bias
+    density  = np.clip(density, 0, 1) * intensity
+    density_3 = density[:, :, None]
 
-    density *= intensity
+    # --------------------------------------------------
+    # Warm sand atmosphere  (deeper orange at high density)
+    # --------------------------------------------------
 
-    density = density[:, :, None]
-
-    sand_color = np.full_like(
-        out,
-        (175, 165, 125),
-        dtype=np.float32,
-    )
+    sand_color = np.full_like(out, (45, 80, 162), dtype=np.float32)
 
     out = (
-        out * (1 - density * 0.55)
-        + sand_color * (density * 0.55)
+        out        * (1 - density_3 * 0.60)
+        + sand_color * (density_3  * 0.60)
     )
 
     # --------------------------------------------------
@@ -1061,115 +996,72 @@ def add_sandstorm(
 
     streaks = np.zeros_like(out)
 
-    count = int(
-        h * w * intensity * 0.0025
-    )
-
-    theta = np.deg2rad(wind)
-
-    dx = np.cos(theta)
-    dy = np.sin(theta)
+    count  = int(h * w * intensity * 0.0030)
+    theta  = np.deg2rad(wind)
+    dx_dir = np.cos(theta)
+    dy_dir = np.sin(theta)
 
     for _ in range(count):
 
         x = int(rng.integers(0, w))
         y = int(rng.integers(0, h))
 
-        length = int(rng.uniform(8, 28))
+        d      = depth[y, x]
+        near_f = 1.0 - d
 
-        x2 = int(x + dx * length)
-        y2 = int(y + dy * length)
+        # near streaks longer + brighter
+        length = int(rng.uniform(5, 14) + near_f * 22 * intensity)
+        color  = int(rng.uniform(160, 215))
 
-        color = int(rng.uniform(170, 220))
+        x2 = int(x + dx_dir * length)
+        y2 = int(y + dy_dir * length)
 
         cv2.line(
             streaks,
             (x, y),
             (x2, y2),
-            (
-                color,
-                color - 15,
-                color - 40,
-            ),
+            (int(color * 0.38), int(color * 0.58), color),
             1,
             cv2.LINE_AA,
         )
 
     # --------------------------------------------------
-    # Motion blur
+    # Directional motion blur along wind direction
     # --------------------------------------------------
 
-    kernel = np.zeros((21, 21), np.float32)
-
-    kernel[10, :] = 1
-
-    M = cv2.getRotationMatrix2D(
-        (10.5, 10.5),
-        wind,
-        1,
-    )
-
-    kernel = cv2.warpAffine(
-        kernel,
-        M,
-        (21, 21),
-    )
-
-    kernel /= kernel.sum()
-
-    streaks = cv2.filter2D(
-        streaks,
-        -1,
-        kernel,
-    )
+    mk      = _motion_blur_kernel(int(12 + 14 * intensity), angle_deg=wind)
+    streaks = cv2.filter2D(streaks, -1, mk)
 
     out = cv2.addWeighted(
         out,
         1.0,
         streaks,
-        0.65 * intensity,
+        0.70 * intensity,
         0,
         dtype=cv2.CV_32F,
     )
 
     # --------------------------------------------------
-    # Visibility reduction
+    # Density-weighted visibility reduction
     # --------------------------------------------------
 
-    blur = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=3 + 5 * intensity,
-    )
+    blur = cv2.GaussianBlur(out, (0, 0), sigmaX=3 + 6 * intensity)
 
-    out = cv2.addWeighted(
-        out,
-        0.82,
-        blur,
-        0.18,
-        0,
-        dtype=cv2.CV_32F,
+    out = (
+        out   * (1 - density_3 * 0.40)
+        + blur  *   (density_3 * 0.40)
     )
 
     # --------------------------------------------------
     # Contrast reduction
     # --------------------------------------------------
 
-    mean = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=30,
-    )
+    mean = cv2.GaussianBlur(out, (0, 0), sigmaX=30)
 
-    out = mean + (
-        1 - 0.30 * intensity
-    ) * (out - mean)
+    out = mean + (1 - 0.32 * intensity) * (out - mean)
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 
 # ==========================================================
 # Smoke
@@ -1185,60 +1077,39 @@ def add_smoke(
 
     Features
     --------
-    • Procedural turbulence
-    • Large smoke plumes
-    • Soft edges
-    • Slight blue-gray tint
-    • Atmospheric scattering
+    • Procedural multi-scale turbulence
+    • Upward-drift density bias  (smoke rises from below)
+    • Large smoke plumes with soft edges
+    • Depth-weighted density  (closer smoke denser)
+    • Blue-grey cool tint
+    • Local contrast reduction inside plumes
+    • Atmospheric scattering near dense regions
     """
 
     intensity = float(intensity)
-
-    rng = create_rng(seed)
+    rng       = create_rng(seed)
 
     img = image.astype(np.float32)
-
     h, w = img.shape[:2]
+
+    depth = _depth_map(h, w)
+
+    # Upward-drift bias:  smoke originates near the bottom and rises
+    y_norm     = np.linspace(1.0, 0.0, h, dtype=np.float32).reshape(h, 1)
+    rise_bias  = np.power(y_norm, 0.5)           # stronger at bottom
+    rise_bias  = np.repeat(rise_bias, w, axis=1)
 
     # --------------------------------------------------
     # Multi-scale turbulence
     # --------------------------------------------------
 
-    noise1 = rng.normal(
-        0,
-        1,
-        (h, w),
-    ).astype(np.float32)
+    noise1 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    noise2 = rng.normal(0, 1, (h, w)).astype(np.float32)
+    noise3 = rng.normal(0, 1, (h, w)).astype(np.float32)
 
-    noise2 = rng.normal(
-        0,
-        1,
-        (h, w),
-    ).astype(np.float32)
-
-    noise3 = rng.normal(
-        0,
-        1,
-        (h, w),
-    ).astype(np.float32)
-
-    noise1 = cv2.GaussianBlur(
-        noise1,
-        (0, 0),
-        sigmaX=max(h, w) / 4,
-    )
-
-    noise2 = cv2.GaussianBlur(
-        noise2,
-        (0, 0),
-        sigmaX=max(h, w) / 10,
-    )
-
-    noise3 = cv2.GaussianBlur(
-        noise3,
-        (0, 0),
-        sigmaX=max(h, w) / 25,
-    )
+    noise1 = cv2.GaussianBlur(noise1, (0, 0), sigmaX=max(h, w) / 4)
+    noise2 = cv2.GaussianBlur(noise2, (0, 0), sigmaX=max(h, w) / 10)
+    noise3 = cv2.GaussianBlur(noise3, (0, 0), sigmaX=max(h, w) / 25)
 
     smoke = (
         0.55 * noise1
@@ -1248,78 +1119,58 @@ def add_smoke(
 
     smoke -= smoke.min()
     smoke /= smoke.max() + 1e-6
+    smoke  = np.power(smoke, 1.8)
 
-    smoke = np.power(
-        smoke,
-        1.8,
+    # Combine turbulence with upward-drift and depth
+    near_bias = 1.0 - depth              # denser smoke in near regions
+    smoke = (
+        0.50 * smoke
+        + 0.30 * rise_bias
+        + 0.20 * near_bias
     )
 
-    smoke *= intensity
-
-    smoke = smoke[:, :, None]
+    smoke  = np.clip(smoke, 0, 1) * intensity
+    smoke  = smoke[:, :, None]
 
     # --------------------------------------------------
-    # Smoke color
+    # Smoke color  (cool blue-grey)
     # --------------------------------------------------
 
-    color = np.full_like(
-        img,
-        (
-            180,
-            182,
-            186,
-        ),
-        dtype=np.float32,
-    )
+    color = np.full_like(img, (188, 186, 182), dtype=np.float32)
 
     out = (
-        img * (1 - smoke * 0.55)
-        + color * (smoke * 0.55)
+        img   * (1 - smoke * 0.58)
+        + color * (smoke * 0.58)
     )
 
     # --------------------------------------------------
-    # Reduce local contrast
+    # Local contrast reduction inside dense plumes
     # --------------------------------------------------
 
-    blur = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=10,
-    )
+    blur = cv2.GaussianBlur(out, (0, 0), sigmaX=10)
 
     out = (
-        out * (1 - smoke * 0.35)
-        + blur * (smoke * 0.35)
+        out  * (1 - smoke * 0.38)
+        + blur * (smoke * 0.38)
     )
 
     # --------------------------------------------------
-    # Slight desaturation
+    # Slight desaturation inside smoke
     # --------------------------------------------------
 
     gray = cv2.cvtColor(
-        out.astype(np.uint8),
-        cv2.COLOR_BGR2GRAY,
-    ).astype(np.float32)
-
-    gray = gray[:, :, None]
+        out.astype(np.uint8), cv2.COLOR_BGR2GRAY
+    ).astype(np.float32)[:, :, None]
 
     out = (
-        out * (1 - smoke * 0.20)
-        + gray * (smoke * 0.20)
+        out  * (1 - smoke * 0.22)
+        + gray * (smoke * 0.22)
     )
 
     # --------------------------------------------------
-    # Soft atmospheric blur
+    # Soft overall atmospheric blur
     # --------------------------------------------------
 
-    out = cv2.GaussianBlur(
-        out,
-        (0, 0),
-        sigmaX=1 + 3 * intensity,
-    )
+    out = cv2.GaussianBlur(out, (0, 0), sigmaX=1.0 + 3.5 * intensity)
 
-    return np.clip(
-        out,
-        0,
-        255,
-    ).astype(np.uint8)
+    return np.clip(out, 0, 255).astype(np.uint8)

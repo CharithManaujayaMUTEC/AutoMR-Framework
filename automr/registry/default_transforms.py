@@ -30,6 +30,12 @@ def register_default_transforms(registry):
     registry.register("blur", blur)
     registry.register("contrast", adjust_contrast)
     registry.register("composite", composite_transform)
+    registry.register("global_brightness", global_brightness)
+    registry.register("global_contrast", global_contrast)
+    registry.register("global_blur", global_blur)
+    registry.register("global_noise", global_noise)
+    registry.register("global_rotation", global_rotation)
+    registry.register("global_translation", global_translation)
 
     # Weather transformations.
     registry.register("rain", add_rain)

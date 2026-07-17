@@ -1,5 +1,4 @@
-mr,severity
-RainRelation,0.010012984275817871
+,severity
 BlurRelation,0.0
 BrightnessRelation,0.0
 CompositeRelation,0.0
@@ -7,8 +6,15 @@ ContrastRelation,0.0
 DarkVisibilityRelation,0.0
 DustRelation,0.0
 FogRelation,0.0
+GlobalBlurRelation,0.0
+GlobalBrightnessRelation,0.0
+GlobalContrastRelation,0.0
+GlobalNoiseRelation,0.0
+GlobalRotationRelation,0.0
+GlobalTranslationRelation,0.0
 HazeRelation,0.0
 NoiseRelation,0.0
+RainRelation,0.0
 RotationRelation,0.0
 SandstormRelation,0.0
 SmokeRelation,0.0

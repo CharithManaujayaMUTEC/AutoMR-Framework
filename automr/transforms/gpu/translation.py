@@ -1,11 +1,13 @@
+import numpy as np
 import torch
 import kornia.geometry.transform as K
 
 from ..backend import DEVICE
+from ..utils import create_rng
 
 
 # ==========================================================
-# GPU Spatial Translation
+# GPU Global Spatial Translation
 # ==========================================================
 
 def shift_right(
@@ -14,12 +16,25 @@ def shift_right(
     seed=None,
 ):
     """
-    GPU Spatial Translation
+    GPU Global Spatial Translation.
+
+    Controlled parameter
+    --------------------
+    pixels : maximum translation magnitude
+
+    Randomized
+    ----------
+    • translation direction (360°)
+    • translation distance
+
+    Reproducible when a seed is provided.
     """
 
-    # ----------------------------
-    # To Tensor
-    # ----------------------------
+    rng = create_rng(seed)
+
+    # ---------------------------------
+    # Convert image to tensor
+    # ---------------------------------
     if isinstance(image, np.ndarray):
 
         img = (
@@ -34,27 +49,29 @@ def shift_right(
 
         img = image.unsqueeze(0).to(DEVICE)
 
-    B, C, H, W = img.shape
+    _, _, H, W = img.shape
 
     pixels = max(1, int(pixels))
 
-    # ----------------------------
-    # Random translation
-    # ----------------------------
-    dx = torch.randint(
-        -pixels,
-        pixels + 1,
-        (1,),
-        device=DEVICE,
-    ).float()
+    # ---------------------------------
+    # Random translation direction
+    # ---------------------------------
+    angle = rng.uniform(
+        0.0,
+        2.0 * np.pi,
+    )
 
-    dy = torch.randint(
-        -pixels,
-        pixels + 1,
-        (1,),
-        device=DEVICE,
-    ).float()
+    distance = rng.uniform(
+        pixels * 0.5,
+        pixels,
+    )
 
+    dx = float(distance * np.cos(angle))
+    dy = float(distance * np.sin(angle))
+
+    # ---------------------------------
+    # Translation matrix
+    # ---------------------------------
     transform = torch.eye(
         3,
         device=DEVICE,
@@ -63,9 +80,9 @@ def shift_right(
     transform[:, 0, 2] = dx
     transform[:, 1, 2] = dy
 
-    # ----------------------------
-    # GPU Warp
-    # ----------------------------
+    # ---------------------------------
+    # Apply translation
+    # ---------------------------------
     translated = K.warp_perspective(
         img,
         transform,
@@ -75,9 +92,9 @@ def shift_right(
         align_corners=False,
     )
 
-    # ----------------------------
-    # Return
-    # ----------------------------
+    # ---------------------------------
+    # Return translated image
+    # ---------------------------------
     return (
         translated[0]
         .clamp(0, 255)
