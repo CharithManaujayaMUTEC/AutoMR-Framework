@@ -33,7 +33,7 @@
 - **Expanded model support** — TensorFlow, PyTorch, scikit-learn, XGBoost, ONNX Runtime, Remote API, and custom models
 - **Epsilon sensitivity analysis** — automated threshold sweep with first-failure and stabilization detection
 - **Automatic epsilon recommendation** — framework selects the optimal comparator threshold
-- **New example scripts** — HPC, plugin, classification, dashboard, and backend examples
+- **New example scripts** — standard, HPC, and live dashboard examples
 
 ---
 
@@ -80,6 +80,7 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Severity Analysis** — ranks failures by output deviation magnitude
 - **Failure Region Identification** — isolates parameter ranges with highest instability
 - **Worst-Case Sample Discovery** — surfaces samples with the largest prediction deviations
+- **Graph Module (GraphGenerator)** — automatically exports evaluation plots and graph-ready CSV files under `results/graphs/`
 - **Generic Model Wrapper Support** — wrap any callable as an AutoMR-compatible model
 - **Plugin Architecture** — register custom transformations and relations at runtime
 - **Verification Artifact Generation** — transformed samples saved automatically per relation
@@ -173,7 +174,7 @@ automr = AutoMR(
       transform_ranges={
             "brightness": {"start": 0.2, "end": 2.5, "samples": 7},
             "rotation": {"start": -45, "end": 45, "samples": 9},
-      }
+      },
 )
 
 df, results = automr.run_full_test(
@@ -204,6 +205,10 @@ automr = HighPerformanceAutoMR(
     range_threshold=5.0,
     num_workers=8,
     batch_size=64,
+      transform_ranges={
+            "brightness": {"start": 0.5, "end": 2.0, "samples": 8},
+            "rotation": {"start": -20, "end": 20, "samples": 11},
+      },
 )
 
 df, results = automr.run_full_test(
@@ -518,6 +523,34 @@ When using `HighPerformanceAutoMR`, the same core reports are generated with sig
 - Batch size
 - Prediction cache utilization
 
+### Graph Reports
+
+AutoMR now includes a dedicated graph module (`GraphGenerator`) that automatically saves visual summaries to `results/graphs/` during `save_results(...)`.
+
+```
+results/graphs/
+├── overall/
+│   ├── pass_fail_pie.png
+│   ├── prediction_distribution.png
+│   ├── difference_distribution.png
+│   ├── failure_heatmap.png
+│   ├── worst_cases.png
+│   └── summary_dashboard.png
+├── summary/
+│   ├── failure_rate.png
+│   ├── severity.png
+│   ├── range_analysis.png
+│   ├── epsilon_curve.png
+│   ├── failure_rate.csv
+│   ├── severity.csv
+│   └── epsilon_curve.csv
+└── <mr_name>/
+      ├── parameter_vs_prediction.png
+      ├── testcase_vs_prediction.png
+      ├── parameter_vs_prediction.csv
+      └── testcase_vs_prediction.csv
+```
+
 ### Metadata Reports
 
 | File | Description |
@@ -802,7 +835,8 @@ AutoMR-Framework/
 │   │
 │   ├── evaluation/
 │   │   ├── __init__.py
-│   │   └── baseline.py
+│   │   ├── baseline.py
+│   │   └── graph_generator.py
 │   │
 │   ├── input_handlers/
 │   │   ├── __init__.py
@@ -896,7 +930,6 @@ AutoMR-Framework/
 - ROCm backend
 - Cloud execution backend
 - Interactive HTML report generation
-- Automated result visualizations (plots, charts, heatmaps)
 - Classification-specific metamorphic relation library
 - NLP and tabular MR support
 - Cross-model comparison testing

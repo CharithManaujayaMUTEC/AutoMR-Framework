@@ -90,6 +90,7 @@ Dashboard Rendering
 - Range Tester
 - Analyzer
 - Report Generator
+- Graph Generator
 - HPC Execution Engine
 
 ---
@@ -115,4 +116,4 @@ Dashboard Rendering
 6. Predict outputs
 7. Verify metamorphic relations
 8. Compute statistics
-9. Generate reports
+9. Generate reports and graphs

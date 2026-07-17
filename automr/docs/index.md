@@ -40,6 +40,7 @@ AutoMR is an automated metamorphic testing framework designed for evaluating mac
 
 - AutoMR
 - HighPerformanceAutoMR
+- GraphGenerator
 - Registry
 - Transformations
 - Relations

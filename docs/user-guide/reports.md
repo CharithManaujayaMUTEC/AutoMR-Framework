@@ -4,6 +4,8 @@
 
 AutoMR automatically generates multiple reports after execution.
 
+The framework also includes a graph module (`GraphGenerator`) that saves plot-based analysis outputs automatically.
+
 ---
 
 # Generated Files
@@ -23,6 +25,37 @@ AutoMR automatically generates multiple reports after execution.
 | original_predictions.csv | Baseline predictions |
 | epsilon_summary.csv | Epsilon sensitivity |
 | epsilon_report.txt | Recommended epsilon |
+
+---
+
+# Generated Graphs
+
+Graph outputs are saved under:
+
+```
+results/graphs/
+```
+
+Key graph files include:
+
+- overall/pass_fail_pie.png
+- overall/prediction_distribution.png
+- overall/difference_distribution.png
+- overall/failure_heatmap.png
+- overall/worst_cases.png
+- overall/summary_dashboard.png
+- summary/failure_rate.png
+- summary/severity.png
+- summary/range_analysis.png
+- summary/epsilon_curve.png
+
+Graph-ready CSV exports include:
+
+- summary/failure_rate.csv
+- summary/severity.csv
+- summary/epsilon_curve.csv
+- <mr_name>/parameter_vs_prediction.csv
+- <mr_name>/testcase_vs_prediction.csv
 
 ---
 
@@ -65,6 +98,7 @@ Reports are generated as:
 - CSV
 - TXT
 - JSON
+- PNG
 
 ---
 

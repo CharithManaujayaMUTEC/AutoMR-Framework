@@ -7,8 +7,14 @@ from automr import AutoMR
 
 automr = AutoMR(
     model=model,
-    task="classification",
-    input_type="image"
+    task="regression",
+    input_type="image",
+    epsilon=0.05,
+    range_threshold=5.0,
+    transform_ranges={
+        "brightness": {"start": 0.5, "end": 2.0, "samples": 8},
+        "rotation": {"start": -25, "end": 25, "samples": 11},
+    },
 )
 ```
 
@@ -26,7 +32,11 @@ dataset = MyDataset("dataset/")
 
 ```python
 df, results = automr.run_full_test(
-    dataset=dataset
+    dataset=dataset,
+    samples_per_mr=5,
+    epsilon_min=0.005,
+    epsilon_max=0.05,
+    epsilon_count=3,
 )
 ```
 
@@ -112,6 +122,8 @@ Optional outputs include:
 
 - epsilon_summary.csv
 - epsilon_report.txt
+
+If you omit transform_ranges, AutoMR uses built-in default ranges for all registered relations.
 
 ---
 

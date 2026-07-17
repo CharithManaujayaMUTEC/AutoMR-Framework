@@ -1,11 +1,11 @@
-# examples/live_dashboard_example.py
+# run_live_dashboard_example.py
 
 """
 Example: AutoMR Live Dashboard
 
 Run:
 
-    python examples/live_dashboard_example.py
+    python run_live_dashboard_example.py
 
 This launches the interactive OpenCV dashboard.
 
