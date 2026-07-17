@@ -1,25 +1,75 @@
 numpy>=1.26.4,<2.0
 pandas>=2.2.2
 scipy>=1.13.1
+
 opencv-python>=4.10.0
 Pillow>=10.4.0
 scikit-image>=0.24.0
 matplotlib>=3.9.0
+
 kornia>=0.7.3
+noise>=1.2.2
+
 tqdm>=4.67.1
+
 tensorflow>=2.19.0
+tensorboard>=2.19.0
+
 torch>=2.7.0
 torchvision>=0.22.0
+
 scikit-learn>=1.5.0
 xgboost>=2.1.0
+
 onnx>=1.18.0
 onnxruntime>=1.22.0
 onnxruntime-gpu>=1.22.0
+
 requests>=2.32.3
 python-dotenv>=1.0.1
 PyYAML>=6.0.2
 typing-extensions>=4.12.2
-noise>=1.2.2
-tensorboard>=2.19.0
+
 addict>=2.4.0
 pathspec>=0.12.1
+
+# Plotting / visualization
+seaborn>=0.13.2
+
+# Progress bars in notebooks (optional)
+ipywidgets>=8.1.5
+
+# Model serialization
+joblib>=1.4.2
+
+# Tree models
+lightgbm>=4.5.0
+catboost>=1.2.8
+
+# Data validation
+jsonschema>=4.23.0
+
+# Configuration
+omegaconf>=2.3.0
+
+# Logging
+colorlog>=6.9.0
+
+# File locking
+filelock>=3.18.0
+
+# Packaging
+packaging>=24.2
+
+# System monitoring
+psutil>=6.1.1
+
+# Image I/O
+imageio>=2.37.0
+
+# Scientific utilities
+networkx>=3.4.2
+
+# Optional for Jupyter users
+notebook>=7.3.2
+jupyterlab>=4.3.5

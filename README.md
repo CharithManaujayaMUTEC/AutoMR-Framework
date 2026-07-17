@@ -223,6 +223,21 @@ df, results = automr.run_full_test(
 
 ---
 
+## Command-Line Interface
+
+AutoMR provides a small CLI for quick access to version and documentation.
+
+Usage examples:
+
+```bash
+automr --version   # show installed AutoMR version
+automr --info      # print framework feature summary and version
+automr --docs      # list available documentation files in the package
+```
+
+See the full CLI reference in the documentation: [CLI Reference](docs/cli.md)
+
+
 ## Backend Selection
 
 AutoMR supports three execution modes for transformation processing.

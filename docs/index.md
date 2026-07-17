@@ -12,6 +12,7 @@ AutoMR is an automated metamorphic testing framework designed for evaluating mac
 
 - Installation
 - Quick Start
+ - Command-Line Interface
 
 ## User Guide
 
