@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from pathlib import Path
 import os
 import multiprocessing
 import time
@@ -27,6 +28,7 @@ from automr.registry.default_relations import (
 )
 
 from automr.evaluation import BaselineEvaluator
+from automr.evaluation import GraphGenerator
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
 
@@ -81,6 +83,7 @@ class AutoMR:
         self.model = get_wrapper(model)
         self.range_tester = RangeTester()
         self.analyzer = Analyzer()
+        self.graph_generator = GraphGenerator()
 
         # Store framework configuration.
         self.task = task
@@ -917,6 +920,17 @@ class AutoMR:
 
         os.makedirs(output_dir, exist_ok=True)
 
+        self.graph_generator.output_dir = Path(output_dir)
+        self.graph_generator.graph_dir = Path(output_dir) / "graphs"
+        self.graph_generator.graph_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        self.graph_generator.worst_cases_graph(
+            results["worst_cases"]
+        )
+
         # Main AutoMR output.
         df.to_csv(
             f"{output_dir}/automr_results.csv",
@@ -953,8 +967,39 @@ class AutoMR:
             index=False,
         )
 
+        # -----------------------------------------
+        # Generate Per-MR Graphs
+        # -----------------------------------------
+
+        self.graph_generator.generate_all(
+            df,
+            epsilon=self.comparator.epsilon
+        )
+
+        # Failure Rate
+
+        self.graph_generator.failure_rate_graph(
+            results["failure_summary"]
+        )
+
+        # Severity
+
+        self.graph_generator.severity_graph(
+            results["severity_summary"]
+        )
+
+        # Range Analysis
+
+        self.graph_generator.range_analysis_graph(
+            results["range_analysis"]
+        )
+
         # Save epsilon sensitivity outputs when available.
         if "epsilon_summary" in results:
+
+            self.graph_generator.epsilon_curve(
+                results["epsilon_summary"]
+            )
 
             results["epsilon_summary"].to_csv(
                 f"{output_dir}/epsilon_summary.csv",

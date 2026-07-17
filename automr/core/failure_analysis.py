@@ -46,41 +46,42 @@ class FailureAnalyzer:
         """
         Calculate the average severity of failed test cases.
 
-        Severity measures how serious the violations are, not how
-        frequently they occur. Only failed test cases contribute
-        to the severity score.
+        Returns
+        -------
+        pandas.DataFrame
+            Columns:
+                mr
+                severity
         """
 
-        # Create severity column if necessary
         if "severity" not in df.columns:
             df["severity"] = df["difference"].abs()
 
-        # Only failed test cases
         failed = df[df["passed"] == False]
 
-        # If there are no failures, return all MRs with zero severity
+        # No failures
         if failed.empty:
-            return (
-                pd.Series(
-                    0.0,
-                    index=sorted(df["mr"].unique()),
-                    name="severity",
-                )
-            )
+            return pd.DataFrame({
+                "mr": sorted(df["mr"].unique()),
+                "severity": [0.0] * len(df["mr"].unique())
+            })
 
-        # Average severity of failed cases
         severity = (
             failed.groupby("mr")["severity"]
             .mean()
+            .reindex(
+                sorted(df["mr"].unique()),
+                fill_value=0.0,
+            )
+            .reset_index()
         )
 
-        # Include MRs with no failures as zero
-        severity = severity.reindex(
-            sorted(df["mr"].unique()),
-            fill_value=0.0,
-        )
+        severity.columns = ["mr", "severity"]
 
-        return severity.sort_values(ascending=False)
+        return severity.sort_values(
+            by="severity",
+            ascending=False,
+        ).reset_index(drop=True)
 
     def worst_cases(self, df, top_k=10):
         """
@@ -184,25 +185,19 @@ class FailureAnalyzer:
         """
         Generate aggregated statistics from range-testing results.
 
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            DataFrame containing AutoMR execution results.
-
         Returns
         -------
         pandas.DataFrame
-            Aggregated range statistics for each MR.
         """
 
-        # Aggregate range and prediction statistics.
         return (
             df.groupby("mr")
-            .agg({
-                "range_change": "max",
-                "range_percent_change": "max",
-                "range_passed": "first",
-                "difference": ["mean", "max"]
-            })
+            .agg(
+                max_range_change=("range_change", "max"),
+                max_range_percent_change=("range_percent_change", "max"),
+                range_passed=("range_passed", "first"),
+                mean_difference=("difference", "mean"),
+                max_difference=("difference", "max"),
+            )
             .reset_index()
         )

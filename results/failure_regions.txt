@@ -1,0 +1,3 @@
+BrightnessRelation: [(2.275, 2.275), (3.0, 3.0)]
+GlobalBrightnessRelation: [(2.275, 2.275)]
+GlobalContrastRelation: [(4.0, 4.0)]

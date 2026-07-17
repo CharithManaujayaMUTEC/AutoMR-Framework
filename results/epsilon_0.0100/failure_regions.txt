@@ -1,2 +1,2 @@
-BrightnessRelation: [(2.275, 2.275), (3.0, 3.0)]
-RainRelation: [(0.375, 0.375)]
+GlobalBrightnessRelation: [(1.55, 1.55), (2.275, 2.275), (3.0, 3.0)]
+RainRelation: [(1.5, 1.5)]
