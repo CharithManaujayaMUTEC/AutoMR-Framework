@@ -1,0 +1,182 @@
+﻿AutoMR Framework Project Structure
+==================================
+
+Generated: 07/13/2026 12:47:07
+
+automr
+│   comparators
+│   │   __init__.py
+│   │   classification.py
+│   │   comparator_factory.py
+│   │   regression.py
+│   core
+│   │   __init__.py
+│   │   failure_analysis.py
+│   │   model_wrapper.py
+│   │   mr_executor.py
+│   │   range_tester.py
+│   │   tester.py
+│   │   visualize.py
+│   dashboard
+│   │   __init__.py
+│   │   config_manager.py
+│   │   control_panel.py
+│   │   dashboard_utils.py
+│   │   graph_panel.py
+│   │   live_dashboard.py
+│   │   video_runner.py
+│   epsilon
+│   │   __init__.py
+│   │   sensitivity.py
+│   │   summary.py
+│   │   utils.py
+│   evaluation
+│   │   __init__.py
+│   │   baseline.py
+│   hpc
+│   │   __init__.py
+│   │   api.py
+│   │   batcher.py
+│   │   cache.py
+│   │   executor.py
+│   │   scheduler.py
+│   │   utils.py
+│   input_handlers
+│   │   __init__.py
+│   │   base_handler.py
+│   │   handler_factory.py
+│   │   image_handler.py
+│   │   tabular_handler.py
+│   │   text_handler.py
+│   interfaces
+│   │   __init__.py
+│   │   comparator_interface.py
+│   │   model_interface.py
+│   │   relation_interface.py
+│   │   transform_interface.py
+│   logging
+│   │   __init__.py
+│   │   logger.py
+│   models
+│   │   __init__.py
+│   │   custom_wrapper.py
+│   │   onnx_wrapper.py
+│   │   pytorch_wrapper.py
+│   │   remote_wrapper.py
+│   │   sklearn_wrapper.py
+│   │   tensorflow_wrapper.py
+│   │   wrapper_factory.py
+│   │   xgboost_wrapper.py
+│   registry
+│   │   __init__.py
+│   │   default_relations.py
+│   │   default_transforms.py
+│   │   relation_registry.py
+│   │   transformation_registry.py
+│   relations
+│   │   __init__.py
+│   │   behavioral_relations.py
+│   │   image_relations.py
+│   │   inequality_relation.py
+│   │   temporal_relations.py
+│   │   weather_relations.py
+│   transforms
+│   │   cpu
+│   │   │   behavioral_transforms.py
+│   │   │   composite_transforms.py
+│   │   │   image_transforms.py
+│   │   │   temporal_transforms.py
+│   │   │   translation.py
+│   │   │   weather_transforms.py
+│   │   effects
+│   │   │   __init__.py
+│   │   │   atmospheric.py
+│   │   │   depth.py
+│   │   │   weather_particles.py
+│   │   │   weather_renderer.py
+│   │   gpu
+│   │   │   behavioral_transforms.py
+│   │   │   composite_transforms.py
+│   │   │   image_transforms.py
+│   │   │   temporal_transforms.py
+│   │   │   translation.py
+│   │   │   weather_transforms.py
+│   │   __init__.py
+│   │   backend.py
+│   │   backend_utils.py
+│   │   behavioral_transforms.py
+│   │   composite_transforms.py
+│   │   image_transforms.py
+│   │   temporal_transforms.py
+│   │   translation.py
+│   │   utils.py
+│   │   weather_transforms.py
+│   verification
+│   │   __init__.py
+│   │   image_saver.py
+│   __init__.py
+│   analysis.py
+│   api.py
+│   comparator.py
+automr.egg-info
+│   dependency_links.txt
+│   PKG-INFO
+│   requires.txt
+│   SOURCES.txt
+│   top_level.txt
+docs
+│   api
+│   │   automr.md
+│   │   hpc.md
+│   │   registry.md
+│   │   relations.md
+│   │   transforms.md
+│   │   utils.md
+│   │   wrappers.md
+│   developer-guide
+│   │   adding-relations.md
+│   │   adding-transformations.md
+│   │   architecture.md
+│   │   comparators.md
+│   │   contributing.md
+│   │   epsilon-analysis.md
+│   │   extending-automr.md
+│   │   hpc-engine.md
+│   │   input-handlers.md
+│   │   model-wrappers.md
+│   │   project-structure.md
+│   │   registry-system.md
+│   │   report-generator.md
+│   images
+│   tutorials
+│   │   custom-plugin.md
+│   │   image-classification.md
+│   │   lane-detection.md
+│   │   object-detection.md
+│   │   regression.md
+│   user-guide
+│   │   configuration.md
+│   │   faq.md
+│   │   getting-started.md
+│   │   metamorphic-relations.md
+│   │   reports.md
+│   │   running-tests.md
+│   │   supported-models.md
+│   │   transformations.md
+│   index.md
+│   installation.md
+│   quickstart.md
+logs
+│   automr.log
+notebooks
+.env.example
+.gitignore
+automrlogo.png
+dashboard.html
+pyproject.toml
+README.md
+requirements.txt
+run_automr_test_example.py
+run_automr_test_example_hpc.py
+structure.txt
+webcam_automr_live.py
