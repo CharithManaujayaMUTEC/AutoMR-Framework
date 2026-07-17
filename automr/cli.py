@@ -1,126 +1,260 @@
 import argparse
+import sys
 from pathlib import Path
 
 from automr import __version__
 
 
-DOCS_DIR = Path(__file__).parent / "docs"
+ROOT = Path(__file__).parent
+DOCS_DIR = ROOT / "docs"
 
 
-def print_banner():
-    print("=" * 80)
+# ------------------------------------------------------------------
+# Banner
+# ------------------------------------------------------------------
+
+def banner():
+    print(
+r"""
+================================================================================
+      █████╗ ██╗   ██╗████████╗ ██████╗ ███╗   ███╗██████╗
+     ██╔══██╗██║   ██║╚══██╔══╝██╔═══██╗████╗ ████║██╔══██╗
+     ███████║██║   ██║   ██║   ██║   ██║██╔████╔██║██████╔╝
+     ██╔══██║██║   ██║   ██║   ██║   ██║██║╚██╔╝██║██╔══██╗
+     ██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║ ╚═╝ ██║██║  ██║
+     ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝
+
+        Automated Metamorphic Testing Framework
+================================================================================
+""")
+
+# ------------------------------------------------------------------
+# Commands
+# ------------------------------------------------------------------
+
+def cmd_version(args):
     print(f"AutoMR Framework v{__version__}")
-    print("Automated Metamorphic Testing Framework")
-    print("for Regression-based Autonomous Driving AI/ML Models")
-    print("=" * 80)
 
 
-def show_info():
-    print_banner()
+def cmd_info(args):
 
-    print("\nFramework Features")
-    print("-" * 80)
+    banner()
+
+    print(f"Version              : {__version__}")
+    print("Framework            : AutoMR")
+    print("Architecture         : Plugin-based")
+    print("Validation           : Parallel")
+    print()
+
+    print("Features")
+    print("-------------------------------------------")
     print("✓ Model Agnostic")
     print("✓ Input Agnostic")
     print("✓ Output Agnostic")
+    print("✓ Regression Model Support")
+    print("✓ TensorFlow")
+    print("✓ PyTorch")
+    print("✓ ONNX Runtime")
     print("✓ HPC Parallel Validation")
     print("✓ Prediction Caching")
     print("✓ Batch Inference")
-    print("✓ Epsilon Sensitivity Analysis")
-    print("✓ Automatic Epsilon Recommendation")
     print("✓ Failure Analysis")
     print("✓ Severity Analysis")
-    print("✓ Worst Case Detection")
-    print("✓ Range Analysis")
-    print("✓ Graph Generation")
+    print("✓ Worst-case Detection")
+    print("✓ Parameter Range Analysis")
+    print("✓ Automatic Epsilon Search")
     print("✓ Report Generation")
-    print("✓ Transformation Visualization")
+    print("✓ Graph Generation")
     print("✓ Plugin Architecture")
-
-    print("\nSupported Backends")
-    print("-" * 80)
-    print("• TensorFlow")
-    print("• PyTorch")
-    print("• ONNX Runtime")
-
-    print("\nVersion")
-    print("-" * 80)
-    print(f"AutoMR : {__version__}")
+    print("✓ Transformation Registry")
+    print("✓ Relation Registry")
 
 
-def list_docs():
-    print_banner()
-
-    print("\nDocumentation")
-    print("-" * 80)
+def cmd_docs(args):
 
     if not DOCS_DIR.exists():
         print("Documentation folder not found.")
         return
 
+    if args.name:
+
+        matches = []
+
+        for f in DOCS_DIR.rglob("*"):
+
+            if f.is_file():
+
+                if args.name.lower() in f.stem.lower():
+                    matches.append(f)
+
+        if not matches:
+            print("Documentation not found.")
+            return
+
+        doc = matches[0]
+
+        print("=" * 80)
+        print(doc.name)
+        print("=" * 80)
+        print(doc.read_text(encoding="utf8"))
+
+        return
+
+    banner()
+
+    print("Available Documentation\n")
+
     files = sorted(DOCS_DIR.rglob("*"))
 
-    count = 0
+    for f in files:
 
-    for file in files:
-        if file.is_file():
-            count += 1
-            rel = file.relative_to(DOCS_DIR)
-            print(f"{count:02d}. {rel}")
+        if f.is_file():
+            print(f" • {f.relative_to(DOCS_DIR)}")
 
-    if count == 0:
-        print("No documentation files found.")
+    print()
+    print("Example:")
+    print("   automr docs api")
+    print("   automr docs transformations")
 
+
+def cmd_examples(args):
+
+    print("Example Commands\n")
+
+    print("Run validation")
+    print("  automr validate")
+
+    print()
+
+    print("Run benchmark")
+    print("  automr benchmark")
+
+    print()
+
+    print("List documentation")
+    print("  automr docs")
+
+    print()
+
+    print("Show API documentation")
+    print("  automr docs api")
+
+
+def cmd_license(args):
+
+    print("""
+MIT License
+
+Copyright (c) AutoMR
+
+Permission is hereby granted, free of charge,
+to any person obtaining a copy...
+""")
+
+
+def cmd_citation(args):
+
+    print("""
+If you use AutoMR in your research please cite:
+
+AutoMR Framework
+Automated Metamorphic Testing Framework
+for Regression-based AI/ML Models
+
+Version: {}
+""".format(__version__))
+
+
+def cmd_list_mrs(args):
+
+    try:
+        from automr.relations.registry import relation_registry
+
+        print("\nRegistered Metamorphic Relations\n")
+
+        for i, name in enumerate(sorted(relation_registry.list()), 1):
+            print(f"{i:2d}. {name}")
+
+    except Exception:
+
+        print("Unable to load relation registry.")
+
+
+def cmd_list_transforms(args):
+
+    try:
+        from automr.transformations.registry import transformation_registry
+
+        print("\nRegistered Transformations\n")
+
+        for i, name in enumerate(sorted(transformation_registry.list()), 1):
+            print(f"{i:2d}. {name}")
+
+    except Exception:
+
+        print("Unable to load transformation registry.")
+
+
+# ------------------------------------------------------------------
+# Main
+# ------------------------------------------------------------------
 
 def main():
 
     parser = argparse.ArgumentParser(
         prog="automr",
         description="Automated Metamorphic Testing Framework",
-        formatter_class=argparse.RawTextHelpFormatter,
-        epilog="""
-Examples
---------
-automr --info
-automr --version
-automr --docs
-"""
     )
 
-    parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Show framework version"
-    )
+    sub = parser.add_subparsers(dest="command")
 
-    parser.add_argument(
-        "--info",
-        action="store_true",
-        help="Display framework information"
-    )
+    sub.add_parser("version", help="Show framework version").set_defaults(func=cmd_version)
 
-    parser.add_argument(
-        "--docs",
-        action="store_true",
-        help="List available documentation"
-    )
+    sub.add_parser("info", help="Framework information").set_defaults(func=cmd_info)
+
+    p = sub.add_parser("docs", help="Browse documentation")
+    p.add_argument("name", nargs="?", help="Documentation name")
+    p.set_defaults(func=cmd_docs)
+
+    sub.add_parser(
+        "list-mrs",
+        help="List registered metamorphic relations"
+    ).set_defaults(func=cmd_list_mrs)
+
+    sub.add_parser(
+        "list-transforms",
+        help="List registered transformations"
+    ).set_defaults(func=cmd_list_transforms)
+
+    sub.add_parser(
+        "examples",
+        help="Show example commands"
+    ).set_defaults(func=cmd_examples)
+
+    sub.add_parser(
+        "license",
+        help="Show license"
+    ).set_defaults(func=cmd_license)
+
+    sub.add_parser(
+        "citation",
+        help="Show citation information"
+    ).set_defaults(func=cmd_citation)
+
+    # Reserved for future implementation
+    sub.add_parser("benchmark", help="Run benchmark")
+    sub.add_parser("validate", help="Run validation")
+    sub.add_parser("graphs", help="Generate graphs")
+    sub.add_parser("report", help="Generate reports")
 
     args = parser.parse_args()
 
-    if args.version:
-        print(f"AutoMR v{__version__}")
-        return
+    if not hasattr(args, "func"):
+        banner()
+        parser.print_help()
+        sys.exit(0)
 
-    if args.info:
-        show_info()
-        return
-
-    if args.docs:
-        list_docs()
-        return
-
-    print_banner()
-    parser.print_help()
+    args.func(args)
 
 
 if __name__ == "__main__":
