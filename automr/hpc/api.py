@@ -85,6 +85,7 @@ class HighPerformanceAutoMR(AutoMR):
         """
 
         kwargs.setdefault(
+            "cache",
             self.cache,
         )
 
