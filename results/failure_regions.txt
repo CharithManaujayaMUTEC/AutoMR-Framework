@@ -1,1 +1,2 @@
-BrightnessRelation: [(3.0, 3.0)]
+CompositeRelation: [(1.5, 1.5)]
+GlobalTranslationRelation: [(80.0, 80.0)]

@@ -52,12 +52,6 @@ class EpsilonSensitivity:
         # Store results for all evaluated epsilon values.
         all_results = []
 
-        # --------------------------------------------------
-        # Shared cache across ALL epsilon runs
-        # --------------------------------------------------
-        # Reuse transformed predictions between epsilon values.
-        prediction_cache = {}
-
         # Execute AutoMR for each epsilon value.
         for eps in epsilon_values:
 
@@ -70,9 +64,6 @@ class EpsilonSensitivity:
                 samples_per_mr=samples_per_mr,
                 show_progress=show_progress,
                 epsilon=eps,
-
-                # Shared cache
-                prediction_cache=prediction_cache,
             )
 
             # Record the epsilon value used for this execution.

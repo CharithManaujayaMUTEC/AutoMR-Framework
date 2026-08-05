@@ -26,8 +26,11 @@ class InvarianceRelation:
         return self._expected
 
     def check(self, y1, y2):
-        change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.epsilon
+        """
+        PASS if the absolute prediction difference
+        is within the epsilon tolerance.
+        """
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================
@@ -125,19 +128,13 @@ class CompositeRelation(InvarianceRelation):
 # Flip
 # ==========================================================
 
-class FlipRelation:
+class FlipRelation(InvarianceRelation):
 
-    def __init__(self, epsilon=0.10):
-        self.epsilon = epsilon
-
-    def type(self):
-        return "inequality"
-
-    def expected(self):
-        return "Flipped image should invert steering."
-
-    def check(self, y1, y2):
-        return abs(y2 + y1) / (abs(y1) + 1e-6) < self.epsilon
+    def __init__(self, epsilon=0.05):
+        super().__init__(
+            epsilon=epsilon,
+            expected="Prediction should remain approximately invariant under horizontal image flipping."
+        )
     
 # ==========================================================
 # Global Brightness

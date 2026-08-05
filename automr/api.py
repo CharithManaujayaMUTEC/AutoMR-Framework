@@ -410,7 +410,6 @@ class AutoMR:
         mr_name,
         samples=50,
         original_prediction=None,
-        prediction_cache=None,
     ):
         """
         Execute a single metamorphic relation over one input.
@@ -451,13 +450,23 @@ class AutoMR:
             image_saver=self.image_saver,
             range_threshold=self.range_threshold,
             original_prediction=original_prediction,
-            prediction_cache=prediction_cache,
         )
 
         # Record severity and write execution logs.
         for result in results:
+            
+            epsilon = max(
+                getattr(
+                    relation,
+                    "tolerance",
+                    getattr(relation, "epsilon", 0.01),
+                ),
+                1e-12,
+            )
 
-            result["severity"] = abs(result["difference"])
+            result["severity"] = (
+                abs(result["difference"]) / epsilon
+            )
 
             self.logger.log(
                 f"MR={mr_name} "
@@ -487,7 +496,6 @@ class AutoMR:
         samples=50,
         exclude=None,
         original_prediction=None,
-        prediction_cache=None,
     ):
         """
         Execute every registered metamorphic relation for a
@@ -517,7 +525,6 @@ class AutoMR:
                 mr_name=mr_name,
                 samples=samples,
                 original_prediction=original_prediction,
-                prediction_cache=prediction_cache,
             )
 
             dfs.append(df)
@@ -538,7 +545,7 @@ class AutoMR:
         model inference.
         """
 
-        sample_id, sample, samples_per_mr, df_temp, prediction_cache = args
+        sample_id, sample, samples_per_mr, df_temp = args
 
         # Compute the original model prediction once.
         original_prediction = float(
@@ -550,7 +557,6 @@ class AutoMR:
             input_data=sample,
             samples=samples_per_mr,
             original_prediction=original_prediction,
-            prediction_cache=prediction_cache,
         )
 
         # Merge temporal MR results if available.
@@ -621,7 +627,6 @@ class AutoMR:
         include_temporal=True,
         show_progress=False,
         epsilon=None,
-        prediction_cache=None,
     ):
         """
         Execute AutoMR over an entire dataset.
@@ -662,13 +667,9 @@ class AutoMR:
         if include_temporal:
 
             try:
-                # Only use a subset of the dataset to reduce
-                # memory consumption during temporal testing.
-                temporal_limit = min(300, total_images)
-
                 temporal_data = [
                     dataset[i]
-                    for i in range(temporal_limit)
+                    for i in range(total_images)
                 ]
 
                 df_temp, _ = self.run_mr(
@@ -691,12 +692,6 @@ class AutoMR:
         process_time = 0.0
 
         all_results = []
-
-        # -------------------------------------------------------
-        # Shared prediction cache reused across all samples.
-        # -------------------------------------------------------
-        if prediction_cache is None:
-            prediction_cache = {}
 
         # -------------------------------------------------------
         # Create dataset iterator.
@@ -778,7 +773,6 @@ class AutoMR:
                         sample,
                         samples_per_mr,
                         df_temp,
-                        prediction_cache,
                     ),
                 )
 

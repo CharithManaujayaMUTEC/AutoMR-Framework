@@ -277,9 +277,11 @@ class GraphGenerator:
 
         fig, ax = plt.subplots(figsize=self.figsize)
 
+        rates = failure_df["failure_rate"] * 100
+
         ax.bar(
             failure_df["mr"],
-            failure_df["failure_rate"],
+            rates,
         )
 
         ax.set_title("Failure Rate per Metamorphic Relation")
@@ -423,9 +425,11 @@ class GraphGenerator:
 
         fig, ax = plt.subplots(figsize=self.figsize)
 
+        failure_rates = epsilon_df["failure_rate"] * 100
+
         ax.plot(
             epsilon_df["epsilon"],
-            epsilon_df["failure_rate"],
+            failure_rates,
             marker="o",
             linewidth=2,
         )
@@ -686,9 +690,11 @@ class GraphGenerator:
 
         axs[0,0].bar(
             failure_df["mr"],
-            failure_df["failure_rate"],
+            failure_df["failure_rate"] * 100,
         )
         axs[0,0].set_title("Failure Rate")
+        axs[0,0].set_ylabel("Failure Rate (%)")
+        axs[0,0].set_ylim(0, 100)
 
         axs[0,1].bar(
             severity_df["mr"],

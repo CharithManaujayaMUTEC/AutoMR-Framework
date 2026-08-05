@@ -1,5 +1,6 @@
 mr,total,passed,failed,failure_rate
-BrightnessRelation,100,99,1,0.01
+GlobalTranslationRelation,100,99,1,0.01
+CompositeRelation,100,99,1,0.01
 BlurRelation,100,100,0,0.0
 TemporalSmoothnessRelation,20,20,0,0.0
 SnowRelation,100,100,0,0.0
@@ -9,8 +10,8 @@ RotationRelation,100,100,0,0.0
 RainRelation,100,100,0,0.0
 NoiseRelation,100,100,0,0.0
 HazeRelation,100,100,0,0.0
-GlobalTranslationRelation,100,100,0,0.0
 GlobalRotationRelation,100,100,0,0.0
+BrightnessRelation,100,100,0,0.0
 GlobalNoiseRelation,100,100,0,0.0
 GlobalContrastRelation,100,100,0,0.0
 GlobalBrightnessRelation,100,100,0,0.0
@@ -19,5 +20,4 @@ FogRelation,100,100,0,0.0
 DustRelation,100,100,0,0.0
 DarkVisibilityRelation,200,200,0,0.0
 ContrastRelation,100,100,0,0.0
-CompositeRelation,100,100,0,0.0
 TranslationRelation,100,100,0,0.0

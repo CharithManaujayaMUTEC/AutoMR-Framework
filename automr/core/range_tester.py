@@ -36,7 +36,6 @@ class RangeTester:
         image_saver=None,
         range_threshold=5.0,
         original_prediction=None,
-        prediction_cache=None,   # Cache for epsilon runs
     ):
         """
         Optimized range execution.
@@ -132,7 +131,6 @@ class RangeTester:
         # -----------------------------------------
 
         transformed_images = []
-        cache_keys = []
 
         for v in values:
 
@@ -143,14 +141,6 @@ class RangeTester:
             )
 
             transformed_images.append(transformed)
-
-            # Create a cache key for this transformation.
-            cache_keys.append(
-                (
-                    relation.__class__.__name__,
-                    float(v),
-                )
-            )
 
             # Save preview images only when data is on CPU.
             if (
@@ -165,78 +155,32 @@ class RangeTester:
                         transformed=transformed,
                     )
                 except Exception:
-                    # Ignore preview saving failures.
                     pass
-        
+
         # -----------------------------------------
-        # Prediction cache
+        # Batch prediction
         # -----------------------------------------
-        # Reuse predictions across epsilon runs.
-        outputs = [None] * len(values)
 
-        missing = []
-        missing_idx = []
+        if not transformed_images:
+            return results
 
-        if prediction_cache is not None:
+        # GPU backend
+        if isinstance(transformed_images[0], torch.Tensor):
 
-            for i, key in enumerate(cache_keys):
-
-                # Use cached prediction when available.
-                if key in prediction_cache:
-                    outputs[i] = prediction_cache[key]
-                else:
-                    missing.append(
-                        transformed_images[i]
-                    )
-                    missing_idx.append(i)
-
-        else:
-
-            # Cache disabled; predict every sample.
-            missing = transformed_images
-            missing_idx = list(
-                range(len(values))
+            batch = torch.stack(
+                transformed_images,
+                dim=0,
             )
 
-        # -----------------------------------------
-        # Batch predict only missing images
-        # -----------------------------------------
-        if missing:
+            outputs = model.predict_batch(batch)
 
-            # GPU backend
-            if isinstance(missing[0], torch.Tensor):
+        # CPU backend
+        else:
 
-                # Stack tensors into a single batch.
-                batch = torch.stack(
-                    missing,
-                    dim=0,
-                )
+            outputs = model.predict_batch(
+                transformed_images
+            )
 
-                preds = model.predict_batch(batch)
-
-            # CPU backend
-            else:
-
-                preds = model.predict_batch(
-                    missing
-                )
-
-            # Store predictions and update cache.
-            for idx, pred in zip(
-                missing_idx,
-                preds,
-            ):
-
-                pred = float(pred)
-
-                outputs[idx] = pred
-
-                if prediction_cache is not None:
-                    prediction_cache[
-                        cache_keys[idx]
-                    ] = pred
-
-        # Convert predictions to a NumPy array.
         outputs = np.asarray(
             outputs,
             dtype=np.float32,
@@ -265,24 +209,32 @@ class RangeTester:
             <= range_threshold
         )
 
-        # -----------------------------------------
-        # Analyze predictions
-        # -----------------------------------------
+       # -----------------------------------------
+       # Analyze predictions
+       # -----------------------------------------
+
         for v, output in zip(values, outputs):
 
             output = float(output)
 
-            # Retrieve the configured tolerance.
+            # Retrieve relation tolerance.
             tolerance = getattr(
                 relation,
                 "tolerance",
-                getattr(relation, "epsilon", 0.01),
+                getattr(
+                    relation,
+                    "epsilon",
+                    0.01,
+                ),
             )
-            # Final pass/fail decision.
+
+            # Absolute prediction difference.
             difference = abs(output - original)
 
+            # Pass / Fail decision.
             passed = difference <= tolerance
 
+            # Percentage change.
             pct = (
                 difference /
                 (abs(original) + 1e-6)

@@ -85,7 +85,6 @@ class HighPerformanceAutoMR(AutoMR):
         """
 
         kwargs.setdefault(
-            "prediction_cache",
             self.cache,
         )
 

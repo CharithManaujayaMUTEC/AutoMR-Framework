@@ -7,6 +7,7 @@ violations, failure regions, and range-based summaries.
 """
 
 import pandas as pd
+import numpy as np
 
 
 class FailureAnalyzer:
@@ -55,7 +56,10 @@ class FailureAnalyzer:
         """
 
         if "severity" not in df.columns:
-            df["severity"] = df["difference"].abs()
+            raise ValueError(
+                "Results do not contain a severity column. "
+                "Severity should be computed during MR execution."
+            )
 
         failed = df[df["passed"] == False]
 
@@ -100,9 +104,11 @@ class FailureAnalyzer:
             Top-ranked violations by severity.
         """
 
-        # Create the severity column if necessary.
         if "severity" not in df.columns:
-            df["severity"] = df["difference"].abs()
+            raise ValueError(
+                "Results do not contain a severity column. "
+                "Severity should be computed during MR execution."
+            )
 
         # Return the most severe violations.
         return df.sort_values(by="severity", ascending=False).head(top_k)
@@ -139,8 +145,16 @@ class FailureAnalyzer:
             current = [params[0]]
 
             # Group nearby parameter values into continuous regions.
+            # Estimate the parameter spacing used for this MR.
+            if len(params) > 1:
+                step = np.median(np.diff(params))
+            else:
+                step = 0.0
+
+            threshold = step * 1.5
+
             for i in range(1, len(params)):
-                if abs(params[i] - params[i-1]) < 0.05:
+                if abs(params[i] - params[i - 1]) <= threshold:
                     current.append(params[i])
                 else:
                     grouped.append((min(current), max(current)))

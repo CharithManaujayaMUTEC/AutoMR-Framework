@@ -103,7 +103,6 @@ class HPCExecutor:
                             sample,
                             worker_args["samples_per_mr"],
                             worker_args["df_temp"],
-                            worker_args["prediction_cache"],
                         ),
                     )
                 )
@@ -134,7 +133,6 @@ class HPCExecutor:
         samples_per_mr=5,
         include_temporal=True,
         show_progress=True,
-        prediction_cache=None,
         **kwargs,
     ):
         """
@@ -191,7 +189,6 @@ class HPCExecutor:
         worker_args = {
             "samples_per_mr": samples_per_mr,
             "df_temp": df_temp,
-            "prediction_cache": prediction_cache,
         }
 
         chunks = self.split_dataset(dataset)
