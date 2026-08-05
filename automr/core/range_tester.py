@@ -268,64 +268,35 @@ class RangeTester:
         # -----------------------------------------
         # Analyze predictions
         # -----------------------------------------
-        for v, output in zip(
-            values,
-            outputs,
-        ):
+        for v, output in zip(values, outputs):
 
             output = float(output)
-
-            # Evaluate the metamorphic relation.
-            base_pass = relation.check(
-                original,
-                output,
-            )
 
             # Retrieve the configured tolerance.
             tolerance = getattr(
                 relation,
                 "tolerance",
-                getattr(
-                    relation,
-                    "epsilon",
-                    0.01,
-                ),
+                getattr(relation, "epsilon", 0.01),
             )
-
             # Final pass/fail decision.
-            passed = (
-                base_pass
-                and
-                abs(output - original)
-                <= tolerance
-            )
+            difference = abs(output - original)
 
-            # Compute prediction difference.
-            if comparator:
-                diff, _ = comparator.compare(
-                    original,
-                    output,
-                )
-            else:
-                diff = output - original
+            passed = difference <= tolerance
 
-            # Compute percentage change.
             pct = (
-                diff
-                /
+                difference /
                 (abs(original) + 1e-6)
             ) * 100.0
 
-            # Record the result.
             results.append({
 
                 "mr": relation.__class__.__name__,
                 "param": float(v),
                 "original": original,
                 "transformed": output,
-                "difference": float(diff),
+                "difference": float(difference),
                 "percent_change": float(pct),
-                "passed": bool(passed),
+                "passed": passed,
                 "range_change": float(range_change),
                 "range_percent_change": float(range_percent_change),
                 "range_passed": bool(range_passed),
