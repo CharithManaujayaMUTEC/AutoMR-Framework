@@ -125,6 +125,51 @@ class AutoMRBenchmark:
 
         gpu_after = self._get_gpu_metrics()
 
+        gpu_memory_allocated_delta_mb = None
+
+        gpu_memory_reserved_delta_mb = None
+
+        if (
+            gpu_before["gpu_available"]
+            and gpu_after["gpu_available"]
+        ):
+
+            before_allocated = (
+                gpu_before["gpu_memory_allocated_mb"]
+            )
+
+            after_allocated = (
+                gpu_after["gpu_memory_allocated_mb"]
+            )
+
+            before_reserved = (
+                gpu_before["gpu_memory_reserved_mb"]
+            )
+
+            after_reserved = (
+                gpu_after["gpu_memory_reserved_mb"]
+            )
+
+            if (
+                before_allocated is not None
+                and after_allocated is not None
+            ):
+
+                gpu_memory_allocated_delta_mb = (
+                    after_allocated
+                    - before_allocated
+                )
+
+            if (
+                before_reserved is not None
+                and after_reserved is not None
+            ):
+
+                gpu_memory_reserved_delta_mb = (
+                    after_reserved
+                    - before_reserved
+                )
+
         runtime_seconds = (
             end_time - start_time
         )
@@ -192,6 +237,13 @@ class AutoMRBenchmark:
 
             "results":
                 results,
+
+            "gpu_memory_allocated_delta_mb":
+                gpu_memory_allocated_delta_mb,
+
+            "gpu_memory_reserved_delta_mb":
+                gpu_memory_reserved_delta_mb,
+
         }
 
         return result
