@@ -242,56 +242,55 @@ class PyTorchWrapper(BaseModel):
         # Decoder
         # -----------------------------------------
         # Decode predictions when a custom decoder is available.
-        if self.decoder is not None:
+        if self.decoder:
+            decoded = []
 
-            outputs = []
+            for i in range(len(batch)):
 
-            # Dictionary output
-            if isinstance(preds, dict):
-
-                batch_size = tensor.shape[0]
-
-                for i in range(batch_size):
+                if isinstance(preds, dict):
 
                     single_pred = {}
 
                     for k, v in preds.items():
 
                         if torch.is_tensor(v):
-                            single_pred[k] = v[i:i + 1]
+
+                            single_pred[k] = (
+                                v[i:i + 1]
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )
+
                         else:
-                            single_pred[k] = v
 
-                    outputs.append(
-                        self.decoder(single_pred)
+                            single_pred[k] = v[i:i + 1]
+
+                    result = self.decoder(
+                        single_pred
                     )
 
-                return outputs
+                else:
 
-            # Tensor output
-            if torch.is_tensor(preds):
+                    single_prediction = preds[i:i + 1]
 
-                for i in range(tensor.shape[0]):
+                    if torch.is_tensor(single_prediction):
 
-                    outputs.append(
-                        self.decoder(
-                            preds[i:i + 1]
+                        single_prediction = (
+                            single_prediction
+                            .detach()
+                            .cpu()
+                            .numpy()
                         )
+
+                    result = self.decoder(
+                        single_prediction
                     )
 
-                return outputs
+                decoded.append(result)
 
-            # Tuple/List output
-            if isinstance(preds, (list, tuple)):
-
-                for pred in preds:
-
-                    outputs.append(
-                        self.decoder(pred)
-                    )
-
-                return outputs
-
+            return decoded
+        
         # -----------------------------------------
         # Tensor output
         # -----------------------------------------
