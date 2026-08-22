@@ -321,7 +321,138 @@ class AutoMR:
 
         self.mr_ranges[name] = param_range
 
+    # ==================================================
+    # Custom Extension API
+    # ==================================================
 
+    def register_custom_transformation(
+        self,
+        name,
+        transform,
+    ):
+        """
+        Register a custom transformation.
+
+        This is an extension API and does not modify or
+        replace the existing register_transform() behavior.
+
+        Parameters
+        ----------
+        name : str
+            Unique transformation name.
+
+        transform : callable
+            Transformation function or transformation object.
+
+        Returns
+        -------
+        self
+            Enables method chaining.
+        """
+
+        self.transformation_registry.register(
+            name,
+            transform,
+        )
+
+        return self
+
+
+    def register_custom_relation(
+        self,
+        name,
+        relation,
+    ):
+        """
+        Register a custom metamorphic relation.
+
+        This is an extension API and does not modify or
+        replace existing relation registration behavior.
+
+        Parameters
+        ----------
+        name : str
+            Unique relation name.
+
+        relation : callable
+            Relation function or relation object.
+
+        Returns
+        -------
+        self
+            Enables method chaining.
+        """
+
+        self.relation_registry.register(
+            name,
+            relation,
+        )
+
+        return self
+
+
+    def register_custom_mr(
+        self,
+        name,
+        transform,
+        relation,
+        param_range=None,
+    ):
+        """
+        Register a complete custom metamorphic relation.
+
+        Registers the transformation and relation using the
+        existing AutoMR registration mechanism.
+
+        Existing APIs remain unchanged.
+
+        Parameters
+        ----------
+        name : str
+            Base name of the custom MR.
+
+        transform : callable
+            Input transformation.
+
+        relation : callable
+            Metamorphic relation.
+
+        param_range : tuple, optional
+            Optional parameter range.
+
+        Returns
+        -------
+        self
+            Enables method chaining.
+        """
+
+        transform_name = f"{name}_transform"
+
+        relation_name = f"{name}_relation"
+
+        self.register_custom_transformation(
+            name=transform_name,
+            transform=transform,
+        )
+
+        self.register_custom_relation(
+            name=relation_name,
+            relation=relation,
+        )
+
+        # Preserve the existing registration path when
+        # a parameter range is supplied.
+        if param_range is not None:
+
+            self.register_transform(
+                name=name,
+                transform=transform,
+                relation=relation,
+                param_range=param_range,
+            )
+
+        return self
+    
     def unregister_transform(self, name):
         """
         Remove a previously registered transformation,
