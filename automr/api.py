@@ -29,6 +29,7 @@ from automr.registry.default_relations import (
 
 from automr.evaluation import BaselineEvaluator
 from automr.evaluation import GraphGenerator
+from automr.evaluation import DecoderHealthAnalyzer
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
 
@@ -1252,6 +1253,50 @@ class AutoMR:
         )
 
         # --------------------------------------------------
+        # Decoder health validation.
+        #
+        # This is warning-only and never blocks
+        # metamorphic testing.
+        # --------------------------------------------------
+        decoder_health = DecoderHealthAnalyzer()
+
+        decoder_health_report = decoder_health.analyze(
+            predictions=baseline_predictions,
+            output_path=str(
+                Path(output_dir)
+                / "decoder_health.json"
+            ),
+        )
+
+        if verbose:
+
+            print(
+                "\n=== Decoder Health ==="
+            )
+
+            print(
+                f"Status: "
+                f"{decoder_health_report['status']}"
+            )
+
+            print(
+                f"Distribution: "
+                f"{decoder_health_report['distribution_diagnostic']}"
+            )
+
+            if decoder_health_report["warnings"]:
+
+                print("\nWarnings:")
+
+                for warning in (
+                    decoder_health_report["warnings"]
+                ):
+
+                    print(
+                        f"- {warning}"
+                    )
+
+        # --------------------------------------------------
         # Standard AutoMR execution.
         # --------------------------------------------------
         if epsilon_min is None:
@@ -1326,6 +1371,17 @@ class AutoMR:
 
             results["epsilon_summary"] = summary_df
             results["epsilon_report"] = report
+
+        # --------------------------------------------------
+        # Attach decoder health diagnostics.
+        # --------------------------------------------------
+        if results is None:
+
+            results = {}
+
+        results["decoder_health"] = (
+            decoder_health_report
+        )
 
         # --------------------------------------------------
         # Save analysis outputs.
