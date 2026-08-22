@@ -112,3 +112,24 @@ class HighPerformanceAutoMR(AutoMR):
         """
 
         return len(self.cache)
+
+    def cache_stats(self):
+        """
+        Return prediction cache statistics.
+
+        Returns
+        -------
+        dict
+            Cache hits, misses, requests, hit ratio,
+            and current cache size.
+        """
+
+        return self.cache.get_stats()
+
+    def reset_cache_stats(self):
+        """
+        Reset cache instrumentation statistics
+        without clearing cached predictions.
+        """
+
+        self.cache.reset_stats()
