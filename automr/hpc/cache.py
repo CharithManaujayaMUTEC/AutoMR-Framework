@@ -7,9 +7,9 @@ HighPerformanceAutoMR.
 Purpose
 -------
 - Avoid repeated model inference.
-- Reuse transformed predictions.
-- Share predictions across epsilon sweeps.
-- Support future disk persistence.
+- Reuse cached predictions.
+- Support performance measurement.
+- Provide cache hit/miss statistics.
 """
 
 from threading import Lock
@@ -17,19 +17,26 @@ from threading import Lock
 
 class PredictionCache:
     """
-    Simple thread-safe prediction cache.
+    Thread-safe prediction cache.
 
-    Cache key
-    ---------
-    Any hashable object.
+    Cache statistics
+    ----------------
+    hits:
+        Number of successful cache retrievals.
 
-    Examples
-    --------
-    ("BrightnessRelation", 0.25)
+    misses:
+        Number of attempted retrievals where the
+        requested key was not present.
 
-    ("NoiseRelation", 15.0)
+    hit_ratio:
+        hits / (hits + misses)
 
-    ("sample42", "rotation", 30)
+    Notes
+    -----
+    Statistics are updated only by ``get()``.
+    Methods such as ``exists()`` do not affect the
+    counters because they are metadata checks rather
+    than prediction retrievals.
     """
 
     def __init__(self):
@@ -38,6 +45,14 @@ class PredictionCache:
 
         self._lock = Lock()
 
+        # ---------------------------------------------
+        # Cache instrumentation
+        # ---------------------------------------------
+
+        self._hits = 0
+
+        self._misses = 0
+
     # -------------------------------------------------
     # Basic operations
     # -------------------------------------------------
@@ -45,14 +60,23 @@ class PredictionCache:
     def get(self, key, default=None):
         """
         Retrieve a cached prediction.
+
+        A successful lookup increments ``hits``.
+
+        A missing key increments ``misses``.
         """
 
         with self._lock:
 
-            return self._cache.get(
-                key,
-                default,
-            )
+            if key in self._cache:
+
+                self._hits += 1
+
+                return self._cache[key]
+
+            self._misses += 1
+
+            return default
 
     def put(self, key, value):
         """
@@ -66,6 +90,8 @@ class PredictionCache:
     def exists(self, key):
         """
         Check whether a key exists.
+
+        This does not modify hit/miss statistics.
         """
 
         with self._lock:
@@ -80,19 +106,135 @@ class PredictionCache:
         with self._lock:
 
             if key in self._cache:
+
                 del self._cache[key]
 
     def clear(self):
         """
-        Clear the cache.
+        Clear the cache and reset statistics.
         """
 
         with self._lock:
 
             self._cache.clear()
 
+            self._hits = 0
+
+            self._misses = 0
+
     # -------------------------------------------------
     # Statistics
+    # -------------------------------------------------
+
+    @property
+    def hits(self):
+        """
+        Number of successful cache retrievals.
+        """
+
+        with self._lock:
+
+            return self._hits
+
+    @property
+    def misses(self):
+        """
+        Number of unsuccessful cache retrievals.
+        """
+
+        with self._lock:
+
+            return self._misses
+
+    @property
+    def requests(self):
+        """
+        Total cache retrieval attempts.
+        """
+
+        with self._lock:
+
+            return (
+                self._hits
+                + self._misses
+            )
+
+    @property
+    def hit_ratio(self):
+        """
+        Cache hit ratio.
+
+        Returns
+        -------
+        float
+            hits / (hits + misses)
+
+        Returns 0.0 when no cache lookups have
+        occurred.
+        """
+
+        with self._lock:
+
+            total = (
+                self._hits
+                + self._misses
+            )
+
+            if total == 0:
+
+                return 0.0
+
+            return (
+                self._hits
+                / total
+            )
+
+    def get_stats(self):
+        """
+        Return all cache instrumentation statistics.
+
+        Returns
+        -------
+        dict
+        """
+
+        with self._lock:
+
+            total = (
+                self._hits
+                + self._misses
+            )
+
+            hit_ratio = (
+                self._hits / total
+                if total > 0
+                else 0.0
+            )
+
+            return {
+                "hits": self._hits,
+                "misses": self._misses,
+                "requests": total,
+                "hit_ratio": hit_ratio,
+                "cache_size": len(
+                    self._cache
+                ),
+            }
+
+    def reset_stats(self):
+        """
+        Reset hit/miss instrumentation without
+        clearing cached predictions.
+        """
+
+        with self._lock:
+
+            self._hits = 0
+
+            self._misses = 0
+
+    # -------------------------------------------------
+    # Existing cache information
     # -------------------------------------------------
 
     def __len__(self):
@@ -100,7 +242,11 @@ class PredictionCache:
         Number of cached predictions.
         """
 
-        return len(self._cache)
+        with self._lock:
+
+            return len(
+                self._cache
+            )
 
     def size(self):
         """
@@ -110,31 +256,28 @@ class PredictionCache:
         return len(self)
 
     def keys(self):
-        """
-        Return cache keys.
-        """
 
         with self._lock:
 
-            return list(self._cache.keys())
+            return list(
+                self._cache.keys()
+            )
 
     def values(self):
-        """
-        Return cache values.
-        """
 
         with self._lock:
 
-            return list(self._cache.values())
+            return list(
+                self._cache.values()
+            )
 
     def items(self):
-        """
-        Return cache entries.
-        """
 
         with self._lock:
 
-            return list(self._cache.items())
+            return list(
+                self._cache.items()
+            )
 
     # -------------------------------------------------
     # Dictionary compatibility
@@ -150,11 +293,18 @@ class PredictionCache:
 
     def __setitem__(self, key, value):
 
-        self.put(key, value)
+        self.put(
+            key,
+            value,
+        )
 
     def __repr__(self):
 
         return (
             f"PredictionCache("
-            f"size={len(self._cache)})"
+            f"size={len(self._cache)}, "
+            f"hits={self._hits}, "
+            f"misses={self._misses}, "
+            f"hit_ratio={self.hit_ratio:.4f}"
+            f")"
         )
