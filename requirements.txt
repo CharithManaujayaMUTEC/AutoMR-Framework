@@ -73,3 +73,6 @@ networkx>=3.4.2
 # Optional for Jupyter users
 notebook>=7.3.2
 jupyterlab>=4.3.5
+
+# Optional for GPU users
+psutil>=5.9.0
