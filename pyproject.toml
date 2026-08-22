@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automr"
-version = "1.1.7"
+version = "1.1.8"
 
 description = "A Model-Agnostic Metamorphic Testing Framework for Regression-Based AI/ML Models with High-Performance Parallel Validation"
 
@@ -115,7 +115,10 @@ dependencies = [
   "packaging>=24.2",
   "psutil>=6.1.1",
   "joblib>=1.4.2",
-  "networkx>=3.4.2"
+  "networkx>=3.4.2",
+
+  # Optional for GPU users
+  "psutil>=5.9.0"
 ]
 
 [project.urls]
@@ -131,10 +134,8 @@ include = ["automr*"]
 exclude = [
   "results*",
   "results_hpc*",
-  "examples*",
   "tests*",
   "notebooks*",
   "logs*",
-  "docs*",
   "benchmarks*"
 ]
