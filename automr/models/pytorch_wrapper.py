@@ -138,9 +138,25 @@ class PyTorchWrapper(BaseModel):
             ):
 
                 pred = self.model(tensor)
-
-        # Decode model output if a decoder is provided.
+        # --------------------------------------------------
+        # Model-specific decoder
+        # --------------------------------------------------
         if self.decoder is not None:
+
+            # Ensure tensors passed to external decoders are
+            # detached from the computation graph and moved
+            # from GPU/CUDA memory to CPU memory.
+            #
+            # This allows NumPy and OpenCV based decoder logic
+            # to safely process model outputs.
+            if torch.is_tensor(pred):
+
+                pred = (
+                    pred
+                    .detach()
+                    .cpu()
+                )
+
             return self.decoder(pred)
 
         # Handle tensor outputs.
