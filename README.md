@@ -86,6 +86,11 @@ The framework automatically applies transformations, validates metamorphic relat
 - **Verification Artifact Generation** — transformed samples saved automatically per relation
 - **CSV, JSON, and Text Report Generation** — comprehensive reproducible outputs
 - **Progress Tracking** — optional live progress bars for long-running evaluations
+- **Decoder Health Validation** — warning-only diagnostics for baseline prediction variance, standard deviation, range, uniqueness, saturation, clipping, and distribution
+- **Enhanced Epsilon Diagnostics** — normalized epsilon, prediction range, plateau and flat-zero curve detection, and diagnostic warnings
+- **Cache Instrumentation** — inspect cache hits, misses, requests, hit ratio, and cache size, and reset statistics independently
+- **Performance Benchmarking** — compare standard and high-performance execution with runtime, throughput, CPU, memory, GPU, cache, and speedup metrics
+- **Final Evaluation Reporting** — consolidate available experiment artifacts into `final_evaluation_report.json`
 
 ---
 
@@ -642,6 +647,34 @@ AutoMR automatically computes the following after each test run:
 - **Epsilon Sensitivity Analysis** — failure rate curve across a threshold sweep
 - **Automatic Epsilon Recommendation** — heuristic-based optimal threshold selection
 
+### Validation and Diagnostics
+
+Decoder health analysis runs during `run_full_test()` and is warning-only: it
+does not block or stop metamorphic testing. The report includes prediction
+variance, standard deviation, minimum, maximum, range, unique count and ratio,
+quantiles, saturation and clipping ratios, a distribution diagnostic, and any
+warnings. When an output directory is used, it is saved as
+`decoder_health.json`.
+
+Epsilon sensitivity summaries include prediction range, normalized epsilon,
+stabilization and first-failure values, plateau detection, flat-zero curve
+detection, a `curve_diagnostic`, and warnings that can identify potentially
+uninformative sensitivity behavior.
+
+### Cache Instrumentation
+
+For `HighPerformanceAutoMR`, `cache_stats()` returns `hits`, `misses`,
+`requests`, `hit_ratio`, and `cache_size`. Use `reset_cache_stats()` to reset
+instrumentation without clearing predictions, or `clear_cache()` to clear the
+cache and reset its counters.
+
+### Final Evaluation Report
+
+`run_full_test()` adds `final_evaluation_report` to its results. The
+`FinalEvaluationReport` class consolidates available test summary, baseline,
+decoder health, epsilon, benchmark, and additional analysis artifacts and
+saves `final_evaluation_report.json` in the output directory.
+
 ---
 
 ## Live Dashboard
@@ -714,6 +747,56 @@ run_live_dashboard(
 ---
 
 ## Extending AutoMR
+
+### Custom transformations and relations
+
+Custom transformations and metamorphic relations can be registered at runtime
+without modifying built-in framework code. A complete custom MR uses the same
+name for its transformation, relation, and parameter range, then runs through
+the existing `run_mr()` pipeline.
+
+```python
+from automr import AutoMR
+
+def invert_colors(
+      image,
+      factor=1.0,
+      seed=None,
+):
+      return 255 - image
+
+class CustomRelation:
+      def __init__(self, epsilon=0.10):
+            self.epsilon = epsilon
+
+      def check(self, y1, y2):
+            return abs(y1 - y2) <= self.epsilon
+
+      def type(self):
+            return "equality"
+
+      def expected(self):
+            return "Prediction should remain approximately invariant."
+
+automr = AutoMR(model=model, task="regression", input_type="image")
+automr.register_custom_mr(
+      name="invert_colors",
+      transform=invert_colors,
+      relation=CustomRelation(epsilon=0.10),
+      param_range={"start": 0.0, "end": 1.0, "samples": 5},
+)
+
+automr.run_mr(
+      input_data=image,
+      mr_name="invert_colors",
+      samples=5,
+)
+```
+
+The independent methods `register_custom_transformation(name, transform,
+param_range=None)` and `register_custom_relation(name, relation)` are also
+available. `InvarianceRelation` is an existing relation implementation with
+the same `check(y1, y2)`, `type()`, and `expected()` interface.
 
 ### Register a custom transformation
 

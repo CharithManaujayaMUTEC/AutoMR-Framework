@@ -77,3 +77,31 @@ Exports all generated reports.
 - Prediction cache
 - Progress monitoring
 - Epsilon analysis
+
+## Cache Instrumentation
+
+`HighPerformanceAutoMR` exposes the prediction cache through these methods:
+
+```python
+automr.clear_cache()
+automr.cache_size()
+automr.cache_stats()
+automr.reset_cache_stats()
+```
+
+`cache_stats()` returns a dictionary with the exact keys `hits`, `misses`,
+`requests`, `hit_ratio`, and `cache_size`. `reset_cache_stats()` resets hit,
+miss, and request counters without clearing cached predictions. `clear_cache()`
+clears cached predictions and resets the cache statistics.
+
+The underlying `PredictionCache` also provides `get_stats()` and
+`reset_stats()`, plus the `hits`, `misses`, `requests`, and `hit_ratio`
+properties.
+
+## Performance Benchmarking
+
+Use [`AutoMRBenchmark`](benchmark.md) to compare a standard `AutoMR` instance
+with a `HighPerformanceAutoMR` instance under identical dataset and execution
+settings. The benchmark reports runtime, processed sample count, throughput,
+CPU time, memory measurements, GPU availability and memory fields, cache
+statistics, and speedup.

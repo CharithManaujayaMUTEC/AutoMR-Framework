@@ -47,6 +47,11 @@ AutoMR is an automated metamorphic testing framework designed for evaluating mac
 - Relations
 - Wrappers
 - Utilities
+- [Benchmarking](api/benchmark.md)
+- [Decoder Health Validation](api/decoder-health.md)
+- [Final Evaluation Report](api/final-report.md)
+- [Cache Instrumentation](api/hpc.md#cache-instrumentation)
+- [Custom Extensions](api/automr.md#custom-extension-methods)
 
 ## Tutorials
 
