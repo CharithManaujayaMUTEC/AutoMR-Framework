@@ -329,12 +329,13 @@ class AutoMR:
         self,
         name,
         transform,
+        param_range=None,
     ):
         """
-        Register a custom transformation.
+        Register a custom transformation independently.
 
-        This is an extension API and does not modify or
-        replace the existing register_transform() behavior.
+        This method does not modify the existing
+        register_transform() API.
 
         Parameters
         ----------
@@ -342,18 +343,30 @@ class AutoMR:
             Unique transformation name.
 
         transform : callable
-            Transformation function or transformation object.
+            Transformation function.
+
+        param_range : dict, optional
+            Optional parameter configuration:
+
+            {
+                "start": ...,
+                "end": ...,
+                "samples": ...
+            }
 
         Returns
         -------
         self
-            Enables method chaining.
         """
 
-        self.transformation_registry.register(
+        self.transform_registry.register(
             name,
             transform,
         )
+
+        if param_range is not None:
+
+            self.mr_ranges[name] = param_range
 
         return self
 
@@ -364,23 +377,18 @@ class AutoMR:
         relation,
     ):
         """
-        Register a custom metamorphic relation.
-
-        This is an extension API and does not modify or
-        replace existing relation registration behavior.
+        Register a custom metamorphic relation independently.
 
         Parameters
         ----------
         name : str
             Unique relation name.
 
-        relation : callable
-            Relation function or relation object.
+        relation : callable or relation object
 
         Returns
         -------
         self
-            Enables method chaining.
         """
 
         self.relation_registry.register(
@@ -396,63 +404,53 @@ class AutoMR:
         name,
         transform,
         relation,
-        param_range=None,
+        param_range,
     ):
         """
         Register a complete custom metamorphic relation.
 
-        Registers the transformation and relation using the
-        existing AutoMR registration mechanism.
-
-        Existing APIs remain unchanged.
+        This is a convenience API built on top of the
+        existing registry architecture.
 
         Parameters
         ----------
         name : str
-            Base name of the custom MR.
+            Unique MR name.
 
         transform : callable
-            Input transformation.
+            Input transformation function.
 
-        relation : callable
+        relation : callable or relation object
             Metamorphic relation.
 
-        param_range : tuple, optional
-            Optional parameter range.
+        param_range : dict
+            Parameter configuration:
+
+            {
+                "start": ...,
+                "end": ...,
+                "samples": ...
+            }
 
         Returns
         -------
         self
-            Enables method chaining.
         """
 
-        transform_name = f"{name}_transform"
-
-        relation_name = f"{name}_relation"
-
-        self.register_custom_transformation(
-            name=transform_name,
-            transform=transform,
+        self.transform_registry.register(
+            name,
+            transform,
         )
 
-        self.register_custom_relation(
-            name=relation_name,
-            relation=relation,
+        self.relation_registry.register(
+            name,
+            relation,
         )
 
-        # Preserve the existing registration path when
-        # a parameter range is supplied.
-        if param_range is not None:
-
-            self.register_transform(
-                name=name,
-                transform=transform,
-                relation=relation,
-                param_range=param_range,
-            )
+        self.mr_ranges[name] = param_range
 
         return self
-    
+     
     def unregister_transform(self, name):
         """
         Remove a previously registered transformation,
