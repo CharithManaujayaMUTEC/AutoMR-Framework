@@ -30,6 +30,7 @@ from automr.registry.default_relations import (
 from automr.evaluation import BaselineEvaluator
 from automr.evaluation import GraphGenerator
 from automr.evaluation import DecoderHealthAnalyzer
+from automr.evaluation import FinalEvaluationReport
 from automr.logging import AutoMRLogger
 from automr.verification import TransformationSaver
 
@@ -1408,5 +1409,34 @@ class AutoMR:
 
             if "severity_summary" in results:
                 print(results["severity_summary"])
+
+        # --------------------------------------------------
+        # Generate consolidated final evaluation report.
+        # --------------------------------------------------
+        final_report_generator = FinalEvaluationReport(
+            output_dir=output_dir
+        )
+
+        final_report = (
+            final_report_generator.generate_and_save(
+                test_summary=results.get(
+                    "summary"
+                )
+                if isinstance(results, dict)
+                else None,
+
+                epsilon_summary=results.get(
+                    "epsilon_summary"
+                )
+                if isinstance(results, dict)
+                else None,
+            )
+        )
+
+        if isinstance(results, dict):
+
+            results["final_evaluation_report"] = (
+                final_report
+            )
 
         return df, results
