@@ -21,9 +21,13 @@ class DashboardConfig:
 
         for mr in self.selected_mrs:
 
-            start, end = (
-                automr.mr_ranges[mr]
-            )
+            cfg = automr.mr_ranges[mr]
+
+            if isinstance(cfg, dict):
+                start = cfg["start"]
+                end = cfg["end"]
+            else:
+                start, end = cfg
 
             self.mr_ranges[mr] = {
                 "start": start,
@@ -34,6 +38,9 @@ class DashboardConfig:
         self.current_mr = self.selected_mrs[0]
 
         self.frame_skip = 30
+
+        # Live preview intensity (0-100%)
+        self.live_intensity = 50
 
         self.save_results = True
 

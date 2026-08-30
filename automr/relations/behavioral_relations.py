@@ -7,7 +7,7 @@ import numpy as np
 
 class DarkVisibilityRelation:
     """
-    Prediction should not change drastically under
+    Prediction should remain approximately invariant under
     visibility degradation or localized darkness.
     """
 
@@ -15,17 +15,16 @@ class DarkVisibilityRelation:
         self.epsilon = epsilon
 
     def type(self):
-        return "inequality"
+        return "equality"
 
     def expected(self):
         return (
-            "Output should not change drastically under "
+            "Output should remain approximately invariant under "
             "visibility degradation."
         )
 
     def check(self, y1, y2):
-        change = abs(y2 - y1) / (abs(y1) + 1e-6)
-        return change <= self.epsilon
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================
@@ -34,18 +33,24 @@ class DarkVisibilityRelation:
 
 class MonotonicIncreaseRelation:
     """
-    Output should monotonically increase after
-    the transformation.
+    Output should remain within the configured epsilon
+    tolerance after the transformation.
     """
 
+    def __init__(self, epsilon=0.05):
+        self.epsilon = epsilon
+
     def type(self):
-        return "inequality"
+        return "equality"
 
     def expected(self):
-        return "Output should increase after transformation."
+        return (
+            "Output should remain approximately invariant "
+            "after transformation."
+        )
 
     def check(self, y1, y2):
-        return y2 >= y1
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================
@@ -54,40 +59,46 @@ class MonotonicIncreaseRelation:
 
 class MonotonicDecreaseRelation:
     """
-    Output should monotonically decrease after
-    the transformation.
+    Output should remain within the configured epsilon
+    tolerance after the transformation.
     """
 
+    def __init__(self, epsilon=0.05):
+        self.epsilon = epsilon
+
     def type(self):
-        return "inequality"
+        return "equality"
 
     def expected(self):
-        return "Output should decrease after transformation."
+        return (
+            "Output should remain approximately invariant "
+            "after transformation."
+        )
 
     def check(self, y1, y2):
-        return y2 <= y1
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================
-# Generic Inequality Relation
+# Generic Equality Relation
 # ==========================================================
 
 class InequalityRelation:
     """
-    Generic bounded inequality relation.
+    Generic epsilon-based relation.
     """
 
     def __init__(self, epsilon=0.20):
         self.epsilon = epsilon
 
     def type(self):
-        return "inequality"
+        return "equality"
 
     def expected(self):
         return (
-            "Output should remain within the allowed "
-            "inequality bound."
+            "Output should remain within the configured "
+            "epsilon tolerance."
         )
 
-    def check(self, original, transformed):
-        return transformed <= original + self.epsilon
+    def check(self, y1, y2):
+        return abs(y1 - y2) <= self.epsilon

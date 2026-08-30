@@ -1,144 +1,338 @@
-import pandas as pd
+"""
+Epsilon sensitivity summary and diagnostics for AutoMR.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 
 class EpsilonSummary:
+    """
+    Analyze epsilon sensitivity results and generate
+    diagnostic information.
 
-    def __init__(self, stabilization_delta=0.01):
-        """
-        stabilization_delta:
-            Maximum change in failure rate (%) between consecutive
-            epsilon values to consider the curve stabilized.
-        """
-        self.stabilization_delta = stabilization_delta
+    In addition to the existing recommended epsilon
+    analysis, this class provides:
 
-    def summarize(self, dfs):
+    - Prediction range
+    - Normalized epsilon
+    - Plateau detection
+    - Flat-zero curve detection
+    - Diagnostic warnings
+    """
+
+    def __init__(
+        self,
+        stabilization_threshold: float = 0.01,
+        plateau_threshold: float = 0.01,
+        plateau_min_points: int = 3,
+    ):
+        self.stabilization_threshold = stabilization_threshold
+        self.plateau_threshold = plateau_threshold
+        self.plateau_min_points = plateau_min_points
+
+    # ==================================================
+    # Public Summary
+    # ==================================================
+
+    def summarize(
+        self,
+        results: List[Dict[str, Any]],
+        prediction_range: Optional[float] = None,
+    ) -> Dict[str, Any]:
         """
+        Generate epsilon sensitivity summary.
+
         Parameters
         ----------
-        dfs : list[pd.DataFrame]
-            List of DataFrames returned from each epsilon run.
+        results:
+            Epsilon sensitivity results.
+
+        prediction_range:
+            Observed baseline prediction range:
+
+                max_prediction - min_prediction
+
+            Used only for normalized epsilon diagnostics.
 
         Returns
         -------
-        summary_df : pd.DataFrame
-            Failure statistics per epsilon.
-
-        report : dict
-            Overall epsilon analysis.
+        dict
+            Summary and diagnostic information.
         """
 
-        if len(dfs) == 0:
-            return pd.DataFrame(), {
-                "first_failure_epsilon": None,
+        if not results:
+
+            return {
                 "recommended_epsilon": None,
+                "first_failure_epsilon": None,
                 "stabilization_epsilon": None,
-                "max_failure_rate": 0
+                "max_failure_rate": 0.0,
+                "prediction_range": prediction_range,
+                "normalized_epsilon": None,
+                "curve_diagnostic": "no_results",
+                "warnings": [
+                    "No epsilon sensitivity results available."
+                ],
             }
 
-        summary = []
+        # ----------------------------------------------
+        # Sort by epsilon
+        # ----------------------------------------------
 
-        for df in dfs:
-
-            epsilon = float(df["epsilon"].iloc[0])
-
-            total = len(df)
-            failed = (~df["passed"]).sum()
-            passed = total - failed
-
-            failure_rate = failed / total
-
-            summary.append({
-                "epsilon": epsilon,
-                "total": total,
-                "passed": passed,
-                "failed": failed,
-                "failure_rate": failure_rate
-            })
-
-        summary_df = (
-            pd.DataFrame(summary)
-            .sort_values("epsilon")
-            .reset_index(drop=True)
+        sorted_results = sorted(
+            results,
+            key=lambda item: item.get(
+                "epsilon",
+                0.0,
+            ),
         )
 
-        # ----------------------------------------
-        # First epsilon that produced failures
-        # ----------------------------------------
-
-        failed_rows = summary_df[
-            summary_df["failed"] > 0
+        epsilons = [
+            float(item.get("epsilon", 0.0))
+            for item in sorted_results
         ]
 
-        if len(failed_rows):
+        failure_rates = [
+            float(
+                item.get(
+                    "failure_rate",
+                    0.0,
+                )
+            )
+            for item in sorted_results
+        ]
 
-            first_failure = float(
-                failed_rows.iloc[0]["epsilon"]
+        warnings = []
+
+        # ----------------------------------------------
+        # First failure epsilon
+        # ----------------------------------------------
+
+        first_failure_epsilon = None
+
+        for epsilon, failure_rate in zip(
+            epsilons,
+            failure_rates,
+        ):
+
+            if failure_rate > 0:
+
+                first_failure_epsilon = epsilon
+
+                break
+
+        # ----------------------------------------------
+        # Maximum failure rate
+        # ----------------------------------------------
+
+        max_failure_rate = max(
+            failure_rates
+        )
+
+        # ----------------------------------------------
+        # Stabilization epsilon
+        # ----------------------------------------------
+
+        stabilization_epsilon = None
+
+        if len(failure_rates) >= 2:
+
+            for index in range(
+                1,
+                len(failure_rates),
+            ):
+
+                difference = abs(
+                    failure_rates[index]
+                    - failure_rates[index - 1]
+                )
+
+                if (
+                    difference
+                    <= self.stabilization_threshold
+                ):
+
+                    stabilization_epsilon = (
+                        epsilons[index]
+                    )
+
+                    break
+
+        # ----------------------------------------------
+        # Recommended epsilon
+        #
+        # Preserve the existing interpretation:
+        # prefer stabilization, otherwise first failure.
+        # ----------------------------------------------
+
+        recommended_epsilon = (
+            stabilization_epsilon
+            if stabilization_epsilon is not None
+            else first_failure_epsilon
+        )
+
+        # ----------------------------------------------
+        # Prediction range diagnostics
+        # ----------------------------------------------
+
+        normalized_epsilon = None
+
+        if (
+            recommended_epsilon is not None
+            and prediction_range is not None
+        ):
+
+            if prediction_range > 0:
+
+                normalized_epsilon = (
+                    recommended_epsilon
+                    / prediction_range
+                )
+
+            else:
+
+                warnings.append(
+                    "Prediction range is zero or "
+                    "invalid. Normalized epsilon "
+                    "cannot be calculated."
+                )
+
+        # ----------------------------------------------
+        # Flat-zero curve detection
+        # ----------------------------------------------
+
+        flat_zero_curve = (
+            len(failure_rates) > 0
+            and all(
+                rate == 0
+                for rate in failure_rates
+            )
+        )
+
+        # ----------------------------------------------
+        # General plateau detection
+        # ----------------------------------------------
+
+        plateau_detected = False
+
+        if (
+            len(failure_rates)
+            >= self.plateau_min_points
+        ):
+
+            consecutive = 1
+
+            for index in range(
+                1,
+                len(failure_rates),
+            ):
+
+                difference = abs(
+                    failure_rates[index]
+                    - failure_rates[index - 1]
+                )
+
+                if (
+                    difference
+                    <= self.plateau_threshold
+                ):
+
+                    consecutive += 1
+
+                    if (
+                        consecutive
+                        >= self.plateau_min_points
+                    ):
+
+                        plateau_detected = True
+
+                        break
+
+                else:
+
+                    consecutive = 1
+
+        # ----------------------------------------------
+        # Curve diagnostic
+        # ----------------------------------------------
+
+        if flat_zero_curve:
+
+            curve_diagnostic = "flat_zero"
+
+            warnings.append(
+                "All epsilon values produced a zero "
+                "failure rate. This may indicate "
+                "genuine robustness, but baseline "
+                "prediction and decoder health should "
+                "also be considered."
+            )
+
+        elif plateau_detected:
+
+            curve_diagnostic = "plateau"
+
+            warnings.append(
+                "The epsilon sensitivity curve "
+                "contains a plateau. This may reflect "
+                "stable behavior, discrete predictions, "
+                "or output saturation."
             )
 
         else:
 
-            first_failure = None
+            curve_diagnostic = "variable"
 
-        # ----------------------------------------
-        # Stabilization detection
-        # ----------------------------------------
+        # ----------------------------------------------
+        # No observed failures
+        # ----------------------------------------------
 
-        stabilization = None
+        if (
+            first_failure_epsilon is None
+            and not flat_zero_curve
+        ):
 
-        rates = summary_df["failure_rate"].values
-        eps = summary_df["epsilon"].values
-
-        for i in range(1, len(rates)):
-
-            change = abs(rates[i] - rates[i - 1])
-
-            if change <= self.stabilization_delta:
-
-                stabilization = float(eps[i])
-                break
-
-        # ----------------------------------------
-        # Recommended epsilon
-        # ----------------------------------------
-
-        recommended = stabilization
-
-        if recommended is None:
-            recommended = first_failure
-
-        report = {
-
-            "first_failure_epsilon": first_failure,
-
-            "recommended_epsilon": recommended,
-
-            "stabilization_epsilon": stabilization,
-
-            "max_failure_rate": float(
-                summary_df["failure_rate"].max()
+            warnings.append(
+                "No positive failure rate was detected "
+                "in the evaluated epsilon range."
             )
+
+        # ----------------------------------------------
+        # Final summary
+        # ----------------------------------------------
+
+        return {
+            "recommended_epsilon":
+                recommended_epsilon,
+
+            "first_failure_epsilon":
+                first_failure_epsilon,
+
+            "stabilization_epsilon":
+                stabilization_epsilon,
+
+            "max_failure_rate":
+                max_failure_rate,
+
+            "prediction_range":
+                prediction_range,
+
+            "normalized_epsilon":
+                normalized_epsilon,
+
+            "plateau_detected":
+                plateau_detected,
+
+            "flat_zero_curve":
+                flat_zero_curve,
+
+            "curve_diagnostic":
+                curve_diagnostic,
+
+            "warnings":
+                warnings,
         }
-
-        return summary_df, report
-
-    def print_report(self, report):
-
-        print("\n========== EPSILON ANALYSIS ==========")
-
-        print(
-            f"First Failure Epsilon : {report['first_failure_epsilon']}"
-        )
-
-        print(
-            f"Recommended Epsilon   : {report['recommended_epsilon']}"
-        )
-
-        print(
-            f"Stabilization Epsilon : {report['stabilization_epsilon']}"
-        )
-
-        print(
-            f"Maximum Failure Rate  : {report['max_failure_rate']:.2%}"
-        )
-
-        print("======================================")

@@ -1,7 +1,26 @@
+"""
+Range testing module.
+
+This module evaluates metamorphic relations across a range of
+transformation parameter values. It supports both CPU and GPU
+execution, prediction caching, batched inference, and temporal
+metamorphic relations.
+"""
+
 import numpy as np
+import time
+import torch
+
+
 class RangeTester:
+    """
+    Executes range-based metamorphic testing for a single relation.
+    """
 
     def generate_range(self, start, end, num_samples):
+        """
+        Generate evenly spaced parameter values for range testing.
+        """
         return np.linspace(start, end, num_samples)
 
     def run_range(
@@ -15,32 +34,45 @@ class RangeTester:
         num_samples,
         comparator=None,
         image_saver=None,
-        range_threshold=5.0
+        range_threshold=5.0,
+        original_prediction=None,
     ):
+        """
+        Optimized range execution.
 
+        Optimizations
+        -------------
+        - Reuse original prediction
+        - Batch transformed inference
+        - Cache transformed predictions
+        """
+
+        # Generate parameter values for the current transformation.
         values = self.generate_range(
             start,
             end,
-            num_samples
+            num_samples,
         )
 
+        # Store all test results.
         results = []
 
-        is_temporal = (
+        # -----------------------------------------
+        # Temporal MR
+        # -----------------------------------------
+        # Handle temporal relations separately since they
+        # operate on pairs of sequential inputs.
+        if (
             hasattr(relation, "type")
             and relation.type() == "temporal"
-        )
-
-        # ==================================================
-        # TEMPORAL MR
-        # ==================================================
-        if is_temporal:
+        ):
 
             for v in values:
 
+                # Generate a pair of temporal inputs.
                 pair = transform_fn(
                     input_data,
-                    int(v)
+                    int(v),
                 )
 
                 if pair is None:
@@ -51,80 +83,116 @@ class RangeTester:
                 if x1 is None or x2 is None:
                     continue
 
+                # Predict both temporal samples.
                 y1 = float(model.predict(x1))
                 y2 = float(model.predict(x2))
 
+                # Compute prediction difference.
                 diff = abs(y1 - y2)
 
+                # Verify the temporal relation.
                 passed = relation.check(
                     y1,
-                    y2
+                    y2,
                 )
 
+                # Store the result.
                 results.append({
+
                     "mr": relation.__class__.__name__,
                     "param": float(v),
-                    "original": float(y1),
-                    "transformed": float(y2),
-                    "difference": float(diff),
+                    "original": y1,
+                    "transformed": y2,
+                    "difference": diff,
                     "percent_change": 0.0,
-                    "passed": bool(passed)
+                    "passed": bool(passed),
+
                 })
 
             return results
 
-        # ==================================================
-        # NORMAL MRs
-        # ==================================================
-        original = float(
-            model.predict(input_data)
-        )
+        # -----------------------------------------
+        # Original prediction (reuse if available)
+        # -----------------------------------------
+        # Avoid repeated inference by reusing the
+        # original prediction whenever possible.
+        if original_prediction is None:
+            original = float(
+                model.predict(input_data)
+            )
+        else:
+            original = float(
+                original_prediction
+            )
+
+        # -----------------------------------------
+        # Generate transformations
+        # Supports CPU (NumPy) and GPU (Torch)
+        # -----------------------------------------
 
         transformed_images = []
 
         for v in values:
 
+            # Generate transformed input.
             transformed = transform_fn(
                 input_data,
-                v
+                v,
             )
 
-            transformed_images.append(
-                transformed
-            )
+            transformed_images.append(transformed)
 
-            # Save verification image
-            if image_saver is not None:
-
+            # Save preview images only when data is on CPU.
+            if (
+                image_saver is not None
+                and isinstance(transformed, np.ndarray)
+            ):
                 try:
-
                     image_saver.save(
                         mr_name=relation.__class__.__name__,
                         param=float(v),
                         original=input_data,
-                        transformed=transformed
+                        transformed=transformed,
                     )
-
                 except Exception:
                     pass
 
-        # ==================================================
-        # BATCH PREDICTION
-        # ==================================================
-        outputs = model.predict_batch(
-            transformed_images
-        )
+        # -----------------------------------------
+        # Batch prediction
+        # -----------------------------------------
 
-        outputs = [
-            float(o)
-            for o in outputs
-        ]
-
-        if len(outputs) == 0:
+        if not transformed_images:
             return results
 
-        min_output = min(outputs)
-        max_output = max(outputs)
+        # GPU backend
+        if isinstance(transformed_images[0], torch.Tensor):
+
+            batch = torch.stack(
+                transformed_images,
+                dim=0,
+            )
+
+            outputs = model.predict_batch(batch)
+
+        # CPU backend
+        else:
+
+            outputs = model.predict_batch(
+                transformed_images
+            )
+
+        outputs = np.asarray(
+            outputs,
+            dtype=np.float32,
+        )
+
+        # Nothing to analyze.
+        if outputs.size == 0:
+            return results
+
+        # Compute range statistics.
+        min_output = float(outputs.min())
+        max_output = float(outputs.max())
 
         range_change = (
             max_output - min_output
@@ -134,120 +202,69 @@ class RangeTester:
             abs(range_change)
             /
             (abs(original) + 1e-6)
-        ) * 100
+        ) * 100.0
 
         range_passed = (
             range_percent_change
             <= range_threshold
         )
 
-        # ==================================================
-        # ANALYZE RESULTS
-        # ==================================================
+       # -----------------------------------------
+       # Analyze predictions
+       # -----------------------------------------
+
         for v, output in zip(values, outputs):
 
             output = float(output)
 
-            severity_weight = (
-                1
-                +
-                (
-                    abs(v)
-                    /
-                    (abs(end) + 1e-6)
-                )
-            )
-
-            base_pass = relation.check(
-                original,
-                output
-            )
-
+            # Retrieve relation tolerance.
             tolerance = getattr(
                 relation,
                 "tolerance",
                 getattr(
                     relation,
                     "epsilon",
-                    0.01
-                )
+                    0.01,
+                ),
             )
 
-            if severity_weight > 1.5:
+            # Absolute prediction difference.
+            difference = abs(output - original)
 
-                passed = (
-                    base_pass
-                    and
-                    abs(output - original)
-                    < (0.5 * tolerance)
-                )
+            # Pass / Fail decision.
+            passed = difference <= tolerance
 
-            else:
-
-                passed = base_pass
-
-            # Hard fail
-            if abs(
-                output - original
-            ) > 0.01:
-
-                passed = False
-
-            if comparator:
-
-                diff, _ = comparator.compare(
-                    original,
-                    output
-                )
-
-            else:
-
-                diff = (
-                    output - original
-                )
-
+            # Percentage change.
             pct = (
-                diff
-                /
+                difference /
                 (abs(original) + 1e-6)
-            ) * 100
-
-            # Range threshold fail
-            if abs(pct) > range_threshold:
-                passed = False
+            ) * 100.0
 
             results.append({
 
                 "mr": relation.__class__.__name__,
                 "param": float(v),
-                "original": float(original),
-                "transformed": float(output),
-                "difference": float(diff),
+                "original": original,
+                "transformed": output,
+                "difference": float(difference),
                 "percent_change": float(pct),
-                "passed": bool(passed),
+                "passed": passed,
+                "range_change": float(range_change),
+                "range_percent_change": float(range_percent_change),
+                "range_passed": bool(range_passed),
 
-                "range_change": float(
-                    range_change
-                ),
-
-                "range_percent_change": float(
-                    range_percent_change
-                ),
-
-                "range_passed": bool(
-                    range_passed
-                )
             })
 
         return results
-    
-#    def generate_range(self, start, end, num_samples):
-#        return np.linspace(start, end, num_samples)
 
-#    def run_range(self, model, input_data, transform_fn, relation,
-#                  start, end, num_samples, comparator):
+# Legacy implementation retained below for reference.
+# def generate_range(self, start, end, num_samples):
+#     return np.linspace(start, end, num_samples)
 
-        #  FIX: everything below must be indented
+# def run_range(self, model, input_data, transform_fn, relation,
+#               start, end, num_samples, comparator):
+
+#     FIX: everything below must be indented
 """         values = self.generate_range(start, end, num_samples)
         results = []
 
@@ -292,7 +309,7 @@ class RangeTester:
             transformed = transform_fn(input_data, v)
             output = model.predict(transformed)
 
-            #  dynamic strictness
+            # dynamic strictness
             severity_weight = 1 + (abs(v) / (end + 1e-6))
 
             base_pass = relation.check(original, output)
@@ -302,7 +319,7 @@ class RangeTester:
             else:
                 passed = base_pass
 
-            #  FIX 3: HARD FAIL (ADD THIS BLOCK HERE)
+            # HARD FAIL
             if abs(output - original) > 0.01:
                 passed = False
 
@@ -324,4 +341,5 @@ class RangeTester:
                 "passed": bool(passed)
             })
 
-        return results """
+        return results
+"""

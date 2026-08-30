@@ -11,6 +11,7 @@ __pycache__/
 
 # Ignore local test script
 run_test.py
+webcam_automr_live.py
 
 # Build files
 dist/
@@ -22,3 +23,6 @@ __pycache__/
 *.pyc
 
 /venv
+
+/results/
+/results_*/

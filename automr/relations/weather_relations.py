@@ -26,8 +26,7 @@ class InvarianceRelation:
         return self._expected
 
     def check(self, y1, y2):
-        change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.epsilon
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================

@@ -25,8 +25,7 @@ class TemporalRelation:
         return self._expected
 
     def check(self, y1, y2):
-        change = abs(y1 - y2) / (abs(y1) + 1e-6)
-        return change < self.epsilon
+        return abs(y1 - y2) <= self.epsilon
 
 
 # ==========================================================
@@ -42,7 +41,10 @@ class TemporalSmoothnessRelation(TemporalRelation):
     def __init__(self, epsilon=0.03):
         super().__init__(
             epsilon=epsilon,
-            expected="Predictions should change smoothly across consecutive frames."
+            expected=(
+                "Predictions should change smoothly across "
+                "consecutive frames."
+            ),
         )
 
 
@@ -59,5 +61,8 @@ class TemporalConsistencyRelation(TemporalRelation):
     def __init__(self, epsilon=0.05):
         super().__init__(
             epsilon=epsilon,
-            expected="Nearby frames should produce consistent outputs."
+            expected=(
+                "Nearby frames should produce "
+                "consistent outputs."
+            ),
         )
