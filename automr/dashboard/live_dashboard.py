@@ -22,30 +22,31 @@ from .camera_source import CameraSource
 # ═════════════════════════════════════════════════════════════════════════════
 
 class T:
-    BG_BASE    = ( 10,  12,  18)
-    BG_PANEL   = ( 16,  19,  28)
-    BG_CARD    = ( 22,  26,  38)
-    BG_CTRL    = ( 19,  22,  34)   # control panel background
-    BG_TILE    = ( 14,  16,  24)
+    # ── "Signal Room" palette — deep cyan-teal HUD ──────────────────────────
+    BG_BASE    = ( 16,  12,  10)   # #0A0C10
+    BG_PANEL   = ( 32,  24,  20)   # #141820
+    BG_CARD    = ( 43,  33,  27)   # #1B212B
+    BG_CTRL    = ( 36,  28,  23)   # control panel background — #171C24
+    BG_TILE    = ( 27,  21,  18)   # #12151B
 
-    CYAN       = (220, 230,   0)
-    GREEN      = ( 60, 200,  90)
-    RED        = ( 48,  52, 220)
-    AMBER      = ( 20, 160, 215)
-    PURPLE     = (200,  90, 160)
-    BLUE_SOFT  = (180, 140,  60)
+    CYAN       = (210, 232,  77)   # #4DE8D2 — primary accent
+    GREEN      = (154, 242, 126)   # #7EF29A — pass
+    RED        = (103, 103, 255)   # #FF6767 — fail
+    AMBER      = ( 58, 166, 227)   # #E3A63A — warm secondary accent
+    PURPLE     = (242, 126, 155)   # #9B7EF2 — violet secondary accent
+    BLUE_SOFT  = (220, 168, 111)   # #6FA8DC — soft steel blue
 
-    TXT_HI     = (235, 237, 245)
-    TXT_MID    = (140, 145, 168)
-    TXT_LO     = ( 55,  60,  80)
+    TXT_HI     = (241, 243, 233)   # #E9F3F1
+    TXT_MID    = (166, 153, 139)   # #8B99A6
+    TXT_LO     = ( 94,  82,  74)   # #4A525E
 
-    BORDER     = ( 38,  44,  64)
-    DIVIDER    = ( 28,  32,  48)
-    GLOW_CYAN  = (180, 200,   0)
-    TRACK_BG   = ( 28,  32,  46)   # slider track background
-    TRACK_FILL = ( 45,  50,  72)   # inactive slider fill
-    THUMB      = ( 80,  85, 110)   # slider thumb base
-    THUMB_ACT  = (220, 230,   0)   # active thumb (cyan)
+    BORDER     = ( 54,  42,  35)   # #232A36
+    DIVIDER    = ( 43,  33,  28)   # #1C212B
+    GLOW_CYAN  = (168, 186,  62)   # dimmed CYAN
+    TRACK_BG   = ( 36,  28,  23)   # slider track background
+    TRACK_FILL = ( 56,  48,  42)   # inactive slider fill
+    THUMB      = (104,  85,  74)   # slider thumb base
+    THUMB_ACT  = (210, 232,  77)   # active thumb (cyan)
 
     HEADER_H   = 60
     STATUS_H   = 28
@@ -53,6 +54,9 @@ class T:
     CTRL_H     = 340               # height of custom control panel
     CELL_W     = 520               # ↑ from 320 — sharper tiles
     CELL_H     = 390               # ↑ from 240 — sharper tiles
+    MIN_CONTENT_H = 612            # metrics + MR list + CTRL_H, so the
+                                    # control panel never overlaps the
+                                    # metric cards on a short (1-row) grid
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -942,6 +946,17 @@ class LiveDashboard:
 
             tiles = self.process_frame(frame, frame_id)
             grid  = self.build_dashboard(tiles)
+
+            # Guarantee the sidebar has enough room for metrics + MR list +
+            # control panel, even when the tile grid is short (e.g. only
+            # one row of relations tested so far) — pure rendering fix,
+            # doesn't touch which relations run or when.
+            if grid.shape[0] < T.MIN_CONTENT_H:
+                pad = np.full(
+                    (T.MIN_CONTENT_H - grid.shape[0], grid.shape[1], 3),
+                    T.BG_TILE, dtype=np.uint8,
+                )
+                grid = np.vstack([grid, pad])
 
             failure_rate = (
                 (self.total_failures / self.total_tests) * 100
