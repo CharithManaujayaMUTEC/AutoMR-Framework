@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
+import pandas as pd
 
 
 class FinalEvaluationReport:
@@ -78,6 +79,18 @@ class FinalEvaluationReport:
         if isinstance(value, np.ndarray):
 
             return value.tolist()
+
+        if isinstance(value, pd.DataFrame):
+
+            return value.to_dict(orient="records")
+
+        if isinstance(value, pd.Series):
+
+            return value.to_dict()
+
+        if isinstance(value, Path):
+
+            return str(value)
 
         return value
 
