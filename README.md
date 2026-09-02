@@ -1082,7 +1082,7 @@ examples/
 ```bibtex
 @software{automr2025,
   title={AutoMR: A Metamorphic Testing Framework for Regression-Based Autonomous Driving Models},
-  author={Charith Manujaya and Raveesha Peiris},
+  author={Charith Manujaya, Raveesha Peiris, Thurunu Pabasara, Tharika Akurana},
   year={2025}
 }
 ```
