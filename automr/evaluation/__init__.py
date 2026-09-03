@@ -12,7 +12,7 @@ from .decoder_health import DecoderHealthAnalyzer
 from importlib import import_module
 
 FinalEvaluationReport = import_module(
-    ".final_report", __name__.rsplit(".", 1)[0]
+    ".final_report", __name__
 ).FinalEvaluationReport
 
 # Public package interface.
