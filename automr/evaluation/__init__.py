@@ -9,7 +9,7 @@ dataset information, model summaries, and baseline metrics.
 from .baseline import BaselineEvaluator
 from .graph_generator import GraphGenerator
 from .decoder_health import DecoderHealthAnalyzer
-from importlib import import_module
+from .final_report import FinalEvaluationReport
 
 FinalEvaluationReport = import_module(
     ".final_report", __name__
