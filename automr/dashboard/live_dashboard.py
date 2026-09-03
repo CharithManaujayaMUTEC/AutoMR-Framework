@@ -1,3 +1,4 @@
+import math
 import sys
 import ctypes
 import cv2
@@ -262,7 +263,7 @@ def _load_logo(target_h: int = 56) -> "np.ndarray | None":
 #  │  Range       ██████░░░░  50%         │
 #  │  Tests       ██░░░░░░░░   5          │
 #  │  FrameSkip   ██████░░░░  30          │
-#  │  Epsilon     ████░░░░░░  0.050       │
+#  │  Epsilon     [ 0.050              ]  │
 #  │  ────────────────────────────────    │
 #  │  [ ENABLE ]  [ RUN BENCH ]           │
 #  └──────────────────────────────────────┘
@@ -351,6 +352,9 @@ class _ControlPanel:
         self.enabled = True    # current MR enabled toggle
 
         self._active_slider = None   # which slider is being dragged
+        self._epsilon_editing = False
+        self._epsilon_committed = float(epsilon_init)
+        self._epsilon_text = f"{float(epsilon_init):.6g}"
 
         # ── Sliders ───────────────────────────────────────────────────────────
         self.s_intensity  = _Slider("Intensity",  0,   100,  50,  T.PRIMARY,
@@ -361,15 +365,13 @@ class _ControlPanel:
                                     fmt=lambda v: str(int(v)))
         self.s_frameskip  = _Slider("FrameSkip",  1,   120,  30,  T.AMBER,
                                     fmt=lambda v: str(int(v)))
-        self.s_epsilon    = _Slider("Epsilon",    0.001, 0.5, epsilon_init, T.ACCENT3,
-                                    fmt=lambda v: f"{v:.3f}")
+        self.s_epsilon    = None
 
         self._sliders = [
             self.s_intensity,
             self.s_range,
             self.s_tests,
             self.s_frameskip,
-            self.s_epsilon,
         ]
 
         # Bounding rects for buttons (set on draw)
@@ -454,6 +456,22 @@ class _ControlPanel:
             cy = sl.draw(canvas, x + PAD, cy, IW, label_w=104, h=10)
             cy += 4
 
+        # Epsilon is free-form so values outside the old slider range can be tested.
+        _txt(canvas, "Epsilon", x + PAD, cy + 16,
+             T.ACCENT3 if self._epsilon_editing else T.TXT_MID, scale=0.50)
+        input_x = x + PAD + 104
+        input_w = IW - 104
+        input_y = cy + 1
+        input_h = 26
+        input_bg = T.BG_BASE if self._epsilon_editing else T.BG_CARD
+        input_border = T.ACCENT3 if self._epsilon_editing else T.BORDER
+        _fr(canvas, input_x, input_y, input_x + input_w, input_y + input_h, input_bg)
+        _br(canvas, input_x, input_y, input_x + input_w, input_y + input_h, input_border)
+        _txt_bold(canvas, self._epsilon_text, input_x + 8, input_y + 18,
+              T.ACCENT3, scale=0.52)
+        self._epsilon_rect = (input_x, input_y, input_w, input_h)
+        cy += 30
+
         cy += 8
         _hline(canvas, cy, x + PAD, x + w - PAD, T.DIVIDER)
         cy += 14
@@ -516,6 +534,15 @@ class _ControlPanel:
             if bx <= lx <= bx + bw and by <= ly <= by + bh:
                 return "bench"
 
+            # Epsilon input
+            ex, ey, ew, eh = self._epsilon_rect
+            if ex <= lx <= ex + ew and ey <= ly <= ey + eh:
+                self._epsilon_editing = True
+                self._epsilon_text = ""
+                return
+
+            self._commit_epsilon()
+
             # Sliders
             for sl in self._sliders:
                 tx, ty, tw, th = sl.rect
@@ -534,6 +561,36 @@ class _ControlPanel:
                 self._active_slider.active = False
                 self._active_slider = None
 
+    def _commit_epsilon(self):
+        if not self._epsilon_editing:
+            return
+        try:
+            value = float(self._epsilon_text)
+            if not math.isfinite(value):
+                raise ValueError
+            self._epsilon_committed = value
+            self._epsilon_text = f"{value:.6g}"
+        except ValueError:
+            self._epsilon_text = f"{self._epsilon_value:.6g}"
+        self._epsilon_editing = False
+
+    def on_key(self, key):
+        """Handle text entry for the epsilon field; return True when consumed."""
+        if not self._epsilon_editing:
+            return False
+        if key in (10, 13):
+            self._commit_epsilon()
+            return True
+        if key in (8, 127):
+            self._epsilon_text = self._epsilon_text[:-1]
+            return True
+        if 0 <= key <= 255:
+            char = chr(key)
+            if char in "0123456789.eE+-":
+                self._epsilon_text += char
+                return True
+        return False
+
     # ── Value accessors (called by update_controls) ───────────────────────────
 
     @property
@@ -545,7 +602,11 @@ class _ControlPanel:
     @property
     def frame_skip(self): return max(1, int(round(self.s_frameskip.value)))
     @property
-    def epsilon(self):    return float(self.s_epsilon.value)
+    def _epsilon_value(self):
+        return self._epsilon_committed
+
+    @property
+    def epsilon(self):    return self._epsilon_value
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1162,6 +1223,7 @@ class LiveDashboard:
                 update_summary(self.results, self.output_dir)
 
             key = cv2.waitKey(1)
+            ctrl.on_key(key & 0xFF)
             if key == ord("r"):
                 self.pending_test = True
             if key == 27:
