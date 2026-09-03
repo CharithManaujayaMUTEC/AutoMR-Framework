@@ -11,10 +11,6 @@ from .graph_generator import GraphGenerator
 from .decoder_health import DecoderHealthAnalyzer
 from .final_report import FinalEvaluationReport
 
-FinalEvaluationReport = import_module(
-    ".final_report", __name__
-).FinalEvaluationReport
-
 # Public package interface.
 __all__ = [
     "BaselineEvaluator",
