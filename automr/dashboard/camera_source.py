@@ -45,6 +45,13 @@ class CameraSource:
                 f"Unable to open video source: {source}"
             )
 
+        if isinstance(source, int):
+            # Live webcams often default to a low native mode (e.g. 640x480)
+            # unless a higher resolution is explicitly requested, which
+            # makes the dashboard's video tiles look soft/blurry.
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
         return cap
 
     @staticmethod

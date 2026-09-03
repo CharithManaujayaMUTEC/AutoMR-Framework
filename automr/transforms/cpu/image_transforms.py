@@ -51,11 +51,15 @@ def increase_brightness(
 
     bright = img * local_factor
 
-    return blend_images(
-        img,
-        bright,
-        mask,
-    )
+    return np.clip(
+        blend_images(
+            img,
+            bright,
+            mask,
+        ),
+        0,
+        255,
+    ).astype(np.uint8)
 
 
 # ==========================================================
@@ -115,11 +119,15 @@ def adjust_contrast(
 
     contrast = mean + local_factor * (img - mean)
 
-    return blend_images(
-        img,
-        contrast,
-        mask,
-    )
+    return np.clip(
+        blend_images(
+            img,
+            contrast,
+            mask,
+        ),
+        0,
+        255,
+    ).astype(np.uint8)
 
 
 # ==========================================================
@@ -186,11 +194,15 @@ def blur(
             kernel,
         ).astype(np.float32)
 
-    return blend_images(
-        img,
-        blurred,
-        mask,
-    )
+    return np.clip(
+        blend_images(
+            img,
+            blurred,
+            mask,
+        ),
+        0,
+        255,
+    ).astype(np.uint8)
 
 # ==========================================================
 # Noise

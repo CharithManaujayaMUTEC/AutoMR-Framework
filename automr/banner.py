@@ -174,7 +174,15 @@ def print_banner() -> None:
     lines.append(BLUE(bot))
     lines.append("")
 
-    print("\n".join(lines))
+    output = "\n".join(lines)
+    try:
+        print(output)
+    except UnicodeEncodeError:
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+            print(output)
+        except Exception:
+            print(output.encode("ascii", errors="replace").decode("ascii"))
 
 
 if __name__ == "__main__":
